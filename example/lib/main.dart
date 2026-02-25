@@ -90,6 +90,7 @@ class _BenchmarkHomePageState extends State<BenchmarkHomePage> {
 
     final buffer = StringBuffer();
     void appendLog(String message) {
+      debugPrint(message);
       buffer.writeln(message);
       if (!mounted) {
         return;

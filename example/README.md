@@ -13,6 +13,16 @@ flutter pub get
 flutter run
 ```
 
+## Android Rust notes
+
+`example/android/app/build.gradle.kts` now owns the Rust Android build wiring:
+- builds `net_engine` via `cargo ndk` during `preBuild`
+- packs generated `.so` into app `jniLibs`
+
+Prerequisites:
+- `cargo install cargo-ndk`
+- Android NDK available in your Flutter/Android toolchain
+
 ## Presets
 
 - `Dio smoke (small_json)`: verify baseline channel works.
