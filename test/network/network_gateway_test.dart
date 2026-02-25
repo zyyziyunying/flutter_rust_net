@@ -413,7 +413,7 @@ void main() {
 
         expect(startResult.taskId, 'task-rust-1');
         expect(startResult.channel, NetChannel.rust);
-        expect(startResult.routeReason, 'transfer_task');
+        expect(startResult.routeReason, 'rust_enabled');
         expect(startResult.fromFallback, isFalse);
         expect(canceled, isTrue);
         expect(rustStartCalls, 1);

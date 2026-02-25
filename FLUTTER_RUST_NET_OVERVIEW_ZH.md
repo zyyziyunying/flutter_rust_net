@@ -4,11 +4,11 @@
 `flutter_rust_net` 是一个 **Flutter + Rust** 双通道网络层：  
 对 Flutter 业务暴露统一请求/传输 API，对底层执行同时接入 Dart `Dio` 与 Rust `net_engine(reqwest)`，并通过 `flutter_rust_bridge` 连接两端。
 
-它当前的目标是：在保持 Flutter 侧开发效率与稳定性的前提下，让 Rust 通道承担“大响应/传输任务/高并发”场景，并通过路由与回退机制降低切换风险。
+它当前的目标是：在保持 Flutter 侧开发效率与稳定性的前提下，以 Rust 作为测试阶段主通道，并通过统一路由与回退机制降低切换风险。
 
 ## 2) 对外核心能力
 - 统一模型：`NetRequest / NetResponse / NetTransferTaskRequest / NetTransferEvent`。
-- 双通道路由：`RoutingPolicy + NetFeatureFlag` 支持阈值、白/黑名单、强制通道。
+- 双通道路由：`RoutingPolicy + NetFeatureFlag` 支持总开关与强制通道。
 - 受控 fallback：仅 Rust 通道触发，且受错误类型与幂等性保护。
 - 统一传输任务入口：下载/上传启动、事件轮询、任务取消（Dio/Rust 都可接入）。
 - bytes-first 边界：跨 FFI 返回 `bytes` 或 `file path`，业务解码留在 Dart。
@@ -23,7 +23,7 @@
 
 ## 4) 一次请求的典型流程
 1. Dart 侧构造 `NetRequest`，进入 `NetworkGateway.request`。  
-2. `RoutingPolicy` 根据 request 标签 + feature flag 决策 Dio 或 Rust。  
+2. `RoutingPolicy` 基于强制通道与总开关决策 Dio 或 Rust。  
 3. 若命中 Rust，先做 `isReady` 检查；未就绪直接走 Dio（避免“先失败再回退”）。  
 4. 执行通道请求：Rust 返回 inline bytes 或 file path；Dio 返回 bytes。  
 5. 若 Rust 出现可回退错误且请求满足幂等条件，网关自动回退至 Dio。  
@@ -37,7 +37,7 @@
 | Dio (5.9.0) | 拦截器、取消、表单、下载上传进度、超时、适配器生态成熟 | 你当前的 Dart 主通道就是 Dio；`flutter_rust_net` 在其上补了“多通道路由 + fallback + FFI 边界治理” |
 | http (1.6.0) | 官方轻量客户端抽象，简单稳定、组合式客户端 | `flutter_rust_net` 更重，更偏“网关+策略层”；不适合作为轻量替代 |
 | Chopper (8.4.0) / Retrofit (4.9.1) | 类型安全 API 声明 + 代码生成，业务 API 组织能力强 | `flutter_rust_net` 目前偏传输治理，尚缺“声明式 API 生成层” |
-| rhttp (0.7.2) | Flutter+Rust 一体化网络库，强调协议覆盖（含 HTTP/3）、拦截器、TLS/代理/DNS、兼容层 | `flutter_rust_net` 在“策略路由+灰度回退”更突出；在“协议/网络策略广度”上仍有差距 |
+| rhttp (0.7.2) | Flutter+Rust 一体化网络库，强调协议覆盖（含 HTTP/3）、拦截器、TLS/代理/DNS、兼容层 | `flutter_rust_net` 在“策略路由+快速回退”更突出；在“协议/网络策略广度”上仍有差距 |
 
 ### 5.2 Rust 生态对比
 | 库 | 成熟能力（现状） | 与 net_engine 的关系/差异 |
@@ -46,11 +46,11 @@
 | hyper (1.8.1) | 底层高性能 HTTP 基础库，可高度定制 | 你当前不直接暴露 hyper 级能力，重点是工程化可用性而非底层自由度 |
 
 ### 5.3 当前竞争力与短板（结论）
-- **优势**：双通道治理（路由+fallback+可灰度）在 Flutter 侧比较少见，且已形成可测试闭环。  
+- **优势**：双通道治理（路由+fallback）在 Flutter 侧比较少见，且已形成可测试闭环。  
 - **优势**：针对大响应与传输任务有明确 bytes/file 边界，便于压测与演进。  
 - **数据侧观察（本仓库基准）**：`small_json` 场景 Rust p95 明显优于 Dio（11~13ms vs 42~48ms）；`jitter(c16,maxInFlight=12)` 场景 Dio 更稳，提示路由需按场景分层。  
 - **短板**：声明式 API 生成、拦截器生态、证书/代理/DNS 策略能力尚不如成熟库完整。  
-- **短板**：Rust 通道默认仍是灰度位（`enableRustChannel=false`），尚未进入“默认主通道”阶段。
+- **短板**：虽已切到 Rust 默认主通道（`enableRustChannel=true`），但尚未在业务 App 接入场景完成长期稳定性验证。
 
 ## 6) 可借鉴成熟库的升级方向（建议）
 - **API 层**：补一层 Chopper/Retrofit 风格的声明式 API 生成（可选），降低业务接入成本。
@@ -88,8 +88,8 @@
 | hyper 自研引擎 | 5.0 | 4.0 | 2.0 | 2.5 | 可定制性最高，同时引入更高的实现与维护复杂度 |
 
 ### 8.3 你当前阶段的实用结论
-- 近期最稳组合：**Dio 兜底 + flutter_rust_net 定向放量 Rust**（大响应、传输任务、验证过的高频接口）。
-- `jitter` 类场景先保守，结合 `maxInFlightTasks` 与灰度指标逐步放量。
+- 近期测试策略：**Rust 主通道 + Dio 兜底回退**，优先验证稳定性、观测与回退闭环。
+- `jitter` 类场景重点关注 `maxInFlightTasks` 对尾延迟与异常率的影响。
 - 若补齐“声明式 API + 网络策略控制面 + 缓存体系”，`flutter_rust_net` 的综合分可明显上升。
 
 ## 9) 参考资料
