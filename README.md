@@ -22,6 +22,20 @@ This package expects the Rust dynamic library built from:
 
 Runtime loading is handled by `FrbRustBridgeApi` and falls back to local debug/release library paths when default loading fails.
 
+## Standalone example (recommended for local device validation)
+
+- Example app: `flutter_rust_net/example/`
+- Android Rust `.so` build wiring: `flutter_rust_net/example/android/app/build.gradle.kts`
+- Example app log view also mirrors benchmark logs to console (`debugPrint`) for easier troubleshooting.
+
+Run:
+
+```bash
+cd flutter_rust_net/example
+flutter pub get
+flutter run
+```
+
 ## Quick usage
 
 ```dart
