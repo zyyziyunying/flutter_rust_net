@@ -10,9 +10,10 @@
 ## What this package provides
 
 - Unified request and transfer task abstractions (`NetRequest`, `NetResponse`, `NetTransferTaskRequest`)
+- HTTP method/header enums for safer callsites (`NetHttpMethod`, `NetHeaderName`)
 - Route policy + feature flags (`RoutingPolicy`, `NetFeatureFlag`)
 - Dio/Rust dual-channel execution with controlled fallback
-- Bytes-first client utilities (`BytesFirstNetworkClient`)
+- Bytes-first client utilities (`BytesFirstNetworkClient`, including `standard()` factory)
 
 ## Rust integration
 
@@ -39,10 +40,14 @@ flutter run
 ## Quick usage
 
 ```dart
-final gateway = NetworkGateway(
-  routingPolicy: const RoutingPolicy(),
-  featureFlag: const NetFeatureFlag(enableRustChannel: true),
-  dioAdapter: DioAdapter(),
-  rustAdapter: RustAdapter(),
+final client = BytesFirstNetworkClient.standard();
+
+final response = await client.request(
+  method: NetHttpMethod.post,
+  url: 'https://example.com/upload',
+  headers: {
+    NetHeaderName.contentType.wireName: 'application/json',
+  },
+  body: bytes,
 );
 ```

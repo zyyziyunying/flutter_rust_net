@@ -12,6 +12,61 @@ import 'package:flutter_rust_net/network/routing_policy.dart';
 
 void main() {
   group('BytesFirstNetworkClient', () {
+    test('standard factory wires default adapters', () {
+      final client = BytesFirstNetworkClient.standard(
+        featureFlag: const NetFeatureFlag(enableRustChannel: false),
+      );
+
+      expect(client.dioAdapter, isNotNull);
+      expect(client.rustAdapter, isNotNull);
+    });
+
+    test('request helper builds NetRequest from enum method', () async {
+      NetRequest? capturedRequest;
+      final client = BytesFirstNetworkClient(
+        gateway: NetworkGateway(
+          routingPolicy: const RoutingPolicy(),
+          featureFlag: const NetFeatureFlag(enableRustChannel: false),
+          dioAdapter: _FakeAdapter((request, {fromFallback = false}) async {
+            capturedRequest = request;
+            return NetResponse(
+              statusCode: 200,
+              headers: const <String, String>{},
+              bodyBytes: const <int>[],
+              bridgeBytes: 0,
+              channel: NetChannel.dio,
+              fromFallback: fromFallback,
+              costMs: 1,
+            );
+          }),
+          rustAdapter: _FakeAdapter((request, {fromFallback = false}) async {
+            return NetResponse(
+              statusCode: 200,
+              headers: const <String, String>{},
+              bodyBytes: const <int>[],
+              bridgeBytes: 0,
+              channel: NetChannel.rust,
+              fromFallback: fromFallback,
+              costMs: 1,
+            );
+          }),
+        ),
+      );
+
+      await client.request(
+        method: NetHttpMethod.post,
+        url: 'https://example.com/feed',
+        headers: const <String, String>{'x-request-id': 'abc'},
+        body: const <String, String>{'ok': 'true'},
+      );
+
+      expect(capturedRequest, isNotNull);
+      expect(capturedRequest!.method, 'POST');
+      expect(capturedRequest!.httpMethod, NetHttpMethod.post);
+      expect(capturedRequest!.url, 'https://example.com/feed');
+      expect(capturedRequest!.headers['x-request-id'], 'abc');
+    });
+
     test('decodes inline json bytes into model', () async {
       final payload = utf8.encode('{"id":1,"title":"harry"}');
       final client = _buildClient(

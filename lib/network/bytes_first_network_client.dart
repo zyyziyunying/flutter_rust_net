@@ -2,8 +2,12 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'dio_adapter.dart';
+import 'net_feature_flag.dart';
 import 'net_models.dart';
 import 'network_gateway.dart';
+import 'routing_policy.dart';
+import 'rust_adapter.dart';
 
 class NetDecodeMetrics {
   final int materializeBodyMs;
@@ -114,6 +118,66 @@ class BytesFirstNetworkClient {
   final NetworkGateway gateway;
 
   const BytesFirstNetworkClient({required this.gateway});
+
+  factory BytesFirstNetworkClient.standard({
+    RoutingPolicy routingPolicy = const RoutingPolicy(),
+    NetFeatureFlag featureFlag = const NetFeatureFlag(
+      enableRustChannel: true,
+      enableFallback: true,
+    ),
+    DioAdapter? dioAdapter,
+    RustAdapter? rustAdapter,
+  }) {
+    final resolvedDioAdapter = dioAdapter ?? DioAdapter();
+    final resolvedRustAdapter = rustAdapter ?? RustAdapter();
+    return BytesFirstNetworkClient(
+      gateway: NetworkGateway(
+        routingPolicy: routingPolicy,
+        featureFlag: featureFlag,
+        dioAdapter: resolvedDioAdapter,
+        rustAdapter: resolvedRustAdapter,
+      ),
+    );
+  }
+
+  RustAdapter? get rustAdapter {
+    final adapter = gateway.rustAdapter;
+    return adapter is RustAdapter ? adapter : null;
+  }
+
+  DioAdapter? get dioAdapter {
+    final adapter = gateway.dioAdapter;
+    return adapter is DioAdapter ? adapter : null;
+  }
+
+  Future<NetResponse> request({
+    required NetHttpMethod method,
+    required String url,
+    Map<String, String> headers = const {},
+    Map<String, dynamic> queryParameters = const {},
+    Object? body,
+    bool expectLargeResponse = false,
+    bool isJitterSensitive = false,
+    bool isTransferTask = false,
+    int? contentLengthHint,
+    NetChannel? forceChannel,
+  }) {
+    return requestRaw(
+      NetRequest.http(
+        method: method,
+        url: url,
+        headers: headers,
+        queryParameters: queryParameters,
+        body: body,
+        expectLargeResponse: expectLargeResponse,
+        isJitterSensitive: isJitterSensitive,
+        isTransferTask: isTransferTask,
+        contentLengthHint: contentLengthHint,
+        forceChannel: forceChannel,
+      ),
+      forceChannel: forceChannel,
+    );
+  }
 
   Future<NetResponse> requestRaw(
     NetRequest request, {

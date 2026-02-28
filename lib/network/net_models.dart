@@ -1,3 +1,41 @@
+enum NetHttpMethod {
+  get('GET'),
+  post('POST'),
+  put('PUT'),
+  patch('PATCH'),
+  delete('DELETE'),
+  head('HEAD'),
+  options('OPTIONS'),
+  trace('TRACE');
+
+  const NetHttpMethod(this.wireName);
+
+  final String wireName;
+
+  static NetHttpMethod? tryParse(String value) {
+    final normalized = value.trim().toUpperCase();
+    for (final method in values) {
+      if (method.wireName == normalized) {
+        return method;
+      }
+    }
+    return null;
+  }
+}
+
+enum NetHeaderName {
+  accept('accept'),
+  authorization('authorization'),
+  contentType('content-type'),
+  contentLength('content-length'),
+  userAgent('user-agent'),
+  idempotencyKey('idempotency-key');
+
+  const NetHeaderName(this.wireName);
+
+  final String wireName;
+}
+
 enum NetChannel { dio, rust }
 
 enum NetErrorCode {
@@ -37,6 +75,230 @@ class NetRequest {
     this.contentLengthHint,
     this.forceChannel,
   });
+
+  NetHttpMethod? get httpMethod => NetHttpMethod.tryParse(method);
+
+  factory NetRequest.http({
+    required NetHttpMethod method,
+    required String url,
+    Map<String, String> headers = const {},
+    Map<String, dynamic> queryParameters = const {},
+    Object? body,
+    bool expectLargeResponse = false,
+    bool isJitterSensitive = false,
+    bool isTransferTask = false,
+    int? contentLengthHint,
+    NetChannel? forceChannel,
+  }) {
+    return NetRequest(
+      method: method.wireName,
+      url: url,
+      headers: headers,
+      queryParameters: queryParameters,
+      body: body,
+      expectLargeResponse: expectLargeResponse,
+      isJitterSensitive: isJitterSensitive,
+      isTransferTask: isTransferTask,
+      contentLengthHint: contentLengthHint,
+      forceChannel: forceChannel,
+    );
+  }
+
+  factory NetRequest.get({
+    required String url,
+    Map<String, String> headers = const {},
+    Map<String, dynamic> queryParameters = const {},
+    bool expectLargeResponse = false,
+    bool isJitterSensitive = false,
+    bool isTransferTask = false,
+    int? contentLengthHint,
+    NetChannel? forceChannel,
+  }) {
+    return NetRequest.http(
+      method: NetHttpMethod.get,
+      url: url,
+      headers: headers,
+      queryParameters: queryParameters,
+      expectLargeResponse: expectLargeResponse,
+      isJitterSensitive: isJitterSensitive,
+      isTransferTask: isTransferTask,
+      contentLengthHint: contentLengthHint,
+      forceChannel: forceChannel,
+    );
+  }
+
+  factory NetRequest.post({
+    required String url,
+    Map<String, String> headers = const {},
+    Map<String, dynamic> queryParameters = const {},
+    Object? body,
+    bool expectLargeResponse = false,
+    bool isJitterSensitive = false,
+    bool isTransferTask = false,
+    int? contentLengthHint,
+    NetChannel? forceChannel,
+  }) {
+    return NetRequest.http(
+      method: NetHttpMethod.post,
+      url: url,
+      headers: headers,
+      queryParameters: queryParameters,
+      body: body,
+      expectLargeResponse: expectLargeResponse,
+      isJitterSensitive: isJitterSensitive,
+      isTransferTask: isTransferTask,
+      contentLengthHint: contentLengthHint,
+      forceChannel: forceChannel,
+    );
+  }
+
+  factory NetRequest.put({
+    required String url,
+    Map<String, String> headers = const {},
+    Map<String, dynamic> queryParameters = const {},
+    Object? body,
+    bool expectLargeResponse = false,
+    bool isJitterSensitive = false,
+    bool isTransferTask = false,
+    int? contentLengthHint,
+    NetChannel? forceChannel,
+  }) {
+    return NetRequest.http(
+      method: NetHttpMethod.put,
+      url: url,
+      headers: headers,
+      queryParameters: queryParameters,
+      body: body,
+      expectLargeResponse: expectLargeResponse,
+      isJitterSensitive: isJitterSensitive,
+      isTransferTask: isTransferTask,
+      contentLengthHint: contentLengthHint,
+      forceChannel: forceChannel,
+    );
+  }
+
+  factory NetRequest.patch({
+    required String url,
+    Map<String, String> headers = const {},
+    Map<String, dynamic> queryParameters = const {},
+    Object? body,
+    bool expectLargeResponse = false,
+    bool isJitterSensitive = false,
+    bool isTransferTask = false,
+    int? contentLengthHint,
+    NetChannel? forceChannel,
+  }) {
+    return NetRequest.http(
+      method: NetHttpMethod.patch,
+      url: url,
+      headers: headers,
+      queryParameters: queryParameters,
+      body: body,
+      expectLargeResponse: expectLargeResponse,
+      isJitterSensitive: isJitterSensitive,
+      isTransferTask: isTransferTask,
+      contentLengthHint: contentLengthHint,
+      forceChannel: forceChannel,
+    );
+  }
+
+  factory NetRequest.delete({
+    required String url,
+    Map<String, String> headers = const {},
+    Map<String, dynamic> queryParameters = const {},
+    Object? body,
+    bool expectLargeResponse = false,
+    bool isJitterSensitive = false,
+    bool isTransferTask = false,
+    int? contentLengthHint,
+    NetChannel? forceChannel,
+  }) {
+    return NetRequest.http(
+      method: NetHttpMethod.delete,
+      url: url,
+      headers: headers,
+      queryParameters: queryParameters,
+      body: body,
+      expectLargeResponse: expectLargeResponse,
+      isJitterSensitive: isJitterSensitive,
+      isTransferTask: isTransferTask,
+      contentLengthHint: contentLengthHint,
+      forceChannel: forceChannel,
+    );
+  }
+
+  factory NetRequest.head({
+    required String url,
+    Map<String, String> headers = const {},
+    Map<String, dynamic> queryParameters = const {},
+    bool expectLargeResponse = false,
+    bool isJitterSensitive = false,
+    bool isTransferTask = false,
+    int? contentLengthHint,
+    NetChannel? forceChannel,
+  }) {
+    return NetRequest.http(
+      method: NetHttpMethod.head,
+      url: url,
+      headers: headers,
+      queryParameters: queryParameters,
+      expectLargeResponse: expectLargeResponse,
+      isJitterSensitive: isJitterSensitive,
+      isTransferTask: isTransferTask,
+      contentLengthHint: contentLengthHint,
+      forceChannel: forceChannel,
+    );
+  }
+
+  factory NetRequest.options({
+    required String url,
+    Map<String, String> headers = const {},
+    Map<String, dynamic> queryParameters = const {},
+    Object? body,
+    bool expectLargeResponse = false,
+    bool isJitterSensitive = false,
+    bool isTransferTask = false,
+    int? contentLengthHint,
+    NetChannel? forceChannel,
+  }) {
+    return NetRequest.http(
+      method: NetHttpMethod.options,
+      url: url,
+      headers: headers,
+      queryParameters: queryParameters,
+      body: body,
+      expectLargeResponse: expectLargeResponse,
+      isJitterSensitive: isJitterSensitive,
+      isTransferTask: isTransferTask,
+      contentLengthHint: contentLengthHint,
+      forceChannel: forceChannel,
+    );
+  }
+
+  factory NetRequest.trace({
+    required String url,
+    Map<String, String> headers = const {},
+    Map<String, dynamic> queryParameters = const {},
+    Object? body,
+    bool expectLargeResponse = false,
+    bool isJitterSensitive = false,
+    bool isTransferTask = false,
+    int? contentLengthHint,
+    NetChannel? forceChannel,
+  }) {
+    return NetRequest.http(
+      method: NetHttpMethod.trace,
+      url: url,
+      headers: headers,
+      queryParameters: queryParameters,
+      body: body,
+      expectLargeResponse: expectLargeResponse,
+      isJitterSensitive: isJitterSensitive,
+      isTransferTask: isTransferTask,
+      contentLengthHint: contentLengthHint,
+      forceChannel: forceChannel,
+    );
+  }
 
   NetRequest copyWith({
     String? method,
@@ -94,6 +356,34 @@ class NetTransferTaskRequest {
     this.priority = 0,
     this.forceChannel,
   });
+
+  NetHttpMethod? get httpMethod => NetHttpMethod.tryParse(method);
+
+  factory NetTransferTaskRequest.http({
+    required String taskId,
+    required NetTransferKind kind,
+    required String url,
+    required String localPath,
+    NetHttpMethod method = NetHttpMethod.get,
+    Map<String, String> headers = const {},
+    int? resumeFrom,
+    int? expectedTotal,
+    int priority = 0,
+    NetChannel? forceChannel,
+  }) {
+    return NetTransferTaskRequest(
+      taskId: taskId,
+      kind: kind,
+      url: url,
+      localPath: localPath,
+      method: method.wireName,
+      headers: headers,
+      resumeFrom: resumeFrom,
+      expectedTotal: expectedTotal,
+      priority: priority,
+      forceChannel: forceChannel,
+    );
+  }
 
   NetTransferTaskRequest copyWith({
     String? taskId,
