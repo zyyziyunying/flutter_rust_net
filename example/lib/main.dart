@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:common/log_upload.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_rust_net/network/benchmark/network_benchmark_harness.dart';
 
@@ -28,6 +32,10 @@ class BenchmarkHomePage extends StatefulWidget {
 }
 
 class _BenchmarkHomePageState extends State<BenchmarkHomePage> {
+  static const String _defaultUploadUrl = 'http://47.110.52.208:7777/upload';
+  static const String _loginPath = '/user/login';
+  static const String _loginUsername = 'ziyunying';
+  static const String _loginPassword = '123456';
   static const List<_RunPreset> _presets = [
     _RunPreset(
       label: 'Dio smoke (small_json)',
@@ -70,7 +78,12 @@ class _BenchmarkHomePageState extends State<BenchmarkHomePage> {
   ];
 
   late _RunPreset _selectedPreset;
+  late final TextEditingController _uploadUrlController;
+  late final TextEditingController _uploadFieldController;
+  late final Dio _uploadDio;
+  late final LogUploadClient _logUploadClient;
   bool _running = false;
+  bool _uploading = false;
   bool _requireRust = false;
   String _logText =
       'Tap "Run local benchmark". The benchmark spins up a local loopback '
@@ -81,6 +94,32 @@ class _BenchmarkHomePageState extends State<BenchmarkHomePage> {
   void initState() {
     super.initState();
     _selectedPreset = _presets.first;
+    _uploadUrlController = TextEditingController(text: _defaultUploadUrl);
+    _uploadFieldController = TextEditingController(text: 'file');
+    _uploadDio = Dio(
+      BaseOptions(
+        connectTimeout: const Duration(seconds: 15),
+        sendTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+        responseType: ResponseType.plain,
+        validateStatus: (status) => status != null,
+      ),
+    );
+    _logUploadClient = LogUploadClient(
+      uploader: DioLogUploader(dio: _uploadDio),
+      defaults: const LogUploadDefaults(
+        timeout: Duration(seconds: 30),
+        fields: <String, String>{'source': 'flutter_rust_net_example'},
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _uploadUrlController.dispose();
+    _uploadFieldController.dispose();
+    _uploadDio.close(force: true);
+    super.dispose();
   }
 
   Future<void> _runPreset() async {
@@ -88,16 +127,8 @@ class _BenchmarkHomePageState extends State<BenchmarkHomePage> {
       return;
     }
 
-    final buffer = StringBuffer();
     void appendLog(String message) {
-      debugPrint(message);
-      buffer.writeln(message);
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _logText = buffer.toString();
-      });
+      _appendLog(message);
     }
 
     setState(() {
@@ -108,13 +139,13 @@ class _BenchmarkHomePageState extends State<BenchmarkHomePage> {
 
     try {
       final config = _selectedPreset.config.copyWith(requireRust: _requireRust);
-      appendLog('[example] requireRust=$_requireRust');
+      _appendLog('[example] requireRust=$_requireRust');
       final report = await runNetworkBenchmark(config, log: appendLog);
-      appendLog('');
-      appendLog(report.toPrettyText());
+      _appendLog('');
+      _appendLog(report.toPrettyText());
       final compareSummary = _buildCompareSummary(report);
       if (compareSummary != null) {
-        appendLog(compareSummary);
+        _appendLog(compareSummary);
       }
       if (!mounted) {
         return;
@@ -123,7 +154,7 @@ class _BenchmarkHomePageState extends State<BenchmarkHomePage> {
         _lastReport = report;
       });
     } catch (error) {
-      appendLog('[example] failed: $error');
+      _appendLog('[example] failed: $error');
     } finally {
       if (mounted) {
         setState(() {
@@ -131,6 +162,209 @@ class _BenchmarkHomePageState extends State<BenchmarkHomePage> {
         });
       }
     }
+  }
+
+  Future<void> _uploadLastReport() async {
+    if (_running || _uploading || _lastReport == null) {
+      return;
+    }
+    final uploadUrlText = _uploadUrlController.text.trim();
+    final fieldName = _uploadFieldController.text.trim();
+    if (uploadUrlText.isEmpty || fieldName.isEmpty) {
+      _appendLog('[example][upload] upload url / field name cannot be empty.');
+      return;
+    }
+
+    Uri uploadUri;
+    try {
+      uploadUri = Uri.parse(uploadUrlText);
+      if (!uploadUri.hasScheme || !uploadUri.hasAuthority) {
+        throw const FormatException('invalid upload url');
+      }
+    } catch (_) {
+      _appendLog('[example][upload] invalid upload url: $uploadUrlText');
+      return;
+    }
+
+    final report = _lastReport!;
+    final fileName = _buildUploadFileName(report);
+    final reportJson = const JsonEncoder.withIndent(
+      '  ',
+    ).convert(report.toJson());
+
+    setState(() {
+      _uploading = true;
+    });
+
+    _appendLog('[example][upload] uploading $fileName -> $uploadUri');
+    try {
+      final token = await _loginToken(dio: _uploadDio, uploadUri: uploadUri);
+      if (token == null) {
+        _appendLog('[example][upload] skipped upload because login failed.');
+        return;
+      }
+      final result = await _logUploadClient.upload(
+        uploadUri: uploadUri,
+        fileContent: reportJson,
+        token: token,
+        fileName: fileName,
+        fieldName: fieldName,
+        fields: <String, String>{
+          'scenario': report.config.scenario.cliName,
+          'startedAt': report.startedAt.toIso8601String(),
+        },
+      );
+      final detail = _logUploadClient.formatResultDetail(result);
+      if (result.success) {
+        _appendLog(
+          '[example][upload] success '
+          'scenario=${report.config.scenario.cliName}, '
+          '$detail',
+        );
+      } else {
+        _appendLog(
+          '[example][upload] failed '
+          'scenario=${report.config.scenario.cliName}, '
+          '$detail',
+        );
+      }
+    } catch (error) {
+      _appendLog('[example][upload] failed: $error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _uploading = false;
+        });
+      }
+    }
+  }
+
+  Future<String?> _loginToken({
+    required Dio dio,
+    required Uri uploadUri,
+  }) async {
+    final loginUri = _loginUriFromUpload(uploadUri);
+    _appendLog('[example][upload] login -> $loginUri');
+
+    try {
+      final response = await dio.postUri(
+        loginUri,
+        data: const {'username': _loginUsername, 'password': _loginPassword},
+      );
+      final statusCode = response.statusCode ?? 0;
+      final responseText = _truncate(response.data.toLogUploadResponseBody());
+      if (statusCode < 200 || statusCode >= 300) {
+        _appendLog(
+          '[example][upload] login failed($statusCode), response=$responseText',
+        );
+        return null;
+      }
+
+      final token = _extractToken(response.data);
+      if (token == null || token.isEmpty) {
+        _appendLog(
+          '[example][upload] login success but token missing, response=$responseText',
+        );
+        return null;
+      }
+      _appendLog('[example][upload] login success, token received.');
+      return token;
+    } catch (error) {
+      _appendLog('[example][upload] login error: $error');
+      return null;
+    }
+  }
+
+  Uri _loginUriFromUpload(Uri uploadUri) {
+    final uri = Uri(
+      scheme: uploadUri.scheme,
+      host: uploadUri.host,
+      port: uploadUri.hasPort ? uploadUri.port : null,
+      path: _loginPath,
+    );
+    return uri;
+  }
+
+  String? _extractToken(Object? data) {
+    final payload = _normalizePayload(data);
+    if (payload is! Map) {
+      return null;
+    }
+    return _extractTokenFromMap(payload);
+  }
+
+  Object? _normalizePayload(Object? raw) {
+    if (raw is String) {
+      try {
+        return jsonDecode(raw);
+      } catch (_) {
+        return raw;
+      }
+    }
+    return raw;
+  }
+
+  String? _extractTokenFromMap(Map payload) {
+    String? pickByKey(String key) {
+      final value = payload[key];
+      if (value is String && value.trim().isNotEmpty) {
+        return value.trim();
+      }
+      return null;
+    }
+
+    const keys = ['token', 'accessToken', 'access_token', 'jwt', 'bearerToken'];
+    for (final key in keys) {
+      final value = pickByKey(key);
+      if (value != null) {
+        return value;
+      }
+    }
+
+    final nestedCandidates = [
+      payload['data'],
+      payload['result'],
+      payload['payload'],
+    ];
+    for (final candidate in nestedCandidates) {
+      if (candidate is Map) {
+        final token = _extractTokenFromMap(candidate);
+        if (token != null && token.isNotEmpty) {
+          return token;
+        }
+      }
+      if (candidate is String && candidate.trim().isNotEmpty) {
+        return candidate.trim();
+      }
+    }
+    return null;
+  }
+
+  String _buildUploadFileName(BenchmarkReport report) {
+    final utc = report.finishedAt.toUtc().toIso8601String();
+    final safeUtc = utc.replaceAll(':', '').replaceAll('.', '');
+    return 'bench_${report.config.scenario.cliName}_$safeUtc.json';
+  }
+
+  String _truncate(String text, {int maxLength = 180}) {
+    if (text.length <= maxLength) {
+      return text;
+    }
+    return '${text.substring(0, maxLength)}...';
+  }
+
+  void _appendLog(String message) {
+    debugPrint(message);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      if (_logText.isEmpty) {
+        _logText = message;
+      } else {
+        _logText = '$_logText\n$message';
+      }
+    });
   }
 
   String? _buildCompareSummary(BenchmarkReport report) {
@@ -257,7 +491,7 @@ class _BenchmarkHomePageState extends State<BenchmarkHomePage> {
                   ),
                   const SizedBox(width: 12),
                   OutlinedButton(
-                    onPressed: _running
+                    onPressed: _running || _uploading
                         ? null
                         : () {
                             setState(() {
@@ -266,6 +500,52 @@ class _BenchmarkHomePageState extends State<BenchmarkHomePage> {
                             });
                           },
                     child: const Text('Clear'),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: TextField(
+                controller: _uploadUrlController,
+                enabled: !_running && !_uploading,
+                decoration: const InputDecoration(
+                  labelText: 'Upload URL',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 132,
+                    child: TextField(
+                      controller: _uploadFieldController,
+                      enabled: !_running && !_uploading,
+                      decoration: const InputDecoration(
+                        labelText: 'Form field',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _running || _uploading || report == null
+                          ? null
+                          : _uploadLastReport,
+                      icon: _uploading
+                          ? const SizedBox.square(
+                              dimension: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.cloud_upload_outlined),
+                      label: Text(
+                        _uploading ? 'Uploading...' : 'Upload last report',
+                      ),
+                    ),
                   ),
                 ],
               ),
