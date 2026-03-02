@@ -247,7 +247,7 @@ class _BenchmarkHomePageState extends State<BenchmarkHomePage> {
     _appendLog('[example][upload] login -> $loginUri');
 
     try {
-      final response = await dio.postUri(
+      final response = await dio.postUri<Object?>(
         loginUri,
         data: const {'username': _loginUsername, 'password': _loginPassword},
       );
