@@ -2,7 +2,7 @@
 
 ## 快速跳转（同日文档）
 
-- P1 执行状态（进度主文档）：[`docs/progress/p1_status_2026-02-25.md`](../docs/progress/p1_status_2026-02-25.md)
+- P1 执行状态（进度主文档）：[`docs/progress/p1_status_2026-02-25.md`](./docs/progress/p1_status_2026-02-25.md)
 - 优先级路线图：[`flutter_rust_net/FLUTTER_RUST_NET_PRIORITY_ROADMAP_ZH.md`](./FLUTTER_RUST_NET_PRIORITY_ROADMAP_ZH.md)
 - 测试运行记录：[`docs/test_plans/test_run_log.md`](../docs/test_plans/test_run_log.md)
 
@@ -113,6 +113,7 @@
 - 若补齐“声明式 API + 网络策略控制面 + 缓存体系”，`flutter_rust_net` 的综合分可明显上升。
 
 ## 9) 参考资料
-- 本仓库：`flutter_rust_net/lib/network/`、`native/rust/net_engine/src/`、`docs/dio_rust_test/`（本地基准记录）。
+- 本仓库：`flutter_rust_net/lib/network/`、`native/rust/net_engine/src/`、`flutter_rust_net/docs/dio_rust_test/`（本地基准记录）。
 - pub.dev：Dio、http、Chopper、Retrofit、rhttp（版本与能力说明，访问日期：2026-02-25）。
 - docs.rs：reqwest、hyper（版本与项目定位，访问日期：2026-02-25）。
+

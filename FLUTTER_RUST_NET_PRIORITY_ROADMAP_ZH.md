@@ -6,7 +6,7 @@
 
 ## 快速跳转（同日文档）
 
-- P1 执行状态（进度主文档）：[`docs/progress/p1_status_2026-02-25.md`](../docs/progress/p1_status_2026-02-25.md)
+- P1 执行状态（进度主文档）：[`docs/progress/p1_status_2026-02-25.md`](./docs/progress/p1_status_2026-02-25.md)
 - 架构与能力概览：[`flutter_rust_net/FLUTTER_RUST_NET_OVERVIEW_ZH.md`](./FLUTTER_RUST_NET_OVERVIEW_ZH.md)
 - 测试运行记录：[`docs/test_plans/test_run_log.md`](../docs/test_plans/test_run_log.md)
 
@@ -34,6 +34,10 @@
 - P1 准入阻塞 A：Rust transfer 的 upload 语义仍待补齐，当前实现与 Dio 双通道能力尚未完全对齐。
 - P1 准入阻塞 B：`maxInFlightTasks` 默认值口径未统一（文档建议 `32`，代码/CLI 默认仍有 `12`），会导致 `jitter` 结果漂移。
 - P1 证据缺口：真机弱网、远端链路、TOS 归档尚未闭环，当前不足以给出“业务 App 接入”最终准入结论。
+- P1 归档进展：日志上传入口已确认（`baseUrl=http://47.110.52.208:7777`，`POST /upload`），仍需补齐鉴权口径与命名规范。
+- P1 工具进展：已提供 CLI 上传脚本与示例 App 一键上传按钮（真机点击可直传报告 JSON）。
+- P1 鉴权进展：登录接口已知为 `POST /user/login`，示例 App 已接入“上传前登录”路径。
+- P1 对接进展：上传请求头已按服务端口径写入 `token: <actual-token>`（并保留 Authorization 兼容）。
 - P2 依赖项：Rust `DiskCache` 仍为占位实现，缓存收益阶段尚未启动。
 - 工程一致性项：`write_timeout_ms`、`max_connections` 等配置项需补“是否生效”的验证与回归。
 
@@ -88,6 +92,6 @@
 1. 先修复 Rust transfer upload 语义缺口，并补齐跨通道一致性回归用例。
 2. 统一 `maxInFlightTasks` 默认口径到 `32`（代码/CLI/文档），并重跑 `jitter` 基线。
 3. 校验 `write_timeout_ms`、`max_connections` 等配置项的生效路径并记录结果。
-4. 确认真机结果归档方案（TOS 平台/鉴权/bucket+prefix）。
+4. 基于 `http://47.110.52.208:7777/upload` 补齐归档细节（鉴权方式 + JSON 命名约定 + 上传脚本联调）。
 5. 真机弱网 + 远端链路补测（非 loopback），按同口径归档 JSON。
 6. 回填 `test_run_log` 与路由策略文档，输出准入决策。

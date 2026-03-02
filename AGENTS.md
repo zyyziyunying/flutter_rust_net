@@ -10,6 +10,7 @@
 - `tool/network_bench.dart` is the benchmark CLI entry.
 - `example/` is the standalone demo app for local/manual validation.
 - `test/network/` contains core network behavior tests.
+- `docs/` stores flutter_rust_net-specific docs (`progress/`, `dio_rust_test/`, design notes).
 
 ## Build, Test, and Development Commands
 - `flutter pub get` - install or update package dependencies.
