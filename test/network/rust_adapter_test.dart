@@ -222,6 +222,33 @@ void main() {
       expect(fakeBridge.initCalls, 1);
     });
 
+    test('adds rebuild hint when rust init reports bridge payload mismatch', () {
+      final fakeBridge = _FakeRustBridgeApi(
+        initError: Exception(
+          'PanicException(called `Result::unwrap()` on an `Err` value: '
+          'Error { kind: UnexpectedEof, message: "failed to fill whole buffer" })',
+        ),
+      );
+      final adapter = RustAdapter(bridgeApi: fakeBridge);
+
+      expect(
+        adapter.initializeEngine(),
+        throwsA(
+          isA<NetException>()
+              .having(
+                (error) => error.code,
+                'code',
+                NetErrorCode.infrastructure,
+              )
+              .having(
+                (error) => error.message,
+                'message',
+                contains('cargo build --release -p net_engine'),
+              ),
+        ),
+      );
+    });
+
     test(
       'starts transfer task and maps events/cancel through bridge',
       () async {

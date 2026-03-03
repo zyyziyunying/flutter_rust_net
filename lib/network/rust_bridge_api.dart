@@ -22,17 +22,14 @@ abstract class RustBridgeApi {
 }
 
 class FrbRustBridgeApi implements RustBridgeApi {
+  static const String _nativeProjectPath = '../native/rust/net_engine';
+  static const String _rebuildHintCommand =
+      'cd ../native/rust/net_engine && cargo build --release -p net_engine';
+
   @override
   Future<void> ensureBridgeLoaded() async {
     if (RustLib.instance.initialized) {
       return;
-    }
-
-    try {
-      await RustLib.init();
-      return;
-    } catch (_) {
-      // fall through and try project-local dynamic libraries in debug/release
     }
 
     final fileName = _libraryFileName();
@@ -42,16 +39,32 @@ class FrbRustBridgeApi implements RustBridgeApi {
     }
 
     final root = Directory.current.path;
+    final nativeRoot = '$root/$_nativeProjectPath';
     final candidatePaths = [
-      '$root/../native/rust/net_engine/target/debug/$fileName',
-      '$root/../native/rust/net_engine/target/release/$fileName',
+      '$nativeRoot/target/debug/$fileName',
+      '$nativeRoot/target/release/$fileName',
     ];
+    final latestSourceTime = _latestModifiedAt([
+      '$nativeRoot/src/frb_generated.rs',
+      '$nativeRoot/src/api.rs',
+      '$nativeRoot/Cargo.toml',
+      '$nativeRoot/Cargo.lock',
+    ]);
 
     Object? lastError;
+    final staleLibraries = <String>[];
     for (final path in candidatePaths) {
       final normalized = path.replaceAll('\\', '/');
-      if (!File(normalized).existsSync()) {
+      final libraryFile = File(normalized);
+      if (!libraryFile.existsSync()) {
         continue;
+      }
+      if (latestSourceTime != null) {
+        final libraryModifiedAt = libraryFile.lastModifiedSync();
+        if (libraryModifiedAt.isBefore(latestSourceTime)) {
+          staleLibraries.add(normalized);
+          continue;
+        }
       }
       try {
         await RustLib.init(externalLibrary: ExternalLibrary.open(normalized));
@@ -59,6 +72,13 @@ class FrbRustBridgeApi implements RustBridgeApi {
       } catch (error) {
         lastError = error;
       }
+    }
+
+    if (staleLibraries.isNotEmpty) {
+      throw StateError(
+        'Detected stale net_engine native library (${staleLibraries.join(', ')}). '
+        'Please rebuild before running Rust benchmark/init: $_rebuildHintCommand',
+      );
     }
 
     if (lastError != null) {
@@ -109,5 +129,21 @@ class FrbRustBridgeApi implements RustBridgeApi {
       return 'libnet_engine.dylib';
     }
     return null;
+  }
+
+  DateTime? _latestModifiedAt(List<String> paths) {
+    DateTime? latest;
+    for (final path in paths) {
+      final normalized = path.replaceAll('\\', '/');
+      final file = File(normalized);
+      if (!file.existsSync()) {
+        continue;
+      }
+      final modifiedAt = file.lastModifiedSync();
+      if (latest == null || latest.isBefore(modifiedAt)) {
+        latest = modifiedAt;
+      }
+    }
+    return latest;
   }
 }

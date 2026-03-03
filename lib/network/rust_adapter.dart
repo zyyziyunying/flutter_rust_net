@@ -41,6 +41,8 @@ class RustEngineInitOptions {
 
 class RustAdapter implements NetAdapter {
   static const String _defaultCacheSubDir = 'harrypet_net_engine_cache';
+  static const String _rustRebuildHintCommand =
+      'cd ../native/rust/net_engine && cargo build --release -p net_engine';
 
   final RustRequestHandler? _requestHandler;
   final RustBridgeApi _bridgeApi;
@@ -101,6 +103,15 @@ class RustAdapter implements NetAdapter {
       if (text.contains('already initialized')) {
         _initialized = true;
         return;
+      }
+      if (_looksLikeStaleNativeBridge(text)) {
+        throw NetException.infrastructure(
+          message:
+              'Rust init failed: $error. Native net_engine library may be stale; '
+              'rebuild with `$_rustRebuildHintCommand`.',
+          channel: NetChannel.rust,
+          cause: error,
+        );
       }
       throw NetException.infrastructure(
         message: 'Rust init failed: $error',
@@ -481,6 +492,13 @@ class RustAdapter implements NetAdapter {
       return '$tempPath$_defaultCacheSubDir';
     }
     return '$tempPath$separator$_defaultCacheSubDir';
+  }
+
+  static bool _looksLikeStaleNativeBridge(String text) {
+    final lower = text.toLowerCase();
+    return lower.contains('unexpectedeof') ||
+        lower.contains('failed to fill whole buffer') ||
+        lower.contains('content hash on dart side');
   }
 
   String _nextRequestId() {
