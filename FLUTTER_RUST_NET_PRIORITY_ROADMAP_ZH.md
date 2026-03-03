@@ -7,6 +7,7 @@
 ## 快速跳转（同日文档）
 
 - P1 执行状态（进度主文档）：[`docs/progress/p1_status_2026-02-25.md`](./docs/progress/p1_status_2026-02-25.md)
+- P2 执行状态（缓存阶段）：[`docs/progress/p2_status_2026-03-02.md`](./docs/progress/p2_status_2026-03-02.md)
 - 架构与能力概览：[`flutter_rust_net/FLUTTER_RUST_NET_OVERVIEW_ZH.md`](./FLUTTER_RUST_NET_OVERVIEW_ZH.md)
 - 测试运行记录：[`docs/test_plans/test_run_log.md`](../docs/test_plans/test_run_log.md)
 
@@ -38,7 +39,8 @@
 - P1 工具进展：已提供 CLI 上传脚本与示例 App 一键上传按钮（真机点击可直传报告 JSON）。
 - P1 鉴权进展：登录接口已知为 `POST /user/login`，示例 App 已接入“上传前登录”路径。
 - P1 对接进展：上传请求头已按服务端口径写入 `token: <actual-token>`（并保留 Authorization 兼容）。
-- P2 依赖项：Rust `DiskCache` 仍为占位实现，缓存收益阶段尚未启动。
+- P2 依赖项（已解除）：Rust `DiskCache` 占位实现问题已开始收敛，缓存收益阶段已启动。
+- P2 启动进展（2026-03-02）：`DiskCache` 已接入首版可用实现（GET 缓存 + TTL/ETag/LRU + namespace 清理），进入参数外置与收益观测阶段。
 - 工程一致性项：`write_timeout_ms`、`max_connections` 等配置项需补“是否生效”的验证与回归。
 
 ## P0：稳定基线（已完成）
