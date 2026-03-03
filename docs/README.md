@@ -15,5 +15,5 @@
 维护建议：
 
 1. `flutter_rust_net` 相关文档优先维护在本目录。
-2. 测试记录统一同步更新到对应专题文档（`docs/progress/` 与 `docs/dio_rust_test/`）。
+2. 测试记录按需同步到对应专题文档（`docs/progress/` 与 `docs/dio_rust_test/`）。
 3. 变更后同步检查 `FLUTTER_RUST_NET_OVERVIEW_ZH.md` 与 `FLUTTER_RUST_NET_PRIORITY_ROADMAP_ZH.md` 的跳转链接是否一致。
