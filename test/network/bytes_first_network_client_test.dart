@@ -186,13 +186,13 @@ BytesFirstNetworkClient _buildClient(NetResponse response) {
     routingPolicy: const RoutingPolicy(),
     featureFlag: const NetFeatureFlag(enableRustChannel: false),
     dioAdapter: _FakeAdapter(
-      (request, {fromFallback = false}) async => response.copyWith(
+      (request, {fromFallback = false}) async => response.withMeta(
         fromFallback: fromFallback,
         channel: NetChannel.dio,
       ),
     ),
     rustAdapter: _FakeAdapter(
-      (request, {fromFallback = false}) async => response.copyWith(
+      (request, {fromFallback = false}) async => response.withMeta(
         fromFallback: fromFallback,
         channel: NetChannel.rust,
       ),

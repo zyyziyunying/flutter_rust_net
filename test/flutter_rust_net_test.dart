@@ -10,9 +10,9 @@ void main() {
     expect(request.url, 'https://example.com');
   });
 
-  test('supports enum-based request factory', () {
-    final request = NetRequest.http(
-      method: NetHttpMethod.post,
+  test('supports enum-based method wire name', () {
+    final request = NetRequest(
+      method: NetHttpMethod.post.wireName,
       url: 'https://example.com/upload',
       body: const {'ok': true},
     );

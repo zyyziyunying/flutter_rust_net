@@ -230,7 +230,7 @@ class _RustCacheHarnessAdapter implements NetAdapter {
     if (cacheEnabled) {
       final cached = _cache[cacheKey];
       if (cached != null) {
-        return cached.copyWith(fromCache: true, fromFallback: fromFallback);
+        return cached.withMeta(fromCache: true, fromFallback: fromFallback);
       }
     }
 
@@ -238,7 +238,7 @@ class _RustCacheHarnessAdapter implements NetAdapter {
       request,
       fromFallback: fromFallback,
     );
-    final rustResponse = networkResponse.copyWith(
+    final rustResponse = networkResponse.withMeta(
       channel: NetChannel.rust,
       fromCache: false,
       fromFallback: fromFallback,

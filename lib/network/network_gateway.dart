@@ -45,13 +45,13 @@ class NetworkGateway {
   }) async {
     final effectiveRequest = forceChannel == null
         ? request
-        : request.copyWith(forceChannel: forceChannel);
+        : request.withForceChannel(forceChannel);
     final decision = routingPolicy.decide(effectiveRequest, featureFlag);
 
     if (decision.channel == NetChannel.rust) {
       if (!rustAdapter.isReady) {
         final response = await dioAdapter.request(effectiveRequest);
-        return response.copyWith(
+        return response.withMeta(
           routeReason: '${decision.reason} -> $_rustNotReadyRouteSuffix',
         );
       }
@@ -59,7 +59,7 @@ class NetworkGateway {
     }
 
     final response = await dioAdapter.request(effectiveRequest);
-    return response.copyWith(routeReason: decision.reason);
+    return response.withMeta(routeReason: decision.reason);
   }
 
   Future<NetTransferTaskStartResult> startTransferTask(
@@ -68,7 +68,7 @@ class NetworkGateway {
   }) async {
     final effectiveRequest = forceChannel == null
         ? request
-        : request.copyWith(forceChannel: forceChannel);
+        : request.withForceChannel(forceChannel);
     final decision = routingPolicy.decide(
       _toTransferProbeRequest(effectiveRequest),
       featureFlag,
@@ -149,7 +149,7 @@ class NetworkGateway {
   }) async {
     try {
       final response = await rustAdapter.request(request);
-      return response.copyWith(routeReason: routeReason);
+      return response.withMeta(routeReason: routeReason);
     } catch (error) {
       final netError = error is NetException
           ? error
@@ -167,7 +167,7 @@ class NetworkGateway {
         request,
         fromFallback: true,
       );
-      return fallbackResponse.copyWith(
+      return fallbackResponse.withMeta(
         routeReason: '$routeReason -> fallback_dio',
         fallbackReason: netError.code.name,
         fromFallback: true,

@@ -78,20 +78,9 @@ class NetRequest {
 
   NetHttpMethod? get httpMethod => NetHttpMethod.tryParse(method);
 
-  factory NetRequest.http({
-    required NetHttpMethod method,
-    required String url,
-    Map<String, String> headers = const {},
-    Map<String, dynamic> queryParameters = const {},
-    Object? body,
-    bool expectLargeResponse = false,
-    bool isJitterSensitive = false,
-    bool isTransferTask = false,
-    int? contentLengthHint,
-    NetChannel? forceChannel,
-  }) {
+  NetRequest withForceChannel(NetChannel? forceChannel) {
     return NetRequest(
-      method: method.wireName,
+      method: method,
       url: url,
       headers: headers,
       queryParameters: queryParameters,
@@ -101,35 +90,6 @@ class NetRequest {
       isTransferTask: isTransferTask,
       contentLengthHint: contentLengthHint,
       forceChannel: forceChannel,
-    );
-  }
-
-  NetRequest copyWith({
-    String? method,
-    String? url,
-    Map<String, String>? headers,
-    Map<String, dynamic>? queryParameters,
-    Object? body,
-    bool? expectLargeResponse,
-    bool? isJitterSensitive,
-    bool? isTransferTask,
-    int? contentLengthHint,
-    NetChannel? forceChannel,
-    bool clearForceChannel = false,
-  }) {
-    return NetRequest(
-      method: method ?? this.method,
-      url: url ?? this.url,
-      headers: headers ?? this.headers,
-      queryParameters: queryParameters ?? this.queryParameters,
-      body: body ?? this.body,
-      expectLargeResponse: expectLargeResponse ?? this.expectLargeResponse,
-      isJitterSensitive: isJitterSensitive ?? this.isJitterSensitive,
-      isTransferTask: isTransferTask ?? this.isTransferTask,
-      contentLengthHint: contentLengthHint ?? this.contentLengthHint,
-      forceChannel: clearForceChannel
-          ? null
-          : (forceChannel ?? this.forceChannel),
     );
   }
 }
@@ -161,60 +121,18 @@ class NetTransferTaskRequest {
     this.forceChannel,
   });
 
-  NetHttpMethod? get httpMethod => NetHttpMethod.tryParse(method);
-
-  factory NetTransferTaskRequest.http({
-    required String taskId,
-    required NetTransferKind kind,
-    required String url,
-    required String localPath,
-    NetHttpMethod method = NetHttpMethod.get,
-    Map<String, String> headers = const {},
-    int? resumeFrom,
-    int? expectedTotal,
-    int priority = 0,
-    NetChannel? forceChannel,
-  }) {
+  NetTransferTaskRequest withForceChannel(NetChannel? forceChannel) {
     return NetTransferTaskRequest(
       taskId: taskId,
       kind: kind,
       url: url,
-      localPath: localPath,
-      method: method.wireName,
+      method: method,
       headers: headers,
+      localPath: localPath,
       resumeFrom: resumeFrom,
       expectedTotal: expectedTotal,
       priority: priority,
       forceChannel: forceChannel,
-    );
-  }
-
-  NetTransferTaskRequest copyWith({
-    String? taskId,
-    NetTransferKind? kind,
-    String? url,
-    String? method,
-    Map<String, String>? headers,
-    String? localPath,
-    int? resumeFrom,
-    int? expectedTotal,
-    int? priority,
-    NetChannel? forceChannel,
-    bool clearForceChannel = false,
-  }) {
-    return NetTransferTaskRequest(
-      taskId: taskId ?? this.taskId,
-      kind: kind ?? this.kind,
-      url: url ?? this.url,
-      method: method ?? this.method,
-      headers: headers ?? this.headers,
-      localPath: localPath ?? this.localPath,
-      resumeFrom: resumeFrom ?? this.resumeFrom,
-      expectedTotal: expectedTotal ?? this.expectedTotal,
-      priority: priority ?? this.priority,
-      forceChannel: clearForceChannel
-          ? null
-          : (forceChannel ?? this.forceChannel),
     );
   }
 }
@@ -299,32 +217,25 @@ class NetResponse {
     this.fallbackError,
   });
 
-  NetResponse copyWith({
-    int? statusCode,
-    Map<String, String>? headers,
-    List<int>? bodyBytes,
-    String? bodyFilePath,
-    int? bridgeBytes,
+  NetResponse withMeta({
     bool? fromCache,
     NetChannel? channel,
     bool? fromFallback,
-    int? costMs,
-    String? requestId,
     String? routeReason,
     String? fallbackReason,
     NetException? fallbackError,
   }) {
     return NetResponse(
-      statusCode: statusCode ?? this.statusCode,
-      headers: headers ?? this.headers,
-      bodyBytes: bodyBytes ?? this.bodyBytes,
-      bodyFilePath: bodyFilePath ?? this.bodyFilePath,
-      bridgeBytes: bridgeBytes ?? this.bridgeBytes,
+      statusCode: statusCode,
+      headers: headers,
+      bodyBytes: bodyBytes,
+      bodyFilePath: bodyFilePath,
+      bridgeBytes: bridgeBytes,
       fromCache: fromCache ?? this.fromCache,
       channel: channel ?? this.channel,
       fromFallback: fromFallback ?? this.fromFallback,
-      costMs: costMs ?? this.costMs,
-      requestId: requestId ?? this.requestId,
+      costMs: costMs,
+      requestId: requestId,
       routeReason: routeReason ?? this.routeReason,
       fallbackReason: fallbackReason ?? this.fallbackReason,
       fallbackError: fallbackError ?? this.fallbackError,

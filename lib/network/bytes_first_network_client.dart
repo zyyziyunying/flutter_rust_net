@@ -163,8 +163,8 @@ class BytesFirstNetworkClient {
     NetChannel? forceChannel,
   }) {
     return requestRaw(
-      NetRequest.http(
-        method: method,
+      NetRequest(
+        method: method.wireName,
         url: url,
         headers: headers,
         queryParameters: queryParameters,
