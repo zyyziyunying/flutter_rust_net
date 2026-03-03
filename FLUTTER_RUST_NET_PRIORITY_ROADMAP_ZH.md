@@ -41,6 +41,7 @@
 - P1 对接进展：上传请求头已按服务端口径写入 `token: <actual-token>`（并保留 Authorization 兼容）。
 - P2 依赖项（已解除）：Rust `DiskCache` 占位实现问题已开始收敛，缓存收益阶段已启动。
 - P2 启动进展（2026-03-02）：`DiskCache` 已接入首版可用实现（GET 缓存 + TTL/ETag/LRU + namespace 清理），进入参数外置与收益观测阶段。
+- P2 推进补记（2026-03-03）：已完成缓存策略参数外置最小闭环（默认 TTL + namespace 容量上限），并打通 Dart 初始化配置入口。
 - 工程一致性项：`write_timeout_ms`、`max_connections` 等配置项需补“是否生效”的验证与回归。
 
 ## P0：稳定基线（已完成）
