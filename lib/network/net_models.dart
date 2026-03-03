@@ -470,6 +470,7 @@ class NetResponse {
   final List<int>? bodyBytes;
   final String? bodyFilePath;
   final int bridgeBytes;
+  final bool fromCache;
   final NetChannel channel;
   final bool fromFallback;
   final int costMs;
@@ -485,6 +486,7 @@ class NetResponse {
     required this.fromFallback,
     required this.costMs,
     this.bridgeBytes = 0,
+    this.fromCache = false,
     this.bodyBytes,
     this.bodyFilePath,
     this.requestId,
@@ -499,6 +501,7 @@ class NetResponse {
     List<int>? bodyBytes,
     String? bodyFilePath,
     int? bridgeBytes,
+    bool? fromCache,
     NetChannel? channel,
     bool? fromFallback,
     int? costMs,
@@ -513,6 +516,7 @@ class NetResponse {
       bodyBytes: bodyBytes ?? this.bodyBytes,
       bodyFilePath: bodyFilePath ?? this.bodyFilePath,
       bridgeBytes: bridgeBytes ?? this.bridgeBytes,
+      fromCache: fromCache ?? this.fromCache,
       channel: channel ?? this.channel,
       fromFallback: fromFallback ?? this.fromFallback,
       costMs: costMs ?? this.costMs,

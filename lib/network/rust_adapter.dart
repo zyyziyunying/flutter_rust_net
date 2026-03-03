@@ -292,6 +292,7 @@ class RustAdapter implements NetAdapter {
       bodyBytes: response.bodyInline,
       bodyFilePath: response.bodyFilePath,
       bridgeBytes: response.bodyInline?.length ?? 0,
+      fromCache: response.fromCache,
       channel: NetChannel.rust,
       fromFallback: fromFallback,
       costMs: response.costMs,

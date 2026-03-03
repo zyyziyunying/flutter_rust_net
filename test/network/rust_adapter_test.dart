@@ -85,6 +85,32 @@ void main() {
       expect(config.cacheMaxNamespaceBytes, 4096);
     });
 
+    test('maps rust fromCache flag into net response', () async {
+      final fakeBridge = _FakeRustBridgeApi(
+        requestResponder: (spec) async {
+          return rust_api.ResponseMeta(
+            requestId: spec.requestId,
+            statusCode: 200,
+            headers: const [('content-type', 'application/json')],
+            bodyInline: Uint8List.fromList(const [123, 125]),
+            bodyFilePath: null,
+            fromCache: true,
+            costMs: 2,
+            error: null,
+          );
+        },
+      );
+      final adapter = RustAdapter(bridgeApi: fakeBridge);
+      await adapter.initializeEngine();
+
+      final response = await adapter.request(
+        const NetRequest(method: 'GET', url: 'https://example.com/cache'),
+      );
+
+      expect(response.channel, NetChannel.rust);
+      expect(response.fromCache, isTrue);
+    });
+
     test('maps rust timeout error as fallback eligible', () async {
       final fakeBridge = _FakeRustBridgeApi(
         requestResponder: (spec) async {
