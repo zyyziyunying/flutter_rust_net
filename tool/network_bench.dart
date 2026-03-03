@@ -75,7 +75,8 @@ BenchmarkConfig _buildConfig(Map<String, String> kvArgs) {
     dioReceiveTimeout: Duration(
       milliseconds: _parseInt(kvArgs['receive-timeout-ms'], fallback: 15000),
     ),
-    rustMaxInFlightTasks: _parseInt(kvArgs['rust-max-in-flight'], fallback: 12),
+    rustMaxInFlightTasks: _parseInt(kvArgs['rust-max-in-flight'], fallback: 32),
+    scenarioBaseUrl: kvArgs['base-url'] ?? '',
   );
 }
 
@@ -154,6 +155,7 @@ Options:
   --fallback=true|false           gateway fallback switch, default: true
   --verbose=true|false            default: true
   --output=build/network_bench.json
+  --base-url=http://127.0.0.1:18080
 
 Scenario knobs:
   --large-bytes=2097152           for large_payload / large_json
@@ -164,11 +166,12 @@ Scenario knobs:
 Client knobs:
   --connect-timeout-ms=5000
   --receive-timeout-ms=15000
-  --rust-max-in-flight=12
+  --rust-max-in-flight=32
 
 Examples:
   dart run tool/network_bench.dart --scenario=small_json --requests=400 --concurrency=16 --output=build/small.json
   dart run tool/network_bench.dart --scenario=large_payload --channels=dio,rust --initialize-rust=true --output=build/large.json
   dart run tool/network_bench.dart --scenario=flaky_http --channels=dio --flaky-every=4
+  dart run tool/network_bench.dart --base-url=http://47.110.52.208:7777 --scenario=jitter_latency --channels=dio,rust
 ''');
 }

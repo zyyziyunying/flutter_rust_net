@@ -536,6 +536,65 @@ void main() {
         expect(dioStartCalls, 1);
       },
     );
+
+    test('does not fallback transfer upload without idempotency key', () async {
+      var dioStartCalls = 0;
+      var rustStartCalls = 0;
+
+      final dio = _FakeAdapter(
+        (request, {fromFallback = false}) async {
+          return _ok(channel: NetChannel.dio, fromFallback: fromFallback);
+        },
+        startTransferDelegate: (request) async {
+          dioStartCalls += 1;
+          return request.taskId;
+        },
+      );
+      final rust = _FakeAdapter(
+        (request, {fromFallback = false}) async {
+          return _ok(channel: NetChannel.rust, fromFallback: fromFallback);
+        },
+        startTransferDelegate: (request) async {
+          rustStartCalls += 1;
+          throw NetException.infrastructure(
+            message: 'rust transfer start failed',
+            channel: NetChannel.rust,
+          );
+        },
+      );
+
+      final gateway = NetworkGateway(
+        routingPolicy: const RoutingPolicy(),
+        featureFlag: const NetFeatureFlag(
+          enableRustChannel: true,
+          enableFallback: true,
+        ),
+        dioAdapter: dio,
+        rustAdapter: rust,
+      );
+
+      expect(
+        gateway.startTransferTask(
+          const NetTransferTaskRequest(
+            taskId: 'task-upload-no-idempotency',
+            kind: NetTransferKind.upload,
+            url: 'https://example.com/upload',
+            method: 'POST',
+            localPath: '/tmp/source.bin',
+            forceChannel: NetChannel.rust,
+          ),
+        ),
+        throwsA(
+          isA<NetException>().having(
+            (error) => error.code,
+            'code',
+            NetErrorCode.infrastructure,
+          ),
+        ),
+      );
+      expect(rustStartCalls, 1);
+      expect(dioStartCalls, 0);
+    });
   });
 }
 

@@ -167,7 +167,7 @@ class BenchmarkConfig {
     this.flakyFailureEvery = 5,
     this.dioConnectTimeout = const Duration(seconds: 5),
     this.dioReceiveTimeout = const Duration(seconds: 15),
-    this.rustMaxInFlightTasks = 12,
+    this.rustMaxInFlightTasks = 32,
     this.scenarioBaseUrl = '',
   });
 

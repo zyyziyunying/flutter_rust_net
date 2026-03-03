@@ -50,6 +50,7 @@ void main() {
       final adapter = RustAdapter(bridgeApi: fakeBridge);
 
       await adapter.initializeEngine();
+      expect(fakeBridge.lastInitConfig?.maxInFlightTasks, 32);
       final response = await adapter.request(
         const NetRequest(
           method: 'GET',

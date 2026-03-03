@@ -30,7 +30,7 @@ class RustEngineInitOptions {
     this.writeTimeoutMs = 30000,
     this.maxConnections = 100,
     this.maxConnectionsPerHost = 6,
-    this.maxInFlightTasks = 12,
+    this.maxInFlightTasks = 32,
     this.largeBodyThresholdKb = 256,
     this.cacheDir,
     this.cacheDefaultTtlSeconds = 300,
