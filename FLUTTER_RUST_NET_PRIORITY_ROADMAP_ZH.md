@@ -21,7 +21,7 @@
 
 1. 当“阶段顺序、目标、验收门槛”变化时，仅在本文更新 P0-P4 与阶段目标。
 2. 进度项不在本文增删，统一回填到 `docs/progress/p1_status_2026-02-25.md`。
-3. 若路线调整基于新测试结果，先确认 `docs/test_plans/test_run_log.md` 已同步。
+3. 若路线调整伴随性能结论变化（或用户明确要求），再同步 `docs/test_plans/test_run_log.md`。
 4. 更新后检查与 `flutter_rust_net/FLUTTER_RUST_NET_OVERVIEW_ZH.md` 的术语是否一致（如“测试模式/准入结论”）。
 
 ## 路线原则
@@ -97,4 +97,4 @@
 3. 校验 `write_timeout_ms`、`max_connections` 等配置项的生效路径并记录结果。
 4. 基于 `http://47.110.52.208:7777/upload` 补齐归档细节（鉴权方式 + JSON 命名约定 + 上传脚本联调）。
 5. 真机弱网 + 远端链路补测（非 loopback），按同口径归档 JSON。
-6. 回填 `test_run_log` 与路由策略文档，输出准入决策。
+6. 若性能结论变化，再回填 `test_run_log` 与路由策略文档，输出准入决策。

@@ -31,6 +31,10 @@
 - Add coverage for routing, fallback, and Rust-channel edge cases when logic changes.
 - When Rust bridge contracts change, validate both `flutter test` and `cargo test -q` in `native/rust/net_engine`.
 
+## Documentation Update Policy
+- Unless the user explicitly requests it, update progress docs and `docs/test_plans/test_run_log.md` only when performance conclusions change.
+- If rerun results keep the same performance conclusion, do not add or backfill test-log entries.
+
 ## Commit & Pull Request Guidelines
 - Use Conventional Commit prefixes (`feat:`, `fix:`, `docs:`, `test:`, `chore:`).
 - Keep commits scoped; separate Dart API changes, generated bridge updates, and Rust engine updates when possible.
