@@ -3,7 +3,7 @@
 - 日期：2026-02-24
 - 目标：在当前仓库中补齐并执行 `large_json` 基准，验证 Dio vs Rust（FFI）表现
 - 对照文章：<https://juejin.cn/post/7604666872128389139>
-- 关联记录：`docs/test_plans/test_run_log.md` / `TR-20260224-07`
+- 关联记录：`相关文档（按需）`
 
 ## 1. 背景说明
 

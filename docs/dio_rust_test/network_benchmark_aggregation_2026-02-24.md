@@ -13,7 +13,7 @@ title: L1 传输层：Dio vs Rust 网络基准聚合结论（2026-02-24）
 2. 已整合以下内容：
    - `flutter_rust_net/docs/dio_rust_test/network_realistic_benchmark_2026-02-24.md`（基线方案 + 首轮结果）
    - `flutter_rust_net/docs/dio_rust_test/network_benchmark_audit_2026-02-24.md`（jitter 并发梯度 + `maxInFlightTasks` 灵敏度）
-   - `docs/test_plans/test_run_log.md` 中 `TR-20260224-03/04/05`
+   - `相关文档（按需）` 中的同轮执行记录
 3. 本文结论只用于 L1：请求层时延/吞吐/错误/fallback/排队；不覆盖 L2 的 decode/model/UI/复杂对象回传成本。
 
 ## 1) 本次聚合覆盖范围
@@ -99,7 +99,7 @@ fallback 演练：
 
 1. 已落地 benchmark 参数：支持 `--rust-max-in-flight`（默认 12），便于持续复验阈值。
 2. 建议下一步按真机网络剖面补测（Wi-Fi / 4G / 弱网），并加入 30~120 分钟长稳压测。
-3. 所有执行记录已写入：`docs/test_plans/test_run_log.md`（含 `TR-20260224-03/04/05`）。
+3. 所有执行记录已整理到：`相关文档（按需）`。
 
 ## 8) L2 预留（暂不纳入本次提交）
 

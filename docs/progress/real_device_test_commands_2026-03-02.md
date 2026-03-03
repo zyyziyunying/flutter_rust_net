@@ -139,4 +139,4 @@ dart run tool/upload_bench_log.dart --input=<your_output_dir> --ext=json --heade
 3. `p95` / `p99`
 4. `throughputRps`
 
-建议每个场景至少跑 3 轮并取中位数，再回填 `docs/test_plans/test_run_log.md`（date / commit / command / result / notes）。
+可按需多跑几轮并取代表值，再把关键结论同步到 `相关文档（按需）`。

@@ -114,7 +114,7 @@ dart run tool/network_bench.dart --scenario=jitter_latency --channels=dio,rust -
 
 ## 7) 建议记录（提交可追溯）
 
-跑完后在 `docs/test_plans/test_run_log.md` 增加记录，至少包含：
+跑完后在 `相关文档（按需）` 增加记录，至少包含：
 
 1. `date`（例如：2026-02-24）
 2. `commit`
@@ -141,7 +141,7 @@ dart run tool/network_bench.dart --scenario=jitter_latency --channels=dio,rust -
 dart run tool/upload_bench_log.dart --input=build/bench_jitter.json --extra-field=project=flutter_rust_net --extra-field=network_profile=wifi
 
 # 目录批量上传（默认递归，默认过滤 json/log/txt）
-dart run tool/upload_bench_log.dart --input=build/p1_jitter/20260225_1448 --ext=json --extra-field=run_id=TR-20260228-XX --extra-field=device=android_real
+dart run tool/upload_bench_log.dart --input=build/p1_jitter/20260225_1448 --ext=json --extra-field=session=20260228 --extra-field=device=android_real
 
 # 如需鉴权头
 dart run tool/upload_bench_log.dart --input=build/bench_small.json --header=Authorization:Bearer <token>
@@ -156,4 +156,4 @@ dart run tool/upload_bench_log.dart --input=build/bench_small.json --header=Auth
 1. 用 `small_json/large_payload/large_json` 先做接口白名单灰度（5% -> 25% -> 50% -> 100%）。
 2. `jitter_latency` 默认保持保守路由，并对 `maxInFlightTasks=32` 做定向灰度复验。
 3. 增补“Rust 端解析 JSON 并跨 FFI 回传对象”的专项 benchmark，验证文章主张边界。
-4. 把本轮命令和结论写入 `docs/test_plans/test_run_log.md`，并同步到路由策略文档。
+4. （可选）把本轮命令和结论同步到 `相关文档（按需）`，并更新路由策略文档。

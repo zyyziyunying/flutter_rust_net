@@ -4,18 +4,18 @@
 
 - P1 执行状态（进度主文档）：[`docs/progress/p1_status_2026-02-25.md`](./docs/progress/p1_status_2026-02-25.md)
 - 优先级路线图：[`flutter_rust_net/FLUTTER_RUST_NET_PRIORITY_ROADMAP_ZH.md`](./FLUTTER_RUST_NET_PRIORITY_ROADMAP_ZH.md)
-- 测试运行记录：[`docs/test_plans/test_run_log.md`](../docs/test_plans/test_run_log.md)
+- 测试运行记录：`相关文档（按需）`
 
 ## 文档口径（单一事实源）
 
 - 本文是 **架构分层、能力边界、术语定义** 的唯一事实源。
 - 阶段优先级与里程碑以 `flutter_rust_net/FLUTTER_RUST_NET_PRIORITY_ROADMAP_ZH.md` 为准。
-- 执行进度与准入结论以 `docs/progress/p1_status_2026-02-25.md` 与 `docs/test_plans/test_run_log.md` 为准。
+- 执行进度与准入结论以 `docs/progress/p1_status_2026-02-25.md` 与 `相关文档（按需）` 为准。
 
 ## 更新流程（建议）
 
 1. 当接口模型、路由/fallback 机制、能力边界发生变化时，在本文更新架构与术语描述。
-2. 性能结论和测试状态只写“汇总结论”，详细数据统一引用 `docs/test_plans/test_run_log.md`。
+2. 性能结论和测试状态只写“汇总结论”，详细数据统一引用 `相关文档（按需）`。
 3. 若结论影响阶段目标，联动更新 `flutter_rust_net/FLUTTER_RUST_NET_PRIORITY_ROADMAP_ZH.md`。
 4. 若结论影响执行计划或准入判断，联动更新 `docs/progress/p1_status_2026-02-25.md`。
 

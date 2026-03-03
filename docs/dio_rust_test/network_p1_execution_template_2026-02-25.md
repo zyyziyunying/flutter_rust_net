@@ -156,12 +156,10 @@ dart run tool/p1_aggregate.dart `
 1. 基准 JSON 报告目录（`build/p1_jitter/<stamp>/...`）
 2. 聚合结论文档（建议新建 `network_benchmark_p1_aggregation_<date>.md`）
 3. 路由策略更新（更新 `network_route_strategy_2026-02-24.md`）
-4. 测试记录追加到 `docs/test_plans/test_run_log.md`
+4. （可选）将关键结论同步到 `相关文档（按需）`
 
 ---
 
-## 8) test_run_log 追加模板
+## 8) 记录建议（可选）
 
-| run_id | date | branch | commit | scope | command | result | notes |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| TR-YYYYMMDD-XX | 2026-02-25 | main | <commit> | P1 jitter + mif sweep | `dart run tool/network_bench.dart ...` | PASS/FAIL | 关键结论：`mif=<x>` 在 `c16/c32` 达标/不达标 |
+- 若需要后续复盘，可在相关文档记录：执行命令、关键结论、下一步动作。

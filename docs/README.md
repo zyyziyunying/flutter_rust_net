@@ -5,14 +5,15 @@
 - `progress/`：阶段执行进度（如 P1 状态、下一步计划）。
 - `dio_rust_test/`：基准测试、路由策略、runbook、聚合结论。
 - `flutter_rust_network_layer_design.md`：网络层设计主文档。
-- `flutter_rust_network_layer_design_review_findings_2026-02-24.md`：设计评审与修复建议。
+- `归档/flutter_rust_network_layer_design_review_findings_2026-02-24.md`：设计评审与修复建议。
 
-共享测试运行记录仍保留在工作区级目录：
+测试记录已拆分到本项目专题目录：
 
-- `docs/test_plans/test_run_log.md`
+- `docs/progress/`
+- `docs/dio_rust_test/`
 
 维护建议：
 
 1. `flutter_rust_net` 相关文档优先维护在本目录。
-2. 跨项目统一测试记录统一回填 `docs/test_plans/test_run_log.md`。
+2. 测试记录统一同步更新到对应专题文档（`docs/progress/` 与 `docs/dio_rust_test/`）。
 3. 变更后同步检查 `FLUTTER_RUST_NET_OVERVIEW_ZH.md` 与 `FLUTTER_RUST_NET_PRIORITY_ROADMAP_ZH.md` 的跳转链接是否一致。

@@ -10,8 +10,9 @@ void main() {
     expect(request.url, 'https://example.com');
   });
 
-  test('supports enum-based request constructors', () {
-    final request = NetRequest.post(
+  test('supports enum-based request factory', () {
+    final request = NetRequest.http(
+      method: NetHttpMethod.post,
       url: 'https://example.com/upload',
       body: const {'ok': true},
     );

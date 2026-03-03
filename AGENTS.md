@@ -32,8 +32,8 @@
 - When Rust bridge contracts change, validate both `flutter test` and `cargo test -q` in `native/rust/net_engine`.
 
 ## Documentation Update Policy
-- Unless the user explicitly requests it, update progress docs and `docs/test_plans/test_run_log.md` only when performance conclusions change.
-- If rerun results keep the same performance conclusion, do not add or backfill test-log entries.
+- Update progress/benchmark docs when they materially help the current work.
+- Avoid repetitive doc noise when rerun results add no new insight.
 
 ## Commit & Pull Request Guidelines
 - Use Conventional Commit prefixes (`feat:`, `fix:`, `docs:`, `test:`, `chore:`).

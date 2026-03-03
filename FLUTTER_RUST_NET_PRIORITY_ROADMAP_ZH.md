@@ -9,19 +9,19 @@
 - P1 执行状态（进度主文档）：[`docs/progress/p1_status_2026-02-25.md`](./docs/progress/p1_status_2026-02-25.md)
 - P2 执行状态（缓存阶段）：[`docs/progress/p2_status_2026-03-02.md`](./docs/progress/p2_status_2026-03-02.md)
 - 架构与能力概览：[`flutter_rust_net/FLUTTER_RUST_NET_OVERVIEW_ZH.md`](./FLUTTER_RUST_NET_OVERVIEW_ZH.md)
-- 测试运行记录：[`docs/test_plans/test_run_log.md`](../docs/test_plans/test_run_log.md)
+- 测试运行记录：`相关文档（按需）`
 
 ## 文档口径（单一事实源）
 
 - 本文是 **阶段优先级与里程碑** 的唯一事实源（P0-P4 定义、顺序、阶段目标）。
 - 执行进度（Done / In Progress / Next）不在本文维护，统一以 `docs/progress/p1_status_2026-02-25.md` 为准。
-- 测试数据明细以 `docs/test_plans/test_run_log.md` 与对应 benchmark 文档为准。
+- 测试数据明细以 `相关文档（按需）` 与对应 benchmark 文档为准。
 
 ## 更新流程（建议）
 
 1. 当“阶段顺序、目标、验收门槛”变化时，仅在本文更新 P0-P4 与阶段目标。
-2. 进度项不在本文增删，统一回填到 `docs/progress/p1_status_2026-02-25.md`。
-3. 若路线调整伴随性能结论变化（或用户明确要求），再同步 `docs/test_plans/test_run_log.md`。
+2. 进度项不在本文增删，统一同步更新到 `docs/progress/p1_status_2026-02-25.md`。
+3. 若需要补充测试证据，再按需同步 `相关文档（按需）`。
 4. 更新后检查与 `flutter_rust_net/FLUTTER_RUST_NET_OVERVIEW_ZH.md` 的术语是否一致（如“测试模式/准入结论”）。
 
 ## 路线原则
@@ -97,4 +97,4 @@
 3. 校验 `write_timeout_ms`、`max_connections` 等配置项的生效路径并记录结果。
 4. 基于 `http://47.110.52.208:7777/upload` 补齐归档细节（鉴权方式 + JSON 命名约定 + 上传脚本联调）。
 5. 真机弱网 + 远端链路补测（非 loopback），按同口径归档 JSON。
-6. 若性能结论变化，再回填 `test_run_log` 与路由策略文档，输出准入决策。
+6. 若性能结论变化，再同步更新对应进度/基准文档与路由策略文档，输出准入决策。

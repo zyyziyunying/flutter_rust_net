@@ -215,13 +215,13 @@ dart run tool/network_bench.dart --scenario=small_json --channels=rust --initial
 
 ---
 
-## 7) 运行记录模板（建议回填）
+## 7) 运行记录（可选）
 
-在测试后补充到 `docs/test_plans/test_run_log.md`：
+在测试后可按需同步到 `相关文档（按需）`，建议至少记录：
 
-| run_id         | date       | branch | commit     | scope                       | command                                                     | result    | notes                      |
-| -------------- | ---------- | ------ | ---------- | --------------------------- | ----------------------------------------------------------- | --------- | -------------------------- |
-| TR-20260224-XX | 2026-02-24 | main   | `<commit>` | network realistic benchmark | `flutter test ...` + `dart run tool/network_bench.dart ...` | PASS/FAIL | 记录关键场景结论与异常摘要 |
+1. 本轮命令与场景；
+2. 关键结论（如 p95/p99/throughput/fallback）；
+3. 是否需要调整路由策略。
 
 ---
 
