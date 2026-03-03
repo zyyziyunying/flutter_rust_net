@@ -434,8 +434,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   NetEngineConfig dco_decode_net_engine_config(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 10)
-      throw Exception('unexpected arr length: expect 10 but see ${arr.length}');
+    if (arr.length != 12)
+      throw Exception('unexpected arr length: expect 12 but see ${arr.length}');
     return NetEngineConfig(
       baseUrl: dco_decode_String(arr[0]),
       connectTimeoutMs: dco_decode_u_32(arr[1]),
@@ -446,7 +446,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       maxInFlightTasks: dco_decode_u_16(arr[6]),
       largeBodyThresholdKb: dco_decode_u_32(arr[7]),
       cacheDir: dco_decode_String(arr[8]),
-      userAgent: dco_decode_String(arr[9]),
+      cacheDefaultTtlSeconds: dco_decode_u_32(arr[9]),
+      cacheMaxNamespaceBytes: dco_decode_u_32(arr[10]),
+      userAgent: dco_decode_String(arr[11]),
     );
   }
 
@@ -713,6 +715,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_maxInFlightTasks = sse_decode_u_16(deserializer);
     var var_largeBodyThresholdKb = sse_decode_u_32(deserializer);
     var var_cacheDir = sse_decode_String(deserializer);
+    var var_cacheDefaultTtlSeconds = sse_decode_u_32(deserializer);
+    var var_cacheMaxNamespaceBytes = sse_decode_u_32(deserializer);
     var var_userAgent = sse_decode_String(deserializer);
     return NetEngineConfig(
       baseUrl: var_baseUrl,
@@ -724,6 +728,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       maxInFlightTasks: var_maxInFlightTasks,
       largeBodyThresholdKb: var_largeBodyThresholdKb,
       cacheDir: var_cacheDir,
+      cacheDefaultTtlSeconds: var_cacheDefaultTtlSeconds,
+      cacheMaxNamespaceBytes: var_cacheMaxNamespaceBytes,
       userAgent: var_userAgent,
     );
   }
@@ -1046,6 +1052,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_u_16(self.maxInFlightTasks, serializer);
     sse_encode_u_32(self.largeBodyThresholdKb, serializer);
     sse_encode_String(self.cacheDir, serializer);
+    sse_encode_u_32(self.cacheDefaultTtlSeconds, serializer);
+    sse_encode_u_32(self.cacheMaxNamespaceBytes, serializer);
     sse_encode_String(self.userAgent, serializer);
   }
 

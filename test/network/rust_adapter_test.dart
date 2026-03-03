@@ -68,6 +68,23 @@ void main() {
       expect(response.requestId, isNotEmpty);
     });
 
+    test('passes cache policy options to rust init config', () async {
+      final fakeBridge = _FakeRustBridgeApi();
+      final adapter = RustAdapter(bridgeApi: fakeBridge);
+
+      await adapter.initializeEngine(
+        options: const RustEngineInitOptions(
+          cacheDefaultTtlSeconds: 12,
+          cacheMaxNamespaceBytes: 4096,
+        ),
+      );
+
+      final config = fakeBridge.lastInitConfig;
+      expect(config, isNotNull);
+      expect(config!.cacheDefaultTtlSeconds, 12);
+      expect(config.cacheMaxNamespaceBytes, 4096);
+    });
+
     test('maps rust timeout error as fallback eligible', () async {
       final fakeBridge = _FakeRustBridgeApi(
         requestResponder: (spec) async {
@@ -263,6 +280,7 @@ class _FakeRustBridgeApi implements RustBridgeApi {
   int pollEventsCalls = 0;
   int cancelCalls = 0;
   int clearCacheCalls = 0;
+  rust_api.NetEngineConfig? lastInitConfig;
   final Exception? initError;
   final Future<rust_api.ResponseMeta> Function(rust_api.RequestSpec spec)?
   requestResponder;
@@ -290,6 +308,7 @@ class _FakeRustBridgeApi implements RustBridgeApi {
   @override
   Future<void> initNetEngine({required rust_api.NetEngineConfig config}) async {
     initCalls += 1;
+    lastInitConfig = config;
     if (initError != null) {
       throw initError!;
     }

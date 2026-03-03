@@ -43,6 +43,8 @@ class NetEngineConfig {
   final int maxInFlightTasks;
   final int largeBodyThresholdKb;
   final String cacheDir;
+  final int cacheDefaultTtlSeconds;
+  final int cacheMaxNamespaceBytes;
   final String userAgent;
 
   const NetEngineConfig({
@@ -55,6 +57,8 @@ class NetEngineConfig {
     required this.maxInFlightTasks,
     required this.largeBodyThresholdKb,
     required this.cacheDir,
+    required this.cacheDefaultTtlSeconds,
+    required this.cacheMaxNamespaceBytes,
     required this.userAgent,
   });
 
@@ -72,6 +76,8 @@ class NetEngineConfig {
       maxInFlightTasks.hashCode ^
       largeBodyThresholdKb.hashCode ^
       cacheDir.hashCode ^
+      cacheDefaultTtlSeconds.hashCode ^
+      cacheMaxNamespaceBytes.hashCode ^
       userAgent.hashCode;
 
   @override
@@ -88,6 +94,8 @@ class NetEngineConfig {
           maxInFlightTasks == other.maxInFlightTasks &&
           largeBodyThresholdKb == other.largeBodyThresholdKb &&
           cacheDir == other.cacheDir &&
+          cacheDefaultTtlSeconds == other.cacheDefaultTtlSeconds &&
+          cacheMaxNamespaceBytes == other.cacheMaxNamespaceBytes &&
           userAgent == other.userAgent;
 }
 
