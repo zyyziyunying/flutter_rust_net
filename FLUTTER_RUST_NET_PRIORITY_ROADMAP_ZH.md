@@ -42,7 +42,7 @@
 - P2 依赖项（已解除）：Rust `DiskCache` 占位实现问题已开始收敛，缓存收益阶段已启动。
 - P2 启动进展（2026-03-02）：`DiskCache` 已接入首版可用实现（GET 缓存 + TTL/ETag/LRU + namespace 清理），进入参数外置与收益观测阶段。
 - P2 推进补记（2026-03-03）：已完成缓存策略参数外置最小闭环（默认 TTL + namespace 容量上限），并打通 Dart 初始化配置入口。
-- 工程一致性项：`write_timeout_ms`、`max_connections` 等配置项需补“是否生效”的验证与回归。
+- 工程一致性项补记（2026-03-04）：`write_timeout_ms`、`max_connections`、`max_connections_per_host` 已完成生效性补齐与最小回归；后续仅需在真机/远端补测中补证据并归档。
 
 ## P0：稳定基线（已完成）
 
@@ -60,7 +60,7 @@
 - 补齐 Rust transfer 的 upload 语义与回归测试，确保与 Dio 通道行为一致。
 - 输出稳定的“路由策略表”（测试模式下什么场景 Rust 优先，什么场景临时回切 Dio）。
 - 补齐真机弱网与远端服务链路复验（非 loopback），验证跨网络稳定性。
-- 校验 Rust 配置项（`write_timeout_ms`、`max_connections` 等）是否实际生效，并沉淀验证结论。
+- 将 Rust 配置项（`write_timeout_ms`、`max_connections`、`max_connections_per_host`）生效证据纳入真机/远端链路补测归档。
 
 **阶段目标**：形成“业务 App 接入前”准入结论（继续 Rust 默认 / 临时回切 Dio）。
 
