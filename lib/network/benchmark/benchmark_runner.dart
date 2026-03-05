@@ -84,6 +84,7 @@ Future<BenchmarkReport> runNetworkBenchmark(
       ..sort((left, right) => left.cliName.compareTo(right.cliName));
 
     final results = <ChannelBenchmarkResult>[];
+    final includeBenchChannelHeader = scenarioServer != null;
     for (final channel in orderedChannels) {
       final skippedReason = skippedChannels[channel.cliName];
       if (skippedReason != null) {
@@ -99,11 +100,22 @@ Future<BenchmarkReport> runNetworkBenchmark(
         gateway: gateway,
         channel: channel,
         baseUrl: benchmarkBaseUrl,
+        includeBenchChannelHeader: includeBenchChannelHeader,
         logger: logger,
       );
-      results.add(result);
+      ChannelBenchmarkResult mergedResult = result;
+      if (scenarioServer != null) {
+        final telemetry = scenarioServer.cacheTelemetryForChannel(
+          channel.cliName,
+        );
+        mergedResult = result.copyWith(
+          cacheRevalidateCount: telemetry.conditionalRequests,
+          cacheEvictCount: telemetry.repeatedOriginRequests,
+        );
+      }
+      results.add(mergedResult);
       logger(
-        '[network-bench][${channel.cliName}] ${result.toOneLineSummary()}',
+        '[network-bench][${channel.cliName}] ${mergedResult.toOneLineSummary()}',
       );
     }
 
@@ -129,6 +141,7 @@ Future<ChannelBenchmarkResult> _runChannelBenchmark({
   required NetworkGateway gateway,
   required BenchmarkChannel channel,
   required String baseUrl,
+  required bool includeBenchChannelHeader,
   required BenchLogger logger,
 }) async {
   final accumulator = ChannelRunAccumulator(
@@ -142,6 +155,7 @@ Future<ChannelBenchmarkResult> _runChannelBenchmark({
     gateway: gateway,
     channel: channel,
     baseUrl: baseUrl,
+    includeBenchChannelHeader: includeBenchChannelHeader,
     logger: logger,
   );
 
@@ -161,6 +175,7 @@ Future<ChannelBenchmarkResult> _runChannelBenchmark({
         channel: channel,
         baseUrl: baseUrl,
         requestIndex: requestIndex,
+        includeBenchChannelHeader: includeBenchChannelHeader,
       );
       final totalWatch = Stopwatch()..start();
       try {
@@ -206,6 +221,7 @@ Future<void> _runWarmup({
   required NetworkGateway gateway,
   required BenchmarkChannel channel,
   required String baseUrl,
+  required bool includeBenchChannelHeader,
   required BenchLogger logger,
 }) async {
   if (config.warmupRequests <= 0) {
@@ -219,6 +235,7 @@ Future<void> _runWarmup({
       channel: channel,
       baseUrl: baseUrl,
       requestIndex: -1 - i,
+      includeBenchChannelHeader: includeBenchChannelHeader,
     );
     try {
       await gateway.request(request);
@@ -233,8 +250,17 @@ NetRequest _buildRequest({
   required BenchmarkChannel channel,
   required String baseUrl,
   required int requestIndex,
+  required bool includeBenchChannelHeader,
 }) {
-  final query = <String, dynamic>{'id': requestIndex};
+  final int keyId;
+  if (config.requestKeySpace > 0) {
+    final normalizedIndex = requestIndex < 0 ? -requestIndex - 1 : requestIndex;
+    keyId = normalizedIndex % config.requestKeySpace;
+  } else {
+    keyId = requestIndex;
+  }
+
+  final query = <String, dynamic>{'id': keyId};
   if (config.scenario == BenchmarkScenario.jitterLatency) {
     query['baseDelayMs'] = config.jitterBaseDelayMs;
     query['extraDelayMs'] = config.jitterExtraDelayMs;
@@ -245,13 +271,16 @@ NetRequest _buildRequest({
   final uri = Uri.parse('$baseUrl${config.scenario.path}').replace(
     queryParameters: query.map((key, value) => MapEntry(key, value.toString())),
   );
-  final isLarge =
-      config.scenario == BenchmarkScenario.largePayload ||
+  final isLarge = config.scenario == BenchmarkScenario.largePayload ||
       config.scenario == BenchmarkScenario.largeJson;
+  final headers = includeBenchChannelHeader
+      ? <String, String>{scenarioBenchChannelHeader: channel.cliName}
+      : const <String, String>{};
 
   return NetRequest(
     method: 'GET',
     url: uri.toString(),
+    headers: headers,
     expectLargeResponse: isLarge,
     contentLengthHint: isLarge ? config.largePayloadBytes : null,
     forceChannel: channel.netChannel,

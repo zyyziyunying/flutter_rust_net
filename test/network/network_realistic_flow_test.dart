@@ -29,6 +29,35 @@ void main() {
       expect(dio.fallbackCount, 0);
       expect(dio.responseChannels[NetChannel.dio.name], 80);
       expect(dio.endToEndLatencyMs.count, 80);
+      expect(dio.cacheHitCount, 0);
+      expect(dio.cacheMissCount, 80);
+      expect(dio.cacheRevalidateCount, 0);
+      expect(dio.cacheEvictCount, 0);
+    });
+
+    test(
+        'request key-space exposes cache evict signals on repeated origin hits',
+        () async {
+      final report = await runNetworkBenchmark(
+        const BenchmarkConfig(
+          scenario: BenchmarkScenario.smallJson,
+          requests: 12,
+          warmupRequests: 0,
+          concurrency: 1,
+          channels: {BenchmarkChannel.dio},
+          initializeRust: false,
+          verbose: false,
+          requestKeySpace: 3,
+        ),
+      );
+      _logReport(report);
+
+      final dio = report.channelResults.single;
+      expect(dio.completedRequests, 12);
+      expect(dio.cacheHitCount, 0);
+      expect(dio.cacheMissCount, 12);
+      expect(dio.cacheRevalidateCount, 0);
+      expect(dio.cacheEvictCount, 9);
     });
 
     test('small json with json_model consume collects L2 metrics', () async {

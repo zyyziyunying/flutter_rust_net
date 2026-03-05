@@ -148,6 +148,7 @@ class BenchmarkConfig {
   final Duration dioConnectTimeout;
   final Duration dioReceiveTimeout;
   final int rustMaxInFlightTasks;
+  final int requestKeySpace;
   final String scenarioBaseUrl;
 
   const BenchmarkConfig({
@@ -168,6 +169,7 @@ class BenchmarkConfig {
     this.dioConnectTimeout = const Duration(seconds: 5),
     this.dioReceiveTimeout = const Duration(seconds: 15),
     this.rustMaxInFlightTasks = 32,
+    this.requestKeySpace = 0,
     this.scenarioBaseUrl = '',
   });
 
@@ -189,6 +191,7 @@ class BenchmarkConfig {
     Duration? dioConnectTimeout,
     Duration? dioReceiveTimeout,
     int? rustMaxInFlightTasks,
+    int? requestKeySpace,
     String? scenarioBaseUrl,
   }) {
     return BenchmarkConfig(
@@ -209,6 +212,7 @@ class BenchmarkConfig {
       dioConnectTimeout: dioConnectTimeout ?? this.dioConnectTimeout,
       dioReceiveTimeout: dioReceiveTimeout ?? this.dioReceiveTimeout,
       rustMaxInFlightTasks: rustMaxInFlightTasks ?? this.rustMaxInFlightTasks,
+      requestKeySpace: requestKeySpace ?? this.requestKeySpace,
       scenarioBaseUrl: scenarioBaseUrl ?? this.scenarioBaseUrl,
     );
   }
@@ -254,6 +258,13 @@ class BenchmarkConfig {
         rustMaxInFlightTasks,
         'rustMaxInFlightTasks',
         'must be > 0',
+      );
+    }
+    if (requestKeySpace < 0) {
+      throw ArgumentError.value(
+        requestKeySpace,
+        'requestKeySpace',
+        'must be >= 0',
       );
     }
     final normalizedBaseUrl = resolveScenarioBaseUrl(scenarioBaseUrl);
@@ -302,6 +313,7 @@ class BenchmarkConfig {
       'dioConnectTimeoutMs': dioConnectTimeout.inMilliseconds,
       'dioReceiveTimeoutMs': dioReceiveTimeout.inMilliseconds,
       'rustMaxInFlightTasks': rustMaxInFlightTasks,
+      'requestKeySpace': requestKeySpace,
       'scenarioBaseUrl': scenarioBaseUrl,
     };
   }
@@ -408,6 +420,10 @@ class ChannelBenchmarkResult {
   final Map<String, int> statusCodes;
   final Map<String, int> exceptionCodes;
   final Map<String, int> exceptionChannels;
+  final int cacheHitCount;
+  final int cacheMissCount;
+  final int cacheRevalidateCount;
+  final int cacheEvictCount;
 
   const ChannelBenchmarkResult({
     required this.channel,
@@ -441,12 +457,65 @@ class ChannelBenchmarkResult {
     required this.statusCodes,
     required this.exceptionCodes,
     required this.exceptionChannels,
+    required this.cacheHitCount,
+    required this.cacheMissCount,
+    required this.cacheRevalidateCount,
+    required this.cacheEvictCount,
   });
 
   int get successRequests => completedRequests - exceptions;
 
   double get exceptionRate =>
       completedRequests == 0 ? 0 : exceptions / completedRequests.toDouble();
+
+  int get cacheObservedRequests => cacheHitCount + cacheMissCount;
+
+  double get cacheHitRate => cacheObservedRequests == 0
+      ? 0
+      : cacheHitCount / cacheObservedRequests.toDouble();
+
+  ChannelBenchmarkResult copyWith({
+    int? cacheRevalidateCount,
+    int? cacheEvictCount,
+  }) {
+    return ChannelBenchmarkResult(
+      channel: channel,
+      warmupRequests: warmupRequests,
+      totalRequests: totalRequests,
+      completedRequests: completedRequests,
+      exceptions: exceptions,
+      http2xx: http2xx,
+      http4xx: http4xx,
+      http5xx: http5xx,
+      fallbackCount: fallbackCount,
+      bridgeBytesTotal: bridgeBytesTotal,
+      inlineBodyResponses: inlineBodyResponses,
+      fileBodyResponses: fileBodyResponses,
+      throughputRps: throughputRps,
+      requestLatencyMs: requestLatencyMs,
+      endToEndLatencyMs: endToEndLatencyMs,
+      adapterCostLatencyMs: adapterCostLatencyMs,
+      consumeAttempted: consumeAttempted,
+      consumeSucceeded: consumeSucceeded,
+      consumeBytesTotal: consumeBytesTotal,
+      consumeLatencyMs: consumeLatencyMs,
+      materializeBodyLatencyMs: materializeBodyLatencyMs,
+      utf8DecodeLatencyMs: utf8DecodeLatencyMs,
+      jsonDecodeLatencyMs: jsonDecodeLatencyMs,
+      modelBuildLatencyMs: modelBuildLatencyMs,
+      consumeSkippedReasons: consumeSkippedReasons,
+      responseChannels: responseChannels,
+      routeReasons: routeReasons,
+      fallbackReasons: fallbackReasons,
+      statusCodes: statusCodes,
+      exceptionCodes: exceptionCodes,
+      exceptionChannels: exceptionChannels,
+      cacheHitCount: cacheHitCount,
+      cacheMissCount: cacheMissCount,
+      cacheRevalidateCount: cacheRevalidateCount ?? this.cacheRevalidateCount,
+      cacheEvictCount: cacheEvictCount ?? this.cacheEvictCount,
+    );
+  }
 
   String toOneLineSummary() {
     return [
@@ -459,6 +528,10 @@ class ChannelBenchmarkResult {
       'bridgeBytes=$bridgeBytesTotal',
       'inline=$inlineBodyResponses',
       'file=$fileBodyResponses',
+      'cacheHit=$cacheHitCount',
+      'cacheMiss=$cacheMissCount',
+      'cacheRevalidate=$cacheRevalidateCount',
+      'cacheEvict=$cacheEvictCount',
       'reqP95=${requestLatencyMs.p95Ms}ms',
       'e2eP95=${endToEndLatencyMs.p95Ms}ms',
       if (consumeAttempted > 0) 'consumeP95=${consumeLatencyMs.p95Ms}ms',
@@ -502,6 +575,13 @@ class ChannelBenchmarkResult {
       'statusCodes': statusCodes,
       'exceptionCodes': exceptionCodes,
       'exceptionChannels': exceptionChannels,
+      'cache': {
+        'hitCount': cacheHitCount,
+        'missCount': cacheMissCount,
+        'hitRate': cacheHitRate,
+        'revalidateCount': cacheRevalidateCount,
+        'evictCount': cacheEvictCount,
+      },
     };
   }
 }

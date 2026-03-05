@@ -5,6 +5,26 @@ import 'dart:typed_data';
 
 import 'benchmark_types.dart';
 
+const String scenarioBenchChannelHeader = 'x-network-bench-channel';
+
+class ScenarioChannelCacheTelemetry {
+  final int originRequests;
+  final int conditionalRequests;
+  final int repeatedOriginRequests;
+
+  const ScenarioChannelCacheTelemetry({
+    required this.originRequests,
+    required this.conditionalRequests,
+    required this.repeatedOriginRequests,
+  });
+
+  static const zero = ScenarioChannelCacheTelemetry(
+    originRequests: 0,
+    conditionalRequests: 0,
+    repeatedOriginRequests: 0,
+  );
+}
+
 class ScenarioServer {
   final HttpServer _server;
   final BenchmarkConfig _config;
@@ -12,6 +32,8 @@ class ScenarioServer {
   final Uint8List _largePayload;
   final List<int> _largeJsonPayload;
   final List<int> _smallJsonPayload;
+  final Map<String, _ChannelCacheTelemetryCollector> _cacheTelemetryByChannel =
+      {};
 
   ScenarioServer._({
     required HttpServer server,
@@ -20,12 +42,12 @@ class ScenarioServer {
     required Uint8List largePayload,
     required List<int> largeJsonPayload,
     required List<int> smallJsonPayload,
-  }) : _server = server,
-       _config = config,
-       _logger = logger,
-       _largePayload = largePayload,
-       _largeJsonPayload = largeJsonPayload,
-       _smallJsonPayload = smallJsonPayload;
+  })  : _server = server,
+        _config = config,
+        _logger = logger,
+        _largePayload = largePayload,
+        _largeJsonPayload = largeJsonPayload,
+        _smallJsonPayload = smallJsonPayload;
 
   String get baseUrl => 'http://${_server.address.address}:${_server.port}';
 
@@ -59,6 +81,7 @@ class ScenarioServer {
 
   void _listen() {
     _server.listen((request) async {
+      _recordCacheTelemetry(request);
       if (request.method != 'GET') {
         request.response.statusCode = HttpStatus.methodNotAllowed;
         await request.response.close();
@@ -178,6 +201,65 @@ class ScenarioServer {
     _logger('[network-bench] closing local scenario server');
     await _server.close(force: true);
   }
+
+  ScenarioChannelCacheTelemetry cacheTelemetryForChannel(String channelName) {
+    return _cacheTelemetryByChannel[channelName]?.snapshot() ??
+        ScenarioChannelCacheTelemetry.zero;
+  }
+
+  void _recordCacheTelemetry(HttpRequest request) {
+    final channelName = _resolveBenchChannel(request);
+    if (channelName == null) {
+      return;
+    }
+    final collector = _cacheTelemetryByChannel.putIfAbsent(
+      channelName,
+      _ChannelCacheTelemetryCollector.new,
+    );
+    collector.record(
+      key: _normalizeRequestKey(request.uri),
+      conditional: _hasConditionalHeaders(request),
+    );
+  }
+
+  String? _resolveBenchChannel(HttpRequest request) {
+    final raw = request.headers.value(scenarioBenchChannelHeader)?.trim();
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    for (final channel in BenchmarkChannel.values) {
+      if (channel.cliName == raw) {
+        return raw;
+      }
+    }
+    return null;
+  }
+
+  static bool _hasConditionalHeaders(HttpRequest request) {
+    final ifNoneMatch = request.headers.value(HttpHeaders.ifNoneMatchHeader);
+    if (ifNoneMatch != null && ifNoneMatch.trim().isNotEmpty) {
+      return true;
+    }
+    final ifModifiedSince = request.headers.value(
+      HttpHeaders.ifModifiedSinceHeader,
+    );
+    return ifModifiedSince != null && ifModifiedSince.trim().isNotEmpty;
+  }
+
+  static String _normalizeRequestKey(Uri uri) {
+    if (uri.queryParametersAll.isEmpty) {
+      return uri.path;
+    }
+    final entries = uri.queryParametersAll.entries.toList()
+      ..sort((left, right) => left.key.compareTo(right.key));
+    final parts = <String>[];
+    for (final entry in entries) {
+      for (final value in entry.value) {
+        parts.add('${entry.key}=$value');
+      }
+    }
+    return '${uri.path}?${parts.join('&')}';
+  }
 }
 
 Uint8List _buildLargePayload(int bytes) {
@@ -216,4 +298,30 @@ List<int> _buildLargeJsonPayload(int targetBytes) {
 int _parseInt(String? raw, {required int fallback}) {
   final value = int.tryParse(raw ?? '');
   return value ?? fallback;
+}
+
+class _ChannelCacheTelemetryCollector {
+  int originRequests = 0;
+  int conditionalRequests = 0;
+  int repeatedOriginRequests = 0;
+  final Set<String> _seenOriginKeys = <String>{};
+
+  void record({required String key, required bool conditional}) {
+    if (conditional) {
+      conditionalRequests += 1;
+      return;
+    }
+    originRequests += 1;
+    if (!_seenOriginKeys.add(key)) {
+      repeatedOriginRequests += 1;
+    }
+  }
+
+  ScenarioChannelCacheTelemetry snapshot() {
+    return ScenarioChannelCacheTelemetry(
+      originRequests: originRequests,
+      conditionalRequests: conditionalRequests,
+      repeatedOriginRequests: repeatedOriginRequests,
+    );
+  }
 }

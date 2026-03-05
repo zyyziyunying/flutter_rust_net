@@ -19,6 +19,8 @@ class ChannelRunAccumulator {
   int consumeAttempted = 0;
   int consumeSucceeded = 0;
   int consumeBytesTotal = 0;
+  int cacheHitCount = 0;
+  int cacheMissCount = 0;
 
   final List<int> _requestLatencyMs = [];
   final List<int> _endToEndLatencyMs = [];
@@ -57,6 +59,11 @@ class ChannelRunAccumulator {
       fileBodyResponses += 1;
     } else if (response.bodyBytes != null) {
       inlineBodyResponses += 1;
+    }
+    if (response.fromCache) {
+      cacheHitCount += 1;
+    } else {
+      cacheMissCount += 1;
     }
     if (consume.attempted) {
       consumeAttempted += 1;
@@ -112,9 +119,8 @@ class ChannelRunAccumulator {
   }
 
   ChannelBenchmarkResult finish({required int wallElapsedMs}) {
-    final throughput = wallElapsedMs <= 0
-        ? 0.0
-        : completedRequests * 1000 / wallElapsedMs;
+    final throughput =
+        wallElapsedMs <= 0 ? 0.0 : completedRequests * 1000 / wallElapsedMs;
     return ChannelBenchmarkResult(
       channel: channelName,
       warmupRequests: warmupRequests,
@@ -149,6 +155,10 @@ class ChannelRunAccumulator {
       statusCodes: _sortedView(_statusCodes),
       exceptionCodes: _sortedView(_exceptionCodes),
       exceptionChannels: _sortedView(_exceptionChannels),
+      cacheHitCount: cacheHitCount,
+      cacheMissCount: cacheMissCount,
+      cacheRevalidateCount: 0,
+      cacheEvictCount: 0,
     );
   }
 }

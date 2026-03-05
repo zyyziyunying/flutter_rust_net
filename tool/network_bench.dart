@@ -76,6 +76,7 @@ BenchmarkConfig _buildConfig(Map<String, String> kvArgs) {
       milliseconds: _parseInt(kvArgs['receive-timeout-ms'], fallback: 15000),
     ),
     rustMaxInFlightTasks: _parseInt(kvArgs['rust-max-in-flight'], fallback: 32),
+    requestKeySpace: _parseInt(kvArgs['request-key-space'], fallback: 0),
     scenarioBaseUrl: kvArgs['base-url'] ?? '',
   );
 }
@@ -167,6 +168,7 @@ Client knobs:
   --connect-timeout-ms=5000
   --receive-timeout-ms=15000
   --rust-max-in-flight=32
+  --request-key-space=0            0=disable reuse; >0 reuses request ids for cache probing
 
 Examples:
   dart run tool/network_bench.dart --scenario=small_json --requests=400 --concurrency=16 --output=build/small.json

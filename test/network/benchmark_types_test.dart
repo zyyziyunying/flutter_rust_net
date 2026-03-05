@@ -7,6 +7,11 @@ void main() {
       const config = BenchmarkConfig();
       expect(config.rustMaxInFlightTasks, 32);
     });
+
+    test('uses request key-space default 0', () {
+      const config = BenchmarkConfig();
+      expect(config.requestKeySpace, 0);
+    });
   });
 
   group('resolveScenarioBaseUrl', () {
