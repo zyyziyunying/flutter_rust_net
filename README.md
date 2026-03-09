@@ -40,6 +40,7 @@ flutter run
 ## Quick usage
 
 ```dart
+// Safe default: stays on Dio until you opt into Rust explicitly.
 final client = BytesFirstNetworkClient.standard();
 
 final response = await client.request(
@@ -49,6 +50,25 @@ final response = await client.request(
     NetHeaderName.contentType.wireName: 'application/json',
   },
   bodyBytes: bytes,
+);
+```
+
+To enable Rust routing, initialize the adapter up front instead of relying on
+runtime readiness fallback:
+
+```dart
+final client = await BytesFirstNetworkClient.standardWithRust();
+```
+
+Equivalent manual wiring:
+
+```dart
+final rustAdapter = RustAdapter();
+await rustAdapter.initializeEngine();
+
+final client = BytesFirstNetworkClient.standard(
+  featureFlag: const NetFeatureFlag(enableRustChannel: true),
+  rustAdapter: rustAdapter,
 );
 ```
 

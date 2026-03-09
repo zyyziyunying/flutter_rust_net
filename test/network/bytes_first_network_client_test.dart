@@ -9,16 +9,74 @@ import 'package:flutter_rust_net/network/net_feature_flag.dart';
 import 'package:flutter_rust_net/network/net_models.dart';
 import 'package:flutter_rust_net/network/network_gateway.dart';
 import 'package:flutter_rust_net/network/routing_policy.dart';
+import 'package:flutter_rust_net/network/rust_adapter.dart';
 
 void main() {
   group('BytesFirstNetworkClient', () {
-    test('standard factory wires default adapters', () {
-      final client = BytesFirstNetworkClient.standard(
-        featureFlag: const NetFeatureFlag(enableRustChannel: false),
-      );
+    test('standard factory wires default adapters and keeps rust disabled', () {
+      final client = BytesFirstNetworkClient.standard();
 
       expect(client.dioAdapter, isNotNull);
       expect(client.rustAdapter, isNotNull);
+      expect(client.gateway.featureFlag.enableRustChannel, isFalse);
+    });
+
+    test('standard factory rejects rust enablement without ready adapter', () {
+      expect(
+        () => BytesFirstNetworkClient.standard(
+          featureFlag: const NetFeatureFlag(enableRustChannel: true),
+        ),
+        throwsA(isA<StateError>()),
+      );
+    });
+
+    test('standard factory accepts ready rust adapter when explicitly enabled',
+        () {
+      final rustAdapter = RustAdapter(
+        initialized: true,
+        requestHandler: (request) async => NetResponse(
+          statusCode: 200,
+          headers: const <String, String>{},
+          bodyBytes: const <int>[],
+          bridgeBytes: 0,
+          channel: NetChannel.rust,
+          fromFallback: false,
+          costMs: 1,
+        ),
+      );
+
+      final client = BytesFirstNetworkClient.standard(
+        featureFlag: const NetFeatureFlag(enableRustChannel: true),
+        rustAdapter: rustAdapter,
+      );
+
+      expect(client.gateway.featureFlag.enableRustChannel, isTrue);
+      expect(client.rustAdapter, same(rustAdapter));
+    });
+
+    test('standardWithRust initializes rust adapter before returning',
+        () async {
+      final rustAdapter = RustAdapter(
+        requestHandler: (request) async => NetResponse(
+          statusCode: 200,
+          headers: const <String, String>{},
+          bodyBytes: const <int>[],
+          bridgeBytes: 0,
+          channel: NetChannel.rust,
+          fromFallback: false,
+          costMs: 1,
+        ),
+      );
+
+      expect(rustAdapter.isReady, isFalse);
+
+      final client = await BytesFirstNetworkClient.standardWithRust(
+        rustAdapter: rustAdapter,
+      );
+
+      expect(rustAdapter.isReady, isTrue);
+      expect(client.gateway.featureFlag.enableRustChannel, isTrue);
+      expect(client.rustAdapter, same(rustAdapter));
     });
 
     test('request helper builds NetRequest from enum method', () async {
@@ -203,7 +261,7 @@ BytesFirstNetworkClient _buildClient(NetResponse response) {
 
 class _FakeAdapter implements NetAdapter {
   final Future<NetResponse> Function(NetRequest request, {bool fromFallback})
-  _delegate;
+      _delegate;
 
   _FakeAdapter(this._delegate);
 

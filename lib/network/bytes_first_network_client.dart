@@ -119,10 +119,11 @@ class BytesFirstNetworkClient {
 
   const BytesFirstNetworkClient({required this.gateway});
 
+  /// Safe default client: keeps Rust routing disabled until the caller opts in.
   factory BytesFirstNetworkClient.standard({
     RoutingPolicy routingPolicy = const RoutingPolicy(),
     NetFeatureFlag featureFlag = const NetFeatureFlag(
-      enableRustChannel: true,
+      enableRustChannel: false,
       enableFallback: true,
     ),
     DioAdapter? dioAdapter,
@@ -130,6 +131,14 @@ class BytesFirstNetworkClient {
   }) {
     final resolvedDioAdapter = dioAdapter ?? DioAdapter();
     final resolvedRustAdapter = rustAdapter ?? RustAdapter();
+    if (featureFlag.enableRustChannel && !resolvedRustAdapter.isReady) {
+      throw StateError(
+        'BytesFirstNetworkClient.standard() requires an initialized '
+        'RustAdapter when enableRustChannel is true. Call '
+        'await rustAdapter.initializeEngine() first or use '
+        'await BytesFirstNetworkClient.standardWithRust().',
+      );
+    }
     return BytesFirstNetworkClient(
       gateway: NetworkGateway(
         routingPolicy: routingPolicy,
@@ -137,6 +146,29 @@ class BytesFirstNetworkClient {
         dioAdapter: resolvedDioAdapter,
         rustAdapter: resolvedRustAdapter,
       ),
+    );
+  }
+
+  /// Explicit Rust opt-in path that initializes the adapter before use.
+  static Future<BytesFirstNetworkClient> standardWithRust({
+    RoutingPolicy routingPolicy = const RoutingPolicy(),
+    bool enableFallback = true,
+    DioAdapter? dioAdapter,
+    RustAdapter? rustAdapter,
+    RustEngineInitOptions rustInitOptions = const RustEngineInitOptions(),
+  }) async {
+    final resolvedRustAdapter = rustAdapter ?? RustAdapter();
+    if (!resolvedRustAdapter.isReady) {
+      await resolvedRustAdapter.initializeEngine(options: rustInitOptions);
+    }
+    return BytesFirstNetworkClient.standard(
+      routingPolicy: routingPolicy,
+      featureFlag: NetFeatureFlag(
+        enableRustChannel: true,
+        enableFallback: enableFallback,
+      ),
+      dioAdapter: dioAdapter,
+      rustAdapter: resolvedRustAdapter,
     );
   }
 

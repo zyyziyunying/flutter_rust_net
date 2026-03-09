@@ -8,7 +8,7 @@
   - `flutter analyze`
   - `flutter test`
 
-结论先行：截至 2026-03-09，本次审查里已关闭四项高优先级风险：原始 P0（双通道 request body 编码漂移）、后续暴露的 P1（`List<int>` body 语义歧义）、下载 fallback 静默破坏断点续传契约的问题，以及 Dio 下载脏文件污染最终路径的问题。当前剩余优先处理项主要集中在 transfer 状态管理缺少边界，此外仍有 API 默认行为与跨语言错误契约方面的 P1/P2 风险。
+结论先行：截至 2026-03-09，本次审查里已关闭五项高优先级风险：原始 P0（双通道 request body 编码漂移）、后续暴露的 P1（`List<int>` body 语义歧义）、下载 fallback 静默破坏断点续传契约的问题、Dio 下载脏文件污染最终路径的问题，以及“默认 API 让人误以为 Rust 已启用”的误导性接入路径。当前剩余优先处理项主要集中在 transfer 状态管理缺少边界，其次是跨语言错误契约与初始化配置一致性问题。
 
 ## 主要问题
 
@@ -130,24 +130,25 @@
   - 没有覆盖“不轮询、低频轮询、超长任务”的行为。
 - 建议优先级：P1
 
-### 6. 中高：默认 API 让人误以为 Rust 已启用，实际可能长期静默跑在 Dio
+### 6. 已修复（2026-03-09）：默认 API 不再暗示 Rust 已启用，Rust 接入改为显式 opt-in
 
-- 证据：
-  - `lib/network/bytes_first_network_client.dart:122-141`
-  - `lib/network/network_gateway.dart:51-58`
-  - `lib/network/rust_adapter.dart:344-351`
-  - `README.md:42-52`
-- 现状：
-  - `BytesFirstNetworkClient.standard()` 默认 `enableRustChannel: true`。
-  - 但它只是 new 出一个未初始化的 `RustAdapter`。
-  - 网关检测到 `isReady == false` 后，会无提示走 Dio。
-  - README 的 quick usage 也没有要求先初始化 Rust engine。
-- 风险：
-  - 调用方会误判自己已经接入 Rust 通道。
-  - 线上监控如果没有 routeReason 维度，几乎发现不了“实际一直没走 Rust”。
-- 当前测试缺口：
-  - 有 readiness gate 测试，但没有针对文档/API 误导性的验收约束。
-- 建议优先级：P1
+- 修复证据：
+  - `lib/network/bytes_first_network_client.dart:122-173`
+  - `test/network/bytes_first_network_client_test.dart:16-80`
+  - `README.md:42-73`
+- 修复后实现：
+  - `BytesFirstNetworkClient.standard()` 现在默认 `enableRustChannel: false`，安全默认值明确落在 Dio。
+  - 若调用方显式设置 `enableRustChannel: true`，但传入的 `RustAdapter` 尚未 ready，`standard()` 会直接抛出 `StateError`，不再允许“表面启用 Rust、实际静默跑 Dio”的配置继续运行。
+  - 新增 `BytesFirstNetworkClient.standardWithRust()` 显式入口；该入口会先执行 `rustAdapter.initializeEngine(...)`，随后再构造启用 Rust 的 client。
+  - README quick usage 已拆分为“安全默认 Dio”与“显式启用 Rust”两条路径，不再把未初始化的 RustAdapter 包装成默认示例。
+- 验证：
+  - 已新增默认工厂回归：验证 `standard()` 默认保持 `enableRustChannel == false`。
+  - 已新增误用保护回归：验证“显式启用 Rust + 未初始化 adapter”会直接失败。
+  - 已新增显式 Rust 路径回归：验证 `standardWithRust()` 会先初始化 `RustAdapter` 再返回 client。
+  - 本地验证通过：`flutter analyze`、`flutter test`。
+- 结论：
+  - 该项 P1 风险已关闭。
+  - `NetworkGateway` 的 readiness gate 仍然保留，用于处理显式 Rust 路径下的运行时状态；但默认公开 API 与文档入口已不再误导调用方。
 
 ### 7. 中：Rust 错误契约完全依赖字符串前缀，极易漂移
 
@@ -195,16 +196,15 @@
 
 ## 当前测试盲区
 
-- 下载失败、取消、非 2xx 后的文件残留与清理策略。
 - transfer 长时间运行、业务不轮询或低频轮询时的内存边界。
+- Rust 错误字符串协议在版本升级后的兼容性约束。
 - Rust 初始化重复调用且配置不一致时的行为。
 
 ## 建议处理顺序
 
-1. 重做剩余下载语义：临时文件、原子替换、失败清理，避免脏文件落到最终路径。
-2. 给 transfer 事件与 task 状态增加上限、过期策略或背压策略。
-3. 明确默认初始化模型：是“默认 Rust 真启用”，还是“默认 Dio，仅允许显式初始化后启用 Rust”。
-4. 把 Rust 错误从字符串协议升级为结构化错误码。
+1. 给 transfer 事件与 task 状态增加上限、过期策略或背压策略。
+2. 把 Rust 错误从字符串协议升级为结构化错误码。
+3. 为 Rust 重复初始化补齐配置一致性校验，避免 `already initialized` 吞掉冲突。
 
 ## 备注
 
