@@ -8,7 +8,7 @@
   - `flutter analyze`
   - `flutter test`
 
-结论先行：当前实现已经能跑通主流程，但距离“语义稳定、可放心上量”还有明显差距。最大风险不在语法或单测，而在双通道契约漂移、下载语义不安全、以及 transfer 状态管理缺少边界。
+结论先行：原始 P0（双通道 request body 编码漂移）已关闭，但当前实现距离“语义稳定、可放心上量”还有明显差距。高优先级风险现在主要集中在 `List<int>` body 语义歧义、下载语义不安全、以及 transfer 状态管理缺少边界。
 
 ## 主要问题
 
@@ -35,8 +35,29 @@
 - 结论：
   - 该项 P0 风险已关闭。
   - 剩余约束不是“双通道 body 不一致”，而是上层若要发送 `application/x-www-form-urlencoded` 或 multipart，必须自行编码并显式声明 `content-type`。
+  - 但基于同一修复路径，已暴露出一个新的独立 P1 风险：`List<int>` 被强制解释为原始字节，见下一项。
 
-### 2. 高危：download fallback 被视为天然安全，但 Dio 实现并不支持断点续传
+### 2. P1：`List<int>` body 语义二义性会让 JSON int 数组被静默当成原始字节
+
+- 证据：
+  - `lib/network/request_body_codec.dart:17-18`
+  - `lib/network/net_models.dart:54-77`
+  - `lib/network/bytes_first_network_client.dart:153-178`
+  - `README.md:55-61`
+- 现状：
+  - 公开 API 仍然把请求体暴露成宽泛的 `Object? body`。
+  - 共享编码逻辑里，凡是命中 `body is List<int>`，都会直接走 `Uint8List.fromList(body)`，不再进入 JSON 编码分支。
+  - README 也把 `List<int>` 明确定义为“原始字节”。
+- 风险：
+  - 如果调用方把 `body: [1, 2, 3]` 当成 JSON 数组发送，当前实现会把它发成 3 个裸字节，而不是 UTF-8 文本 `[1,2,3]`。
+  - 这不是显式失败，而是静默错发；双通道会一致，但一致地错。
+  - Dart `Uint8List.fromList(...)` 还会对越界值做截断。本地补充验证显示：`Uint8List.fromList([1, 2, 256])` 实际得到 `[1, 2, 0]`，`Uint8List.fromList([-1, 0, 1])` 实际得到 `[255, 0, 1]`。如果上层把这类值当 JSON int 数组传入，会直接发生数据损坏。
+- 当前测试缺口：
+  - 没有覆盖“JSON int 数组 body”与“原始 bytes body”的区分约束。
+  - 没有覆盖 `List<int>` 中负值、超过 255 的值、以及调用方误传 JSON 数组时的失败/保护行为。
+- 建议优先级：P1
+
+### 3. 高危：download fallback 被视为天然安全，但 Dio 实现并不支持断点续传
 
 - 证据：
   - `lib/network/network_gateway.dart:269-280`
@@ -53,7 +74,7 @@
   - 没有覆盖“resume download + fallback 到 Dio”。
 - 建议优先级：P0
 
-### 3. 高危：Dio 下载失败、取消、非 2xx 时会在最终路径留下脏文件
+### 4. 高危：Dio 下载失败、取消、非 2xx 时会在最终路径留下脏文件
 
 - 证据：
   - `lib/network/dio_adapter.dart:351-369`
@@ -70,7 +91,7 @@
   - 没有覆盖下载失败后的文件清理语义。
 - 建议优先级：P0
 
-### 4. 中高：transfer 事件队列与任务路由状态都可能无界增长
+### 5. 中高：transfer 事件队列与任务路由状态都可能无界增长
 
 - 证据：
   - `lib/network/dio_adapter.dart:13-14`
@@ -92,7 +113,7 @@
   - 没有覆盖“不轮询、低频轮询、超长任务”的行为。
 - 建议优先级：P1
 
-### 5. 中高：默认 API 让人误以为 Rust 已启用，实际可能长期静默跑在 Dio
+### 6. 中高：默认 API 让人误以为 Rust 已启用，实际可能长期静默跑在 Dio
 
 - 证据：
   - `lib/network/bytes_first_network_client.dart:122-141`
@@ -111,7 +132,7 @@
   - 有 readiness gate 测试，但没有针对文档/API 误导性的验收约束。
 - 建议优先级：P1
 
-### 6. 中：Rust 错误契约完全依赖字符串前缀，极易漂移
+### 7. 中：Rust 错误契约完全依赖字符串前缀，极易漂移
 
 - 证据：
   - `lib/network/rust_adapter.dart:283-290`
@@ -127,7 +148,7 @@
   - 只覆盖了少数字符串样例，没有覆盖版本升级后的兼容性约束。
 - 建议优先级：P1
 
-### 7. 中：公开的请求 hint 字段几乎没有实际作用，容易制造错误预期
+### 8. 中：公开的请求 hint 字段几乎没有实际作用，容易制造错误预期
 
 - 证据：
   - `lib/network/net_models.dart:54-77`
@@ -142,7 +163,7 @@
   - 业务很容易写出依赖错觉，后期再改真实路由逻辑时也容易发生行为回归。
 - 建议优先级：P2
 
-### 8. 中：Rust 初始化的“already initialized”分支会吞掉配置冲突
+### 9. 中：Rust 初始化的“already initialized”分支会吞掉配置冲突
 
 - 证据：
   - `lib/network/rust_adapter.dart:82-121`
@@ -157,7 +178,8 @@
 
 ## 当前测试盲区
 
-- `Map<String, dynamic>` body 在 Dio / Rust / fallback 三种路径上的序列化一致性。
+- `List<int>` body 作为“原始字节”与“JSON int 数组”两种语义时的边界与保护策略。
+- `List<int>` 中负值、超过 255 的值是否应显式拒绝，而不是静默截断。
 - `download + resumeFrom + fallback` 的真实行为。
 - 下载失败、取消、非 2xx 后的文件残留与清理策略。
 - transfer 长时间运行、业务不轮询或低频轮询时的内存边界。
@@ -165,11 +187,12 @@
 
 ## 建议处理顺序
 
-1. 统一请求编码契约，明确 `body` 与 `content-type` 的关系，补双通道一致性测试。
-2. 重做下载语义：临时文件、原子替换、失败清理、resume/Range 契约、fallback 限制。
-3. 给 transfer 事件与 task 状态增加上限、过期策略或背压策略。
-4. 明确默认初始化模型：是“默认 Rust 真启用”，还是“默认 Dio，仅允许显式初始化后启用 Rust”。
-5. 把 Rust 错误从字符串协议升级为结构化错误码。
+1. 收紧请求 body API：把“原始 bytes”与“JSON 值”拆成不易混淆的建模，至少不要让裸 `List<int>` 同时承担两种潜在语义。
+2. 对 `List<int>` 的非法字节值建立显式保护；如果继续支持原始 bytes，至少要拒绝负值与大于 255 的元素，而不是静默截断。
+3. 重做下载语义：临时文件、原子替换、失败清理、resume/Range 契约、fallback 限制。
+4. 给 transfer 事件与 task 状态增加上限、过期策略或背压策略。
+5. 明确默认初始化模型：是“默认 Rust 真启用”，还是“默认 Dio，仅允许显式初始化后启用 Rust”。
+6. 把 Rust 错误从字符串协议升级为结构化错误码。
 
 ## 备注
 
