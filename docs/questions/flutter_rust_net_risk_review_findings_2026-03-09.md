@@ -8,7 +8,7 @@
   - `flutter analyze`
   - `flutter test`
 
-结论先行：截至 2026-03-09，本次审查里与 request body 相关的两项高优先级风险都已关闭：原始 P0（双通道 request body 编码漂移）已关闭，后续暴露的 P1（`List<int>` body 语义歧义）也已关闭。当前剩余高优先级风险主要集中在下载语义不安全，以及 transfer 状态管理缺少边界。
+结论先行：截至 2026-03-09，本次审查里已关闭三项高优先级风险：原始 P0（双通道 request body 编码漂移）、后续暴露的 P1（`List<int>` body 语义歧义），以及下载 fallback 静默破坏断点续传契约的问题。当前剩余高优先级风险主要集中在下载文件落盘语义不安全，以及 transfer 状态管理缺少边界。
 
 ## 主要问题
 
@@ -64,22 +64,28 @@
   - 该项 P1 风险已关闭。
   - 剩余事项是 API 迁移成本而不是语义歧义：历史调用若用 `body: Uint8List(...)` 或 `body: <int>[...]` 表示原始字节，需迁移到 `bodyBytes`。
 
-### 3. 高危：download fallback 被视为天然安全，但 Dio 实现并不支持断点续传
+### 3. 已修复（2026-03-09）：resume download 不再 fallback 到 Dio，Dio 默认拒绝断点续传
 
 - 证据：
-  - `lib/network/network_gateway.dart:269-280`
-  - `lib/network/dio_adapter.dart:217-219`
-  - `lib/network/dio_adapter.dart:346-369`
-- 现状：
-  - 网关把所有 `download` 都视为可 fallback。
-  - `DioAdapter` 虽然接收了 `resumeFrom`，但只把它当作进度初始值。
-  - 实际下载时没有设置 `Range` 请求头，也没有 append 到临时文件或部分文件。
-- 风险：
-  - Rust 侧若支持 resume，fallback 到 Dio 后会静默退化成“从头覆盖重下”。
-  - 上层如果依据 `resumeFrom` 或 `expectedTotal` 做体验承诺，现在的实现会直接违约。
-- 当前测试缺口：
-  - 没有覆盖“resume download + fallback 到 Dio”。
-- 建议优先级：P0
+  - `lib/network/net_models.dart`
+  - `lib/network/network_gateway.dart`
+  - `lib/network/dio_adapter.dart`
+  - `test/network/network_gateway_test.dart`
+  - `test/network/dio_adapter_test.dart`
+- 修复后实现：
+  - 新增 `NetTransferTaskRequest.isResumeDownload`，显式定义“`resumeFrom > 0` 的 download”为 resume download。
+  - 网关不再把所有 `download` 都视为可 fallback；只有非 resume download 才允许 Rust 失败后 fallback 到 Dio。
+  - `DioAdapter.startTransferTask(...)` 收到 `resumeFrom > 0` 的 download 时会直接抛错，不再把 `resumeFrom` 当作“仅影响进度显示”的弱 hint。
+  - Rust not ready 场景下，resume download 也不会再静默退化成 Dio 重头下载，而是显式暴露“不支持 resume”的错误。
+- 验证：
+  - 已新增网关回归：覆盖“resume download + Rust start 失败时不 fallback 到 Dio”。
+  - 已新增 readiness gate 回归：覆盖“Rust not ready + resume download”会显式失败，而不是被动转 Dio。
+  - 已新增 `DioAdapter` 回归：直接验证 Dio 默认拒绝 `resumeFrom > 0` 的 download。
+  - 本地验证通过：`flutter analyze`、`flutter test`。
+- 结论：
+  - 该项 P0 风险已关闭。
+  - 当前契约已明确：断点续传属于 Rust-only 能力；Dio 默认不承诺 resume 语义。
+  - 若未来需要让 Dio 也支持 resume，应单独补齐 `Range`、部分文件 append、临时文件与原子替换语义，而不是恢复“download 一律可 fallback”。
 
 ### 4. 高危：Dio 下载失败、取消、非 2xx 时会在最终路径留下脏文件
 
@@ -185,14 +191,13 @@
 
 ## 当前测试盲区
 
-- `download + resumeFrom + fallback` 的真实行为。
 - 下载失败、取消、非 2xx 后的文件残留与清理策略。
 - transfer 长时间运行、业务不轮询或低频轮询时的内存边界。
 - Rust 初始化重复调用且配置不一致时的行为。
 
 ## 建议处理顺序
 
-1. 重做下载语义：临时文件、原子替换、失败清理、resume/Range 契约、fallback 限制。
+1. 重做剩余下载语义：临时文件、原子替换、失败清理，避免脏文件落到最终路径。
 2. 给 transfer 事件与 task 状态增加上限、过期策略或背压策略。
 3. 明确默认初始化模型：是“默认 Rust 真启用”，还是“默认 Dio，仅允许显式初始化后启用 Rust”。
 4. 把 Rust 错误从字符串协议升级为结构化错误码。
