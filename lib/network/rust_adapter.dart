@@ -1,10 +1,9 @@
-import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import '../rust_bridge/api.dart' as rust_api;
 import 'net_adapter.dart';
 import 'net_models.dart';
+import 'request_body_codec.dart';
 import 'rust_bridge_api.dart';
 
 typedef RustRequestHandler = Future<NetResponse> Function(NetRequest request);
@@ -54,9 +53,9 @@ class RustAdapter implements NetAdapter {
     bool initialized = false,
     RustRequestHandler? requestHandler,
     RustBridgeApi? bridgeApi,
-  }) : _initialized = initialized,
-       _requestHandler = requestHandler,
-       _bridgeApi = bridgeApi ?? FrbRustBridgeApi();
+  })  : _initialized = initialized,
+        _requestHandler = requestHandler,
+        _bridgeApi = bridgeApi ?? FrbRustBridgeApi();
 
   @override
   bool get isReady => _initialized;
@@ -132,8 +131,9 @@ class RustAdapter implements NetAdapter {
       return _requestHandler(request);
     }
 
-    final spec = _toRustRequestSpec(request);
+    rust_api.RequestSpec? spec;
     try {
+      spec = _toRustRequestSpec(request);
       await _bridgeApi.ensureBridgeLoaded();
       final response = await _bridgeApi.request(spec: spec);
       return _toNetResponse(response, fromFallback: fromFallback);
@@ -141,7 +141,7 @@ class RustAdapter implements NetAdapter {
       if (error is NetException) {
         rethrow;
       }
-      throw _mapRustException(error, requestId: spec.requestId);
+      throw _mapRustException(error, requestId: spec?.requestId);
     }
   }
 
@@ -224,13 +224,12 @@ class RustAdapter implements NetAdapter {
       requestId: _nextRequestId(),
       method: request.method,
       path: path,
-      query: mergedQuery.entries
-          .map((entry) => (entry.key, entry.value))
-          .toList(),
+      query:
+          mergedQuery.entries.map((entry) => (entry.key, entry.value)).toList(),
       headers: request.headers.entries
           .map((entry) => (entry.key, entry.value))
           .toList(),
-      bodyBytes: _encodeBody(request.body),
+      bodyBytes: encodeRequestBody(request.body, channel: NetChannel.rust),
       bodyFilePath: null,
       expectLargeResponse: request.expectLargeResponse,
       saveToFilePath: null,
@@ -250,30 +249,13 @@ class RustAdapter implements NetAdapter {
           .map((entry) => (entry.key, entry.value))
           .toList(),
       localPath: request.localPath,
-      resumeFrom: request.resumeFrom == null
-          ? null
-          : BigInt.from(request.resumeFrom!),
+      resumeFrom:
+          request.resumeFrom == null ? null : BigInt.from(request.resumeFrom!),
       expectedTotal: request.expectedTotal == null
           ? null
           : BigInt.from(request.expectedTotal!),
       priority: request.priority,
     );
-  }
-
-  Uint8List? _encodeBody(Object? body) {
-    if (body == null) {
-      return null;
-    }
-    if (body is Uint8List) {
-      return body;
-    }
-    if (body is List<int>) {
-      return Uint8List.fromList(body);
-    }
-    if (body is String) {
-      return Uint8List.fromList(utf8.encode(body));
-    }
-    return Uint8List.fromList(utf8.encode(jsonEncode(body)));
   }
 
   NetResponse _toNetResponse(
@@ -292,9 +274,8 @@ class RustAdapter implements NetAdapter {
     final headers = <String, String>{};
     for (final header in response.headers) {
       final previous = headers[header.$1];
-      headers[header.$1] = previous == null
-          ? header.$2
-          : '$previous,${header.$2}';
+      headers[header.$1] =
+          previous == null ? header.$2 : '$previous,${header.$2}';
     }
 
     return NetResponse(
@@ -435,9 +416,8 @@ class RustAdapter implements NetAdapter {
       );
     }
 
-    var parsedStatusCode = statusCode == null || statusCode == 0
-        ? null
-        : statusCode;
+    var parsedStatusCode =
+        statusCode == null || statusCode == 0 ? null : statusCode;
     if (parsedStatusCode == null) {
       final match = RegExp(r'^http\s+(\d{3})[:\s]').firstMatch(normalized);
       if (match != null) {

@@ -12,25 +12,29 @@
 
 ## 主要问题
 
-### 1. 高危：同一请求在 Dio / Rust 两通道上的 body 编码协议不一致
+### 1. 已修复（2026-03-09）：请求 body 编码契约已统一，原审查前提已校正
 
-- 证据：
-  - `lib/network/dio_adapter.dart:31-39`
-  - `lib/network/rust_adapter.dart:223-237`
-  - `lib/network/rust_adapter.dart:263-277`
-  - Dio 5.9.1 默认请求转换逻辑：`D:\dev\fvm\Pub\hosted\pub.dev\dio-5.9.1\lib\src\transformer.dart:96-117`
-- 现状：
-  - `DioAdapter` 直接把 `request.body` 原样交给 Dio。
-  - Dio 只有在 `content-type` 明确是 JSON MIME 时才会 `jsonEncode`。
-  - 如果 `body` 是 `Map<String, dynamic>` 且没有 JSON content-type，Dio 会走 `application/x-www-form-urlencoded` 风格编码。
-  - `RustAdapter` 对非字节、非字符串 body 一律 `jsonEncode`。
-- 风险：
-  - 同一个 `NetRequest` 在两条通道上发送出去的 HTTP 请求体可能完全不同。
-  - Rust 失败 fallback 到 Dio 后，请求协议会发生静默切换。
-  - 服务端如果同时接受两种格式，问题会更隐蔽，因为不会立刻报错，而是出现“偶发业务异常”。
-- 当前测试缺口：
-  - 没有覆盖“`Map` body + 未显式 JSON content-type + 双通道一致性”。
-- 建议优先级：P0
+- 修复证据：
+  - `lib/network/request_body_codec.dart`
+  - `lib/network/dio_adapter.dart:32-39`
+  - `lib/network/rust_adapter.dart:211-233`
+  - `test/network/request_body_channel_consistency_test.dart`
+  - `README.md:55-61`
+- 校正说明：
+  - 原审查结论里“`Map<String, dynamic>` body + 未显式 JSON content-type 时，Dio 会默认走 `application/x-www-form-urlencoded` 风格编码”这一条表述过于绝对。
+  - 在当前仓库使用的 Dio 5.9.1 默认客户端配置下，`ImplyContentTypeInterceptor` 会对 `Map` / `String` 推断 `application/json`；随后默认 transformer 会走 JSON 序列化，而不是表单编码。
+  - 但继续依赖 Dio 的隐式推断仍然不安全，因为 Rust 通道并不共享这套拦截器/transformer 语义，双通道契约仍然会漂移。
+- 当前实现：
+  - 新增共享 `encodeRequestBody(...)`，统一规定：`Uint8List` / `List<int>` 发送原始字节，`String` 发送 UTF-8 字节，其它 JSON 可编码对象发送 UTF-8 JSON 字节。
+  - `DioAdapter` 与 `RustAdapter` 现在都先走这套归一化逻辑，再发起请求；不再把对象体直接交给 Dio 自行推断。
+  - 包本身不再隐式补写或改写 `content-type`；如果服务端依赖 MIME，调用方必须显式设置请求头。
+- 验证：
+  - 已新增“`Map` body + 未显式 JSON content-type + Rust 失败 fallback 到 Dio”一致性测试，直接比对 Rust `RequestSpec.bodyBytes` 与 Dio 实际出站 body。
+  - 已补原始二进制 body 的双通道一致性测试。
+  - 本地验证通过：`flutter analyze`、`flutter test`。
+- 结论：
+  - 该项 P0 风险已关闭。
+  - 剩余约束不是“双通道 body 不一致”，而是上层若要发送 `application/x-www-form-urlencoded` 或 multipart，必须自行编码并显式声明 `content-type`。
 
 ### 2. 高危：download fallback 被视为天然安全，但 Dio 实现并不支持断点续传
 

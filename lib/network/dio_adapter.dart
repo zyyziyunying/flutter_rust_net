@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 
 import 'net_adapter.dart';
 import 'net_models.dart';
+import 'request_body_codec.dart';
 
 class DioAdapter implements NetAdapter {
   static int _requestCounter = 0;
@@ -28,9 +29,13 @@ class DioAdapter implements NetAdapter {
     final uri = _buildUri(request.url, request.queryParameters);
 
     try {
+      final bodyBytes = encodeRequestBody(
+        request.body,
+        channel: NetChannel.dio,
+      );
       final response = await _client.requestUri<List<int>>(
         uri,
-        data: request.body,
+        data: bodyBytes,
         options: Options(
           method: request.method,
           headers: request.headers,
@@ -50,6 +55,9 @@ class DioAdapter implements NetAdapter {
         costMs: watch.elapsedMilliseconds,
         requestId: requestId,
       );
+    } on NetException {
+      watch.stop();
+      rethrow;
     } on DioException catch (error) {
       watch.stop();
       throw _mapDioException(error, requestId: requestId);
@@ -95,9 +103,8 @@ class DioAdapter implements NetAdapter {
     if (limit <= 0 || _transferEvents.isEmpty) {
       return const [];
     }
-    final size = limit < _transferEvents.length
-        ? limit
-        : _transferEvents.length;
+    final size =
+        limit < _transferEvents.length ? limit : _transferEvents.length;
     final events = _transferEvents.sublist(0, size);
     _transferEvents.removeRange(0, size);
     return events;
