@@ -537,6 +537,68 @@ void main() {
       },
     );
 
+    test(
+      'does not fallback resume download transfer to dio when rust start fails',
+      () async {
+        var dioStartCalls = 0;
+        var rustStartCalls = 0;
+
+        final dio = _FakeAdapter(
+          (request, {fromFallback = false}) async {
+            return _ok(channel: NetChannel.dio, fromFallback: fromFallback);
+          },
+          startTransferDelegate: (request) async {
+            dioStartCalls += 1;
+            return request.taskId;
+          },
+        );
+        final rust = _FakeAdapter(
+          (request, {fromFallback = false}) async {
+            return _ok(channel: NetChannel.rust, fromFallback: fromFallback);
+          },
+          startTransferDelegate: (request) async {
+            rustStartCalls += 1;
+            throw NetException.infrastructure(
+              message: 'rust transfer start failed',
+              channel: NetChannel.rust,
+            );
+          },
+        );
+
+        final gateway = NetworkGateway(
+          routingPolicy: const RoutingPolicy(),
+          featureFlag: const NetFeatureFlag(
+            enableRustChannel: true,
+            enableFallback: true,
+          ),
+          dioAdapter: dio,
+          rustAdapter: rust,
+        );
+
+        await expectLater(
+          gateway.startTransferTask(
+            const NetTransferTaskRequest(
+              taskId: 'task-resume-no-fallback',
+              kind: NetTransferKind.download,
+              url: 'https://example.com/file.bin',
+              localPath: '/tmp/file.bin',
+              resumeFrom: 128,
+              forceChannel: NetChannel.rust,
+            ),
+          ),
+          throwsA(
+            isA<NetException>().having(
+              (error) => error.code,
+              'code',
+              NetErrorCode.infrastructure,
+            ),
+          ),
+        );
+        expect(rustStartCalls, 1);
+        expect(dioStartCalls, 0);
+      },
+    );
+
     test('does not fallback transfer upload without idempotency key', () async {
       var dioStartCalls = 0;
       var rustStartCalls = 0;
@@ -595,30 +657,102 @@ void main() {
       expect(rustStartCalls, 1);
       expect(dioStartCalls, 0);
     });
+
+    test('surfaces dio rejection for resume download when rust is not ready',
+        () async {
+      var dioStartCalls = 0;
+      var rustStartCalls = 0;
+
+      final dio = _FakeAdapter(
+        (request, {fromFallback = false}) async {
+          return _ok(channel: NetChannel.dio, fromFallback: fromFallback);
+        },
+        startTransferDelegate: (request) async {
+          dioStartCalls += 1;
+          throw const NetException(
+            code: NetErrorCode.infrastructure,
+            message:
+                'Dio download does not support resumeFrom; use the Rust channel for resume downloads.',
+            channel: NetChannel.dio,
+            fallbackEligible: false,
+          );
+        },
+      );
+      final rust = _FakeAdapter(
+        (request, {fromFallback = false}) async {
+          return _ok(channel: NetChannel.rust, fromFallback: fromFallback);
+        },
+        isReady: false,
+        startTransferDelegate: (request) async {
+          rustStartCalls += 1;
+          return request.taskId;
+        },
+      );
+
+      final gateway = NetworkGateway(
+        routingPolicy: const RoutingPolicy(),
+        featureFlag: const NetFeatureFlag(enableRustChannel: true),
+        dioAdapter: dio,
+        rustAdapter: rust,
+      );
+
+      await expectLater(
+        gateway.startTransferTask(
+          const NetTransferTaskRequest(
+            taskId: 'task-resume-rust-not-ready',
+            kind: NetTransferKind.download,
+            url: 'https://example.com/file.bin',
+            localPath: '/tmp/file.bin',
+            resumeFrom: 256,
+            forceChannel: NetChannel.rust,
+          ),
+        ),
+        throwsA(
+          isA<NetException>()
+              .having(
+                (error) => error.code,
+                'code',
+                NetErrorCode.infrastructure,
+              )
+              .having(
+                (error) => error.channel,
+                'channel',
+                NetChannel.dio,
+              )
+              .having(
+                (error) => error.fallbackEligible,
+                'fallbackEligible',
+                isFalse,
+              ),
+        ),
+      );
+      expect(rustStartCalls, 0);
+      expect(dioStartCalls, 1);
+    });
   });
 }
 
 class _FakeAdapter implements NetAdapter {
   final bool _isReady;
   final Future<NetResponse> Function(NetRequest request, {bool fromFallback})
-  _delegate;
+      _delegate;
   final Future<String> Function(NetTransferTaskRequest request)
-  _startTransferDelegate;
+      _startTransferDelegate;
   final Future<List<NetTransferEvent>> Function({int limit})
-  _pollTransferDelegate;
+      _pollTransferDelegate;
   final Future<bool> Function(String taskId) _cancelTransferDelegate;
 
   _FakeAdapter(
     this._delegate, {
     bool isReady = true,
     Future<String> Function(NetTransferTaskRequest request)?
-    startTransferDelegate,
+        startTransferDelegate,
     Future<List<NetTransferEvent>> Function({int limit})? pollTransferDelegate,
     Future<bool> Function(String taskId)? cancelTransferDelegate,
-  }) : _isReady = isReady,
-       _startTransferDelegate = startTransferDelegate ?? _defaultStartTransfer,
-       _pollTransferDelegate = pollTransferDelegate ?? _defaultPollTransfer,
-       _cancelTransferDelegate = cancelTransferDelegate ?? _defaultCancel;
+  })  : _isReady = isReady,
+        _startTransferDelegate = startTransferDelegate ?? _defaultStartTransfer,
+        _pollTransferDelegate = pollTransferDelegate ?? _defaultPollTransfer,
+        _cancelTransferDelegate = cancelTransferDelegate ?? _defaultCancel;
 
   @override
   bool get isReady => _isReady;

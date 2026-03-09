@@ -9,6 +9,8 @@ import 'request_body_codec.dart';
 
 class DioAdapter implements NetAdapter {
   static int _requestCounter = 0;
+  static const String _resumeDownloadUnsupportedMessage =
+      'Dio download does not support resumeFrom; use the Rust channel for resume downloads.';
 
   final Dio _client;
   final Map<String, CancelToken> _transferCancelTokens = {};
@@ -73,6 +75,14 @@ class DioAdapter implements NetAdapter {
         code: NetErrorCode.parse,
         message: 'transfer task id is empty',
         channel: NetChannel.dio,
+      );
+    }
+    if (request.isResumeDownload) {
+      throw const NetException(
+        code: NetErrorCode.infrastructure,
+        message: _resumeDownloadUnsupportedMessage,
+        channel: NetChannel.dio,
+        fallbackEligible: false,
       );
     }
     if (_transferCancelTokens.containsKey(taskId)) {

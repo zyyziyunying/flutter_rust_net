@@ -131,6 +131,9 @@ class NetTransferTaskRequest {
     this.forceChannel,
   });
 
+  bool get isResumeDownload =>
+      kind == NetTransferKind.download && (resumeFrom ?? 0) > 0;
+
   NetTransferTaskRequest withForceChannel(NetChannel? forceChannel) {
     return NetTransferTaskRequest(
       taskId: taskId,

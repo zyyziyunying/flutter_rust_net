@@ -43,9 +43,8 @@ class NetworkGateway {
     NetRequest request, {
     NetChannel? forceChannel,
   }) async {
-    final effectiveRequest = forceChannel == null
-        ? request
-        : request.withForceChannel(forceChannel);
+    final effectiveRequest =
+        forceChannel == null ? request : request.withForceChannel(forceChannel);
     final decision = routingPolicy.decide(effectiveRequest, featureFlag);
 
     if (decision.channel == NetChannel.rust) {
@@ -66,9 +65,8 @@ class NetworkGateway {
     NetTransferTaskRequest request, {
     NetChannel? forceChannel,
   }) async {
-    final effectiveRequest = forceChannel == null
-        ? request
-        : request.withForceChannel(forceChannel);
+    final effectiveRequest =
+        forceChannel == null ? request : request.withForceChannel(forceChannel);
     final decision = routingPolicy.decide(
       _toTransferProbeRequest(effectiveRequest),
       featureFlag,
@@ -268,7 +266,7 @@ class NetworkGateway {
 
   bool _isTransferFallbackSafe(NetTransferTaskRequest request) {
     if (request.kind == NetTransferKind.download) {
-      return true;
+      return !request.isResumeDownload;
     }
 
     return _isRequestFallbackSafe(
