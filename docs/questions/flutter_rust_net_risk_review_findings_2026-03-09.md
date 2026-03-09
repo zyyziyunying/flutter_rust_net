@@ -8,7 +8,7 @@
   - `flutter analyze`
   - `flutter test`
 
-结论先行：截至 2026-03-09，本次审查里已关闭三项高优先级风险：原始 P0（双通道 request body 编码漂移）、后续暴露的 P1（`List<int>` body 语义歧义），以及下载 fallback 静默破坏断点续传契约的问题。当前剩余高优先级风险主要集中在下载文件落盘语义不安全，以及 transfer 状态管理缺少边界。
+结论先行：截至 2026-03-09，本次审查里已关闭四项高优先级风险：原始 P0（双通道 request body 编码漂移）、后续暴露的 P1（`List<int>` body 语义歧义）、下载 fallback 静默破坏断点续传契约的问题，以及 Dio 下载脏文件污染最终路径的问题。当前剩余优先处理项主要集中在 transfer 状态管理缺少边界，此外仍有 API 默认行为与跨语言错误契约方面的 P1/P2 风险。
 
 ## 主要问题
 
@@ -87,30 +87,34 @@
   - 当前契约已明确：断点续传属于 Rust-only 能力；Dio 默认不承诺 resume 语义。
   - 若未来需要让 Dio 也支持 resume，应单独补齐 `Range`、部分文件 append、临时文件与原子替换语义，而不是恢复“download 一律可 fallback”。
 
-### 4. 高危：Dio 下载失败、取消、非 2xx 时会在最终路径留下脏文件
+### 4. 已修复（2026-03-09）：Dio 下载改为临时文件落盘，失败/取消/非 2xx 不再污染最终路径
 
-- 证据：
-  - `lib/network/dio_adapter.dart:351-369`
-  - `lib/network/dio_adapter.dart:268-279`
-  - `lib/network/dio_adapter.dart:293-343`
-- 现状：
-  - 文件直接下载到 `request.localPath`。
-  - 收到非 2xx 时只是事后抛错。
-  - 失败、取消、异常路径都没有清理最终文件，也没有临时文件再原子替换。
-- 风险：
-  - 404/503 响应体、半截文件、取消残片都可能落在业务最终路径上。
-  - 后续业务如果只看“文件存在”，就会把坏文件当成功产物继续使用。
-- 当前测试缺口：
-  - 没有覆盖下载失败后的文件清理语义。
-- 建议优先级：P0
+- 修复证据：
+  - `lib/network/dio_adapter.dart:231-376`
+  - `lib/network/dio_adapter.dart:379-442`
+  - `test/network/dio_adapter_test.dart:48-213`
+- 修复后实现：
+  - `DioAdapter` 现在会先为 download 准备同目录 `.part` 临时文件，再把 `downloadUri(...)` 的落盘目标切到该临时文件。
+  - 只有收到 2xx 且后续发布成功时，才会通过 rename/替换把临时文件发布到 `request.localPath`。
+  - 非 2xx、取消、`DioException`、`NetException` 与兜底异常路径都会执行临时文件清理，不再把错误响应体或半截文件留在最终路径。
+  - 已存在的最终文件会在下载成功前保持不变，避免业务仅凭“文件存在”误判下载成功。
+- 验证：
+  - 已新增 `DioAdapter` 回归：覆盖“成功下载后替换目标文件”。
+  - 已新增 `DioAdapter` 回归：覆盖“非 2xx 下载失败时保留旧文件并清理临时文件”。
+  - 已新增 `DioAdapter` 回归：覆盖“取消下载时保留旧文件并清理临时文件”。
+  - 本地验证通过：`flutter analyze`、`flutter test`。
+- 结论：
+  - 该项 P0 风险已关闭。
+  - 当前 Dio download 契约已明确为“临时文件写入 + 成功后发布”，不会再把失败产物直接暴露给业务最终路径。
+  - 若未来补 resume 语义，需要在此基础上继续设计分片 append、校验与原子发布，而不是回退到直接覆盖最终文件。
 
 ### 5. 中高：transfer 事件队列与任务路由状态都可能无界增长
 
 - 证据：
-  - `lib/network/dio_adapter.dart:13-14`
-  - `lib/network/dio_adapter.dart:239-247`
-  - `lib/network/dio_adapter.dart:256-264`
-  - `lib/network/dio_adapter.dart:411-412`
+  - `lib/network/dio_adapter.dart:16-17`
+  - `lib/network/dio_adapter.dart:240-247`
+  - `lib/network/dio_adapter.dart:266-273`
+  - `lib/network/dio_adapter.dart:483-484`
   - `lib/network/network_gateway.dart:33`
   - `lib/network/network_gateway.dart:109-116`
   - `lib/network/network_gateway.dart:221-223`

@@ -235,6 +235,7 @@ class DioAdapter implements NetAdapter {
     final watch = Stopwatch()..start();
     var transferred = request.resumeFrom ?? 0;
     var total = request.expectedTotal;
+    _DownloadTarget? downloadTarget;
 
     _emitTransferEvent(
       NetTransferEvent(
@@ -247,10 +248,18 @@ class DioAdapter implements NetAdapter {
     );
 
     try {
+      if (request.kind == NetTransferKind.download) {
+        downloadTarget = await _prepareDownloadTarget(
+          request.localPath,
+          request.taskId,
+        );
+      }
+
       final response = request.kind == NetTransferKind.download
           ? await _runDownloadTask(
               request,
               cancelToken,
+              savePath: downloadTarget!.tempFile.path,
               onProgress: (value, progressTotal) {
                 transferred = value;
                 total = progressTotal ?? total;
@@ -295,6 +304,9 @@ class DioAdapter implements NetAdapter {
           statusCode: statusCode,
         );
       }
+      if (downloadTarget != null) {
+        await _publishDownloadTarget(downloadTarget);
+      }
 
       watch.stop();
       _emitTransferEvent(
@@ -310,6 +322,7 @@ class DioAdapter implements NetAdapter {
       );
     } on DioException catch (error) {
       watch.stop();
+      await _cleanupDownloadTempFile(downloadTarget);
       final mapped = _mapDioException(error, requestId: _nextRequestId());
       final canceled =
           error.type == DioExceptionType.cancel || CancelToken.isCancel(error);
@@ -329,6 +342,7 @@ class DioAdapter implements NetAdapter {
       );
     } on NetException catch (error) {
       watch.stop();
+      await _cleanupDownloadTempFile(downloadTarget);
       _emitTransferEvent(
         NetTransferEvent(
           id: request.taskId,
@@ -345,6 +359,7 @@ class DioAdapter implements NetAdapter {
       );
     } catch (error) {
       watch.stop();
+      await _cleanupDownloadTempFile(downloadTarget);
       _emitTransferEvent(
         NetTransferEvent(
           id: request.taskId,
@@ -364,17 +379,12 @@ class DioAdapter implements NetAdapter {
   Future<Response<dynamic>> _runDownloadTask(
     NetTransferTaskRequest request,
     CancelToken cancelToken, {
+    required String savePath,
     required void Function(int transferred, int? total) onProgress,
   }) async {
-    final targetFile = File(request.localPath);
-    final parent = targetFile.parent;
-    if (!await parent.exists()) {
-      await parent.create(recursive: true);
-    }
-
     return _client.downloadUri(
       Uri.parse(request.url),
-      request.localPath,
+      savePath,
       cancelToken: cancelToken,
       options: Options(
         method: request.method,
@@ -385,6 +395,50 @@ class DioAdapter implements NetAdapter {
         onProgress(received, total > 0 ? total : null);
       },
     );
+  }
+
+  Future<_DownloadTarget> _prepareDownloadTarget(
+    String localPath,
+    String taskId,
+  ) async {
+    final finalFile = File(localPath);
+    final parent = finalFile.parent;
+    if (!await parent.exists()) {
+      await parent.create(recursive: true);
+    }
+
+    final tempFile = File(
+      '$localPath.dio-download-${DateTime.now().microsecondsSinceEpoch}-${taskId.hashCode}.part',
+    );
+    if (await tempFile.exists()) {
+      await tempFile.delete();
+    }
+    return _DownloadTarget(finalFile: finalFile, tempFile: tempFile);
+  }
+
+  Future<void> _publishDownloadTarget(_DownloadTarget target) async {
+    try {
+      await target.tempFile.rename(target.finalFile.path);
+    } on FileSystemException {
+      if (!await target.finalFile.exists()) {
+        rethrow;
+      }
+      await target.finalFile.delete();
+      await target.tempFile.rename(target.finalFile.path);
+    }
+  }
+
+  Future<void> _cleanupDownloadTempFile(_DownloadTarget? target) async {
+    if (target == null) {
+      return;
+    }
+    try {
+      if (await target.tempFile.exists()) {
+        await target.tempFile.delete();
+      }
+    } on FileSystemException {
+      // Best-effort cleanup after failed or canceled downloads.
+    }
   }
 
   Future<Response<dynamic>> _runUploadTask(
@@ -429,4 +483,14 @@ class DioAdapter implements NetAdapter {
   void _emitTransferEvent(NetTransferEvent event) {
     _transferEvents.add(event);
   }
+}
+
+class _DownloadTarget {
+  const _DownloadTarget({
+    required this.finalFile,
+    required this.tempFile,
+  });
+
+  final File finalFile;
+  final File tempFile;
 }
