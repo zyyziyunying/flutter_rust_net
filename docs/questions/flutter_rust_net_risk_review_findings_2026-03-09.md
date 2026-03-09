@@ -8,7 +8,7 @@
   - `flutter analyze`
   - `flutter test`
 
-结论先行：原始 P0（双通道 request body 编码漂移）已关闭，但当前实现距离“语义稳定、可放心上量”还有明显差距。高优先级风险现在主要集中在 `List<int>` body 语义歧义、下载语义不安全、以及 transfer 状态管理缺少边界。
+结论先行：截至 2026-03-09，本次审查里与 request body 相关的两项高优先级风险都已关闭：原始 P0（双通道 request body 编码漂移）已关闭，后续暴露的 P1（`List<int>` body 语义歧义）也已关闭。当前剩余高优先级风险主要集中在下载语义不安全，以及 transfer 状态管理缺少边界。
 
 ## 主要问题
 
@@ -25,37 +25,44 @@
   - 在当前仓库使用的 Dio 5.9.1 默认客户端配置下，`ImplyContentTypeInterceptor` 会对 `Map` / `String` 推断 `application/json`；随后默认 transformer 会走 JSON 序列化，而不是表单编码。
   - 但继续依赖 Dio 的隐式推断仍然不安全，因为 Rust 通道并不共享这套拦截器/transformer 语义，双通道契约仍然会漂移。
 - 当前实现：
-  - 新增共享 `encodeRequestBody(...)`，统一规定：`Uint8List` / `List<int>` 发送原始字节，`String` 发送 UTF-8 字节，其它 JSON 可编码对象发送 UTF-8 JSON 字节。
+  - 新增共享 `encodeRequestBody(...)`，统一规定：`bodyBytes` 发送原始字节，`String` 发送 UTF-8 字节，其它 JSON 可编码对象（包括 `List<int>` JSON 数组）发送 UTF-8 JSON 字节。
   - `DioAdapter` 与 `RustAdapter` 现在都先走这套归一化逻辑，再发起请求；不再把对象体直接交给 Dio 自行推断。
   - 包本身不再隐式补写或改写 `content-type`；如果服务端依赖 MIME，调用方必须显式设置请求头。
 - 验证：
   - 已新增“`Map` body + 未显式 JSON content-type + Rust 失败 fallback 到 Dio”一致性测试，直接比对 Rust `RequestSpec.bodyBytes` 与 Dio 实际出站 body。
-  - 已补原始二进制 body 的双通道一致性测试。
+  - 已补原始二进制 body 与 JSON int 数组 body 的双通道一致性测试。
   - 本地验证通过：`flutter analyze`、`flutter test`。
 - 结论：
   - 该项 P0 风险已关闭。
   - 剩余约束不是“双通道 body 不一致”，而是上层若要发送 `application/x-www-form-urlencoded` 或 multipart，必须自行编码并显式声明 `content-type`。
-  - 但基于同一修复路径，已暴露出一个新的独立 P1 风险：`List<int>` 被强制解释为原始字节，见下一项。
+  - 历史上基于同一修复路径曾暴露一个新的独立 P1 风险：`List<int>` 被强制解释为原始字节；该项也已在同日关闭，见下一项。
 
-### 2. P1：`List<int>` body 语义二义性会让 JSON int 数组被静默当成原始字节
+### 2. 已修复（2026-03-09）：`List<int>` body 与原始 bytes 语义已显式拆分
 
 - 证据：
-  - `lib/network/request_body_codec.dart:17-18`
-  - `lib/network/net_models.dart:54-77`
-  - `lib/network/bytes_first_network_client.dart:153-178`
+  - `lib/network/request_body_codec.dart`
+  - `lib/network/net_models.dart`
+  - `lib/network/bytes_first_network_client.dart`
   - `README.md:55-61`
-- 现状：
-  - 公开 API 仍然把请求体暴露成宽泛的 `Object? body`。
-  - 共享编码逻辑里，凡是命中 `body is List<int>`，都会直接走 `Uint8List.fromList(body)`，不再进入 JSON 编码分支。
-  - README 也把 `List<int>` 明确定义为“原始字节”。
-- 风险：
-  - 如果调用方把 `body: [1, 2, 3]` 当成 JSON 数组发送，当前实现会把它发成 3 个裸字节，而不是 UTF-8 文本 `[1,2,3]`。
-  - 这不是显式失败，而是静默错发；双通道会一致，但一致地错。
-  - Dart `Uint8List.fromList(...)` 还会对越界值做截断。本地补充验证显示：`Uint8List.fromList([1, 2, 256])` 实际得到 `[1, 2, 0]`，`Uint8List.fromList([-1, 0, 1])` 实际得到 `[255, 0, 1]`。如果上层把这类值当 JSON int 数组传入，会直接发生数据损坏。
-- 当前测试缺口：
-  - 没有覆盖“JSON int 数组 body”与“原始 bytes body”的区分约束。
-  - 没有覆盖 `List<int>` 中负值、超过 255 的值、以及调用方误传 JSON 数组时的失败/保护行为。
-- 建议优先级：P1
+- 修复后实现：
+  - `NetRequest` 与 `BytesFirstNetworkClient.request(...)` 现在显式区分 `body` 和 `bodyBytes`；两者不可同时设置。
+  - `body: <int>[...]` 现在按 JSON int 数组编码为 UTF-8 文本，不再被静默当成原始字节。
+  - 原始二进制请求体必须通过 `bodyBytes` 传入。
+  - 显式 `bodyBytes` 现在会校验每个元素必须位于 `0..255`；超界值会直接抛出 `NetException(parse)`，不再允许 `Uint8List.fromList(...)` 的静默截断发生。
+  - 误把 `Uint8List` / `TypedData` 塞进 `body` 时也会直接失败，并提示调用方改用 `bodyBytes`。
+- 验证：
+  - 已新增 `test/network/request_body_codec_test.dart`，覆盖：
+    - `List<int>` 作为 JSON int 数组编码；
+    - `body + bodyBytes` 冲突保护；
+    - `Uint8List` 误传 `body` 的保护；
+    - `bodyBytes` 越界值保护。
+  - 已更新 `test/network/request_body_channel_consistency_test.dart`，补齐：
+    - JSON int 数组 body 的 Dio/Rust fallback 一致性；
+    - 原始 bytes body 的 Dio/Rust fallback 一致性。
+  - 本地验证通过：`flutter analyze`、`flutter test`。
+- 结论：
+  - 该项 P1 风险已关闭。
+  - 剩余事项是 API 迁移成本而不是语义歧义：历史调用若用 `body: Uint8List(...)` 或 `body: <int>[...]` 表示原始字节，需迁移到 `bodyBytes`。
 
 ### 3. 高危：download fallback 被视为天然安全，但 Dio 实现并不支持断点续传
 
@@ -178,8 +185,6 @@
 
 ## 当前测试盲区
 
-- `List<int>` body 作为“原始字节”与“JSON int 数组”两种语义时的边界与保护策略。
-- `List<int>` 中负值、超过 255 的值是否应显式拒绝，而不是静默截断。
 - `download + resumeFrom + fallback` 的真实行为。
 - 下载失败、取消、非 2xx 后的文件残留与清理策略。
 - transfer 长时间运行、业务不轮询或低频轮询时的内存边界。
@@ -187,12 +192,10 @@
 
 ## 建议处理顺序
 
-1. 收紧请求 body API：把“原始 bytes”与“JSON 值”拆成不易混淆的建模，至少不要让裸 `List<int>` 同时承担两种潜在语义。
-2. 对 `List<int>` 的非法字节值建立显式保护；如果继续支持原始 bytes，至少要拒绝负值与大于 255 的元素，而不是静默截断。
-3. 重做下载语义：临时文件、原子替换、失败清理、resume/Range 契约、fallback 限制。
-4. 给 transfer 事件与 task 状态增加上限、过期策略或背压策略。
-5. 明确默认初始化模型：是“默认 Rust 真启用”，还是“默认 Dio，仅允许显式初始化后启用 Rust”。
-6. 把 Rust 错误从字符串协议升级为结构化错误码。
+1. 重做下载语义：临时文件、原子替换、失败清理、resume/Range 契约、fallback 限制。
+2. 给 transfer 事件与 task 状态增加上限、过期策略或背压策略。
+3. 明确默认初始化模型：是“默认 Rust 真启用”，还是“默认 Dio，仅允许显式初始化后启用 Rust”。
+4. 把 Rust 错误从字符串协议升级为结构化错误码。
 
 ## 备注
 

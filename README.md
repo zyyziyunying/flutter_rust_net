@@ -48,14 +48,14 @@ final response = await client.request(
   headers: {
     NetHeaderName.contentType.wireName: 'application/json',
   },
-  body: bytes,
+  bodyBytes: bytes,
 );
 ```
 
 `body` uses one shared contract on both Dio and Rust channels:
 
-- `Uint8List` / `List<int>`: sent as raw bytes
+- `bodyBytes`: sent as raw bytes
 - `String`: sent as UTF-8 bytes
-- other JSON-encodable objects: sent as UTF-8 JSON bytes
+- other JSON-encodable objects, including `List<int>` JSON arrays: sent as UTF-8 JSON bytes
 
 The package does not infer or rewrite `content-type`; set it explicitly when the server depends on it.

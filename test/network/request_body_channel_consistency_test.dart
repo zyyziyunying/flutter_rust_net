@@ -39,10 +39,28 @@ void main() {
       },
     );
 
+    test(
+      'json int array body stays aligned when rust falls back to dio',
+      () async {
+        final capture = await _exerciseFallback(
+          body: <int>[1, 2, 256, -1],
+        );
+
+        expect(capture.rustSpec.bodyBytes, isNotNull);
+        expect(
+          capture.dioRequest.bodyBytes,
+          capture.rustSpec.bodyBytes!.toList(growable: false),
+        );
+        expect(utf8.decode(capture.dioRequest.bodyBytes), '[1,2,256,-1]');
+        expect(capture.dioRequest.contentType, isNull);
+        expect(_headerValue(capture.rustSpec.headers, 'content-type'), isNull);
+      },
+    );
+
     test('raw byte payload stays aligned when rust falls back to dio',
         () async {
       final capture = await _exerciseFallback(
-        body: <int>[65, 66, 67, 0, 255],
+        bodyBytes: const <int>[65, 66, 67, 0, 255],
       );
 
       expect(capture.rustSpec.bodyBytes, isNotNull);
@@ -57,7 +75,10 @@ void main() {
   });
 }
 
-Future<_FallbackCapture> _exerciseFallback({required Object body}) async {
+Future<_FallbackCapture> _exerciseFallback({
+  Object? body,
+  List<int>? bodyBytes,
+}) async {
   final requestCompleter = Completer<_RecordedRequest>();
   final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
   server.listen((request) async {
@@ -95,6 +116,7 @@ Future<_FallbackCapture> _exerciseFallback({required Object body}) async {
         url: 'http://${server.address.address}:${server.port}/echo',
         headers: const {'x-trace-id': 'trace-1'},
         body: body,
+        bodyBytes: bodyBytes,
         forceChannel: NetChannel.rust,
       ),
     );

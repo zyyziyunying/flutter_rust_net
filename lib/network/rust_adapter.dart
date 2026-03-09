@@ -229,7 +229,11 @@ class RustAdapter implements NetAdapter {
       headers: request.headers.entries
           .map((entry) => (entry.key, entry.value))
           .toList(),
-      bodyBytes: encodeRequestBody(request.body, channel: NetChannel.rust),
+      bodyBytes: encodeRequestBody(
+        request.body,
+        bodyBytes: request.bodyBytes,
+        channel: NetChannel.rust,
+      ),
       bodyFilePath: null,
       expectLargeResponse: request.expectLargeResponse,
       saveToFilePath: null,

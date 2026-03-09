@@ -56,7 +56,12 @@ class NetRequest {
   final String url;
   final Map<String, String> headers;
   final Map<String, dynamic> queryParameters;
+
+  /// UTF-8 text or JSON-encodable payload. Use [bodyBytes] for raw bytes.
   final Object? body;
+
+  /// Raw request payload bytes. Use [body] for text or JSON payloads.
+  final List<int>? bodyBytes;
   final bool expectLargeResponse;
   final bool isJitterSensitive;
   final bool isTransferTask;
@@ -69,12 +74,16 @@ class NetRequest {
     this.headers = const {},
     this.queryParameters = const {},
     this.body,
+    this.bodyBytes,
     this.expectLargeResponse = false,
     this.isJitterSensitive = false,
     this.isTransferTask = false,
     this.contentLengthHint,
     this.forceChannel,
-  });
+  }) : assert(
+          body == null || bodyBytes == null,
+          'NetRequest.body and NetRequest.bodyBytes cannot both be set.',
+        );
 
   NetHttpMethod? get httpMethod => NetHttpMethod.tryParse(method);
 
@@ -85,6 +94,7 @@ class NetRequest {
       headers: headers,
       queryParameters: queryParameters,
       body: body,
+      bodyBytes: bodyBytes,
       expectLargeResponse: expectLargeResponse,
       isJitterSensitive: isJitterSensitive,
       isTransferTask: isTransferTask,

@@ -31,6 +31,7 @@ class DioAdapter implements NetAdapter {
     try {
       final bodyBytes = encodeRequestBody(
         request.body,
+        bodyBytes: request.bodyBytes,
         channel: NetChannel.dio,
       );
       final response = await _client.requestUri<List<int>>(

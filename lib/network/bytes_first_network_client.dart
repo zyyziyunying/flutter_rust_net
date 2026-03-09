@@ -103,9 +103,9 @@ class JsonModelDecoder<T> implements NetBodyDecoder<T> {
     bool requireJsonContentType = false,
     bool allowMalformedUtf8 = false,
   }) : _jsonDecoder = JsonBodyDecoder(
-         requireJsonContentType: requireJsonContentType,
-         allowMalformedUtf8: allowMalformedUtf8,
-       );
+          requireJsonContentType: requireJsonContentType,
+          allowMalformedUtf8: allowMalformedUtf8,
+        );
 
   @override
   Future<T> decode(Uint8List bodyBytes, {required NetResponse response}) async {
@@ -156,6 +156,7 @@ class BytesFirstNetworkClient {
     Map<String, String> headers = const {},
     Map<String, dynamic> queryParameters = const {},
     Object? body,
+    List<int>? bodyBytes,
     bool expectLargeResponse = false,
     bool isJitterSensitive = false,
     bool isTransferTask = false,
@@ -169,6 +170,7 @@ class BytesFirstNetworkClient {
         headers: headers,
         queryParameters: queryParameters,
         body: body,
+        bodyBytes: bodyBytes,
         expectLargeResponse: expectLargeResponse,
         isJitterSensitive: isJitterSensitive,
         isTransferTask: isTransferTask,
