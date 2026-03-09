@@ -1,19 +1,23 @@
 # flutter_rust_net 文档索引
 
-本目录用于存放 `flutter_rust_net` 的项目内文档，按主题拆分：
+本目录用于存放 `flutter_rust_net` 的项目内文档，按职责拆分：
 
-- `progress/`：阶段执行进度（如 P1 状态、下一步计划）。
-- `dio_rust_test/`：基准测试、路由策略、runbook、聚合结论。
-- `flutter_rust_network_layer_design.md`：网络层设计主文档。
-- `归档/flutter_rust_network_layer_design_review_findings_2026-02-24.md`：设计评审与修复建议。
+- `flutter_rust_network_layer_design.md`：当前有效的网络层设计主文档。
+- `progress/`：阶段执行进度与状态事实源（如 P1/P2 状态、当前 In Progress / Next）。
+- `plan/`：仍在执行或待执行的方案、执行模板、联调计划。
+- `dio_rust_test/`：测试方案说明、runbook、策略建议、基准结果、验证结论。
+- `archived/`：已完成或已失效但需要保留追溯价值的历史文档。
 
-测试记录已拆分到本项目专题目录：
+当前索引：
 
-- `docs/progress/`
-- `docs/dio_rust_test/`
+- `plan/network_p1_execution_template_2026-02-25.md`：P1 执行模板。
+- `plan/golang_remote_benchmark_server_plan_2026-03-02.md`：远端真机压测 Go 服务方案。
+- `archived/flutter_rust_network_layer_design_review_findings_2026-02-24.md`：已闭环的设计评审与修复建议。
 
 维护建议：
 
-1. `flutter_rust_net` 相关文档优先维护在本目录。
-2. 测试记录按需同步到对应专题文档（`docs/progress/` 与 `docs/dio_rust_test/`）。
-3. 变更后同步检查 `FLUTTER_RUST_NET_OVERVIEW_ZH.md` 与 `FLUTTER_RUST_NET_PRIORITY_ROADMAP_ZH.md` 的跳转链接是否一致。
+1. 新增“方案/模板/待执行计划”时，优先放入 `docs/plan/`。
+2. `Done / In Progress / Next` 只在 `docs/progress/` 维护，避免计划文档和进度文档互相覆盖。
+3. 测试结果、策略结论、runbook 统一放在 `docs/dio_rust_test/`。
+4. 文档结论已闭环或被新文档替代后，移入 `docs/archived/`，并在原引用处改到新路径。
+5. 变更后同步检查 `FLUTTER_RUST_NET_OVERVIEW_ZH.md` 与 `FLUTTER_RUST_NET_PRIORITY_ROADMAP_ZH.md` 的跳转链接是否一致。
