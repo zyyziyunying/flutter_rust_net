@@ -270,6 +270,7 @@ class RustAdapter implements NetAdapter {
     if (error != null && error.isNotEmpty) {
       throw _mapRustError(
         error,
+        kind: response.errorKind,
         statusCode: response.statusCode,
         requestId: response.requestId,
       );
@@ -360,6 +361,113 @@ class RustAdapter implements NetAdapter {
   }
 
   NetException _mapRustError(
+    String message, {
+    rust_api.NetErrorKind? kind,
+    int? statusCode,
+    String? requestId,
+  }) {
+    if (kind != null) {
+      return _mapTypedRustError(
+        kind,
+        message,
+        statusCode: statusCode,
+        requestId: requestId,
+      );
+    }
+    return _mapLegacyRustError(
+      message,
+      statusCode: statusCode,
+      requestId: requestId,
+    );
+  }
+
+  NetException _mapTypedRustError(
+    rust_api.NetErrorKind kind,
+    String message, {
+    int? statusCode,
+    String? requestId,
+  }) {
+    final parsedStatusCode =
+        statusCode == null || statusCode == 0 ? null : statusCode;
+    switch (kind) {
+      case rust_api.NetErrorKind.timeout:
+        return NetException(
+          code: NetErrorCode.timeout,
+          message: message,
+          channel: NetChannel.rust,
+          fallbackEligible: true,
+          requestId: requestId,
+        );
+      case rust_api.NetErrorKind.dns:
+        return NetException(
+          code: NetErrorCode.dns,
+          message: message,
+          channel: NetChannel.rust,
+          fallbackEligible: true,
+          requestId: requestId,
+        );
+      case rust_api.NetErrorKind.tls:
+        return NetException(
+          code: NetErrorCode.tls,
+          message: message,
+          channel: NetChannel.rust,
+          fallbackEligible: true,
+          requestId: requestId,
+        );
+      case rust_api.NetErrorKind.http4Xx:
+        return NetException(
+          code: NetErrorCode.http4xx,
+          message: message,
+          channel: NetChannel.rust,
+          statusCode: parsedStatusCode,
+          fallbackEligible: false,
+          requestId: requestId,
+        );
+      case rust_api.NetErrorKind.http5Xx:
+        return NetException(
+          code: NetErrorCode.http5xx,
+          message: message,
+          channel: NetChannel.rust,
+          statusCode: parsedStatusCode,
+          fallbackEligible: false,
+          requestId: requestId,
+        );
+      case rust_api.NetErrorKind.canceled:
+        return NetException(
+          code: NetErrorCode.canceled,
+          message: message,
+          channel: NetChannel.rust,
+          fallbackEligible: false,
+          requestId: requestId,
+        );
+      case rust_api.NetErrorKind.parse:
+        return NetException(
+          code: NetErrorCode.parse,
+          message: message,
+          channel: NetChannel.rust,
+          fallbackEligible: false,
+          requestId: requestId,
+        );
+      case rust_api.NetErrorKind.io:
+        return NetException(
+          code: NetErrorCode.io,
+          message: message,
+          channel: NetChannel.rust,
+          fallbackEligible: true,
+          requestId: requestId,
+        );
+      case rust_api.NetErrorKind.internal:
+        return NetException(
+          code: NetErrorCode.internal,
+          message: message,
+          channel: NetChannel.rust,
+          fallbackEligible: false,
+          requestId: requestId,
+        );
+    }
+  }
+
+  NetException _mapLegacyRustError(
     String message, {
     int? statusCode,
     String? requestId,

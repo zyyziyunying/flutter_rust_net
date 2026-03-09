@@ -8,7 +8,7 @@
   - `flutter analyze`
   - `flutter test`
 
-结论先行：截至 2026-03-09，本次审查里已关闭五项高优先级风险：原始 P0（双通道 request body 编码漂移）、后续暴露的 P1（`List<int>` body 语义歧义）、下载 fallback 静默破坏断点续传契约的问题、Dio 下载脏文件污染最终路径的问题，以及“默认 API 让人误以为 Rust 已启用”的误导性接入路径。当前剩余优先处理项主要集中在 transfer 状态管理缺少边界，其次是跨语言错误契约与初始化配置一致性问题。
+结论先行：截至 2026-03-09，本次审查里已关闭六项高优先级风险：原始 P0（双通道 request body 编码漂移）、后续暴露的 P1（`List<int>` body 语义歧义）、下载 fallback 静默破坏断点续传契约的问题、Dio 下载脏文件污染最终路径的问题、“默认 API 让人误以为 Rust 已启用”的误导性接入路径，以及 Rust 错误分类完全依赖字符串前缀的问题。当前剩余优先处理项主要集中在 transfer 状态管理缺少边界，其次是初始化配置一致性问题。
 
 ## 主要问题
 
@@ -150,21 +150,25 @@
   - 该项 P1 风险已关闭。
   - `NetworkGateway` 的 readiness gate 仍然保留，用于处理显式 Rust 路径下的运行时状态；但默认公开 API 与文档入口已不再误导调用方。
 
-### 7. 中：Rust 错误契约完全依赖字符串前缀，极易漂移
+### 7. 已修复（2026-03-09）：Rust 错误契约改为显式 typed kind，Dart 不再依赖字符串前缀
 
-- 证据：
-  - `lib/network/rust_adapter.dart:283-290`
-  - `lib/network/rust_adapter.dart:354-375`
-  - `lib/network/rust_adapter.dart:377-485`
-- 现状：
-  - Dart 侧通过 `timeout:`、`dns:`、`tls:`、`io:`、`internal:` 等前缀解析错误类型。
-  - 未匹配的错误文案大多直接降级为 `internal`，并被禁止 fallback。
-- 风险：
-  - Rust 侧只要改一下文案，Dart 侧的 fallback 判定、监控分类、异常统计都会静默变化。
-  - 这是弱契约，不适合作为稳定跨语言接口。
-- 当前测试缺口：
-  - 只覆盖了少数字符串样例，没有覆盖版本升级后的兼容性约束。
-- 建议优先级：P1
+- 修复证据：
+  - `native/rust/net_engine/src/api.rs`
+  - `native/rust/net_engine/src/engine/error.rs`
+  - `native/rust/net_engine/src/engine/client/request.rs`
+  - `lib/network/rust_adapter.dart`
+  - `test/network/rust_adapter_test.dart`
+- 修复后实现：
+  - Rust `ResponseMeta` 新增 `error_kind`，由 `NetError.kind()` 显式填充；人类可读错误文案仍通过 `error` 传回，但不再承担分类职责。
+  - HTTP 错误现在会把真实 `status_code` 一并带回 Dart；Dart 侧基于 typed kind 和状态码构造 `NetException`，不再依赖 `http 404:` 这类字符串格式。
+  - `RustAdapter` 仍保留旧字符串前缀解析作为兼容回退，用于处理旧 mock 或不完整桥接环境；正式桥接契约已切换到 typed kind。
+- 验证：
+  - 已新增 Rust 单测：验证 `NetError.kind()` 对 timeout 与 HTTP 家族的映射稳定。
+  - 已新增 Dart 回归：验证 typed timeout、typed HTTP 4xx、typed internal 映射，以及 legacy 字符串前缀兼容路径。
+  - 本地验证通过：`flutter analyze`、`flutter test`、`cargo test -q`。
+- 结论：
+  - 该项 P1 风险已关闭。
+  - 现有残余兼容逻辑只作为过渡保护；后续若 bridge 已全面升级，可再评估是否移除 legacy 字符串分支。
 
 ### 8. 中：公开的请求 hint 字段几乎没有实际作用，容易制造错误预期
 

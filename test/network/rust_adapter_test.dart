@@ -112,7 +112,7 @@ void main() {
       expect(response.fromCache, isTrue);
     });
 
-    test('maps rust timeout error as fallback eligible', () async {
+    test('maps typed rust timeout error as fallback eligible', () async {
       final fakeBridge = _FakeRustBridgeApi(
         requestResponder: (spec) async {
           return rust_api.ResponseMeta(
@@ -123,7 +123,8 @@ void main() {
             bodyFilePath: null,
             fromCache: false,
             costMs: 1,
-            error: 'timeout: request timeout',
+            errorKind: rust_api.NetErrorKind.timeout,
+            error: 'request timeout',
           );
         },
       );
@@ -145,7 +146,42 @@ void main() {
       );
     });
 
-    test('maps rust internal error as non-fallback internal', () async {
+    test('maps typed rust http error with status code', () async {
+      final fakeBridge = _FakeRustBridgeApi(
+        requestResponder: (spec) async {
+          return rust_api.ResponseMeta(
+            requestId: spec.requestId,
+            statusCode: 429,
+            headers: const [],
+            bodyInline: null,
+            bodyFilePath: null,
+            fromCache: false,
+            costMs: 1,
+            errorKind: rust_api.NetErrorKind.http4Xx,
+            error: 'upstream rate limit reached',
+          );
+        },
+      );
+      final adapter = RustAdapter(bridgeApi: fakeBridge);
+      await adapter.initializeEngine();
+
+      expect(
+        adapter.request(const NetRequest(method: 'GET', url: 'https://a.com')),
+        throwsA(
+          isA<NetException>()
+              .having((error) => error.code, 'code', NetErrorCode.http4xx)
+              .having((error) => error.statusCode, 'statusCode', 429)
+              .having(
+                (error) => error.fallbackEligible,
+                'fallbackEligible',
+                isFalse,
+              )
+              .having((error) => error.requestId, 'requestId', isNotNull),
+        ),
+      );
+    });
+
+    test('maps typed rust internal error as non-fallback internal', () async {
       final fakeBridge = _FakeRustBridgeApi(
         requestResponder: (spec) async {
           return rust_api.ResponseMeta(
@@ -156,7 +192,8 @@ void main() {
             bodyFilePath: null,
             fromCache: false,
             costMs: 1,
-            error: 'internal: scheduler closed',
+            errorKind: rust_api.NetErrorKind.internal,
+            error: 'scheduler closed',
           );
         },
       );
@@ -172,6 +209,40 @@ void main() {
                 (error) => error.fallbackEligible,
                 'fallbackEligible',
                 isFalse,
+              )
+              .having((error) => error.requestId, 'requestId', isNotNull),
+        ),
+      );
+    });
+
+    test('keeps legacy string-prefix mapping as compatibility fallback',
+        () async {
+      final fakeBridge = _FakeRustBridgeApi(
+        requestResponder: (spec) async {
+          return rust_api.ResponseMeta(
+            requestId: spec.requestId,
+            statusCode: 0,
+            headers: const [],
+            bodyInline: null,
+            bodyFilePath: null,
+            fromCache: false,
+            costMs: 1,
+            error: 'dns: lookup failed',
+          );
+        },
+      );
+      final adapter = RustAdapter(bridgeApi: fakeBridge);
+      await adapter.initializeEngine();
+
+      expect(
+        adapter.request(const NetRequest(method: 'GET', url: 'https://a.com')),
+        throwsA(
+          isA<NetException>()
+              .having((error) => error.code, 'code', NetErrorCode.dns)
+              .having(
+                (error) => error.fallbackEligible,
+                'fallbackEligible',
+                isTrue,
               )
               .having((error) => error.requestId, 'requestId', isNotNull),
         ),
@@ -222,7 +293,8 @@ void main() {
       expect(fakeBridge.initCalls, 1);
     });
 
-    test('adds rebuild hint when rust init reports bridge payload mismatch', () {
+    test('adds rebuild hint when rust init reports bridge payload mismatch',
+        () {
       final fakeBridge = _FakeRustBridgeApi(
         initError: Exception(
           'PanicException(called `Result::unwrap()` on an `Err` value: '
@@ -337,11 +409,11 @@ class _FakeRustBridgeApi implements RustBridgeApi {
   rust_api.NetEngineConfig? lastInitConfig;
   final Exception? initError;
   final Future<rust_api.ResponseMeta> Function(rust_api.RequestSpec spec)?
-  requestResponder;
+      requestResponder;
   final Future<String> Function(rust_api.TransferTaskSpec spec)?
-  startTransferResponder;
+      startTransferResponder;
   final Future<List<rust_api.NetEvent>> Function(int limit)?
-  pollEventsResponder;
+      pollEventsResponder;
   final Future<bool> Function(String id)? cancelResponder;
   final Future<int> Function(String? namespace)? clearCacheResponder;
 

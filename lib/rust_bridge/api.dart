@@ -7,7 +7,7 @@ import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `get_engine`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 Future<void> initNetEngine({required NetEngineConfig config}) =>
     RustLib.instance.api.crateApiInitNetEngine(config: config);
@@ -99,6 +99,19 @@ class NetEngineConfig {
           userAgent == other.userAgent;
 }
 
+enum NetErrorKind {
+  timeout,
+  dns,
+  tls,
+  http4Xx,
+  http5Xx,
+  canceled,
+  parse,
+  io,
+  internal,
+  ;
+}
+
 class NetEvent {
   final String id;
   final NetEventKind kind;
@@ -142,7 +155,15 @@ class NetEvent {
           costMs == other.costMs;
 }
 
-enum NetEventKind { queued, started, progress, completed, failed, canceled }
+enum NetEventKind {
+  queued,
+  started,
+  progress,
+  completed,
+  failed,
+  canceled,
+  ;
+}
 
 class RequestSpec {
   final String requestId;
@@ -207,6 +228,7 @@ class ResponseMeta {
   final String? bodyFilePath;
   final bool fromCache;
   final int costMs;
+  final NetErrorKind? errorKind;
   final String? error;
 
   const ResponseMeta({
@@ -217,6 +239,7 @@ class ResponseMeta {
     this.bodyFilePath,
     required this.fromCache,
     required this.costMs,
+    this.errorKind,
     this.error,
   });
 
@@ -229,6 +252,7 @@ class ResponseMeta {
       bodyFilePath.hashCode ^
       fromCache.hashCode ^
       costMs.hashCode ^
+      errorKind.hashCode ^
       error.hashCode;
 
   @override
@@ -243,6 +267,7 @@ class ResponseMeta {
           bodyFilePath == other.bodyFilePath &&
           fromCache == other.fromCache &&
           costMs == other.costMs &&
+          errorKind == other.errorKind &&
           error == other.error;
 }
 
