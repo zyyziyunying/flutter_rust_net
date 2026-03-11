@@ -113,12 +113,12 @@ void main() {
     });
 
     test(
-      'forwards the rust transport hints that have runtime effects',
+      'forwards expectLargeResponse and keeps normal request priority',
       () async {
         final fakeBridge = _FakeRustBridgeApi(
           requestResponder: (spec) async {
             expect(spec.expectLargeResponse, isTrue);
-            expect(spec.priority, 0);
+            expect(spec.priority, 1);
             return rust_api.ResponseMeta(
               requestId: spec.requestId,
               statusCode: 200,
@@ -139,9 +139,6 @@ void main() {
             method: 'GET',
             url: 'https://example.com/large.bin',
             expectLargeResponse: true,
-            isTransferTask: true,
-            isJitterSensitive: true,
-            contentLengthHint: 4096,
           ),
         );
 
@@ -372,6 +369,7 @@ void main() {
             expect(spec.url, 'https://example.com/file.bin');
             expect(spec.localPath, '/tmp/file.bin');
             expect(spec.expectedTotal, BigInt.from(2048));
+            expect(spec.priority, 7);
             return spec.taskId;
           },
           pollEventsResponder: (limit) async {
@@ -403,6 +401,7 @@ void main() {
             url: 'https://example.com/file.bin',
             localPath: '/tmp/file.bin',
             expectedTotal: 2048,
+            priority: 7,
           ),
         );
         final events = await adapter.pollTransferEvents(limit: 8);

@@ -54,8 +54,8 @@ enum NetErrorCode {
 /// Unified request model for gateway-driven network calls.
 ///
 /// Channel routing currently only considers [forceChannel] plus the gateway's
-/// feature flag state. The remaining hint fields are transport metadata or
-/// reserved for future heuristics.
+/// feature flag state. [expectLargeResponse] is a Rust transport hint and does
+/// not affect routing.
 class NetRequest {
   final String method;
   final String url;
@@ -74,23 +74,6 @@ class NetRequest {
   /// file-backed response storage for large bodies. It does not affect routing.
   final bool expectLargeResponse;
 
-  /// Reserved for future scheduling heuristics.
-  ///
-  /// This flag currently does not affect routing or adapter behavior.
-  final bool isJitterSensitive;
-
-  /// Rust transport hint only.
-  ///
-  /// When this request executes on the Rust channel, the adapter maps it to a
-  /// lower scheduler priority for transfer-like work. Prefer
-  /// [NetTransferTaskRequest] for real transfer tasks.
-  final bool isTransferTask;
-
-  /// Reserved for future routing or transport heuristics.
-  ///
-  /// This value currently does not affect routing or adapter behavior.
-  final int? contentLengthHint;
-
   /// Explicit per-request routing override.
   ///
   /// This is the only request field currently consulted by the routing policy.
@@ -104,9 +87,6 @@ class NetRequest {
     this.body,
     this.bodyBytes,
     this.expectLargeResponse = false,
-    this.isJitterSensitive = false,
-    this.isTransferTask = false,
-    this.contentLengthHint,
     this.forceChannel,
   }) : assert(
          body == null || bodyBytes == null,
@@ -124,9 +104,6 @@ class NetRequest {
       body: body,
       bodyBytes: bodyBytes,
       expectLargeResponse: expectLargeResponse,
-      isJitterSensitive: isJitterSensitive,
-      isTransferTask: isTransferTask,
-      contentLengthHint: contentLengthHint,
       forceChannel: forceChannel,
     );
   }

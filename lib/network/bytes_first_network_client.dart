@@ -185,9 +185,8 @@ class BytesFirstNetworkClient {
   /// Sends a regular request through the gateway.
   ///
   /// Routing currently only uses [forceChannel] and the client's feature flag.
-  /// [expectLargeResponse] and [isTransferTask] are Rust transport hints.
-  /// [isJitterSensitive] and [contentLengthHint] are reserved metadata and do
-  /// not currently affect routing or adapter behavior.
+  /// [expectLargeResponse] is a Rust transport hint and does not affect
+  /// routing.
   Future<NetResponse> request({
     required NetHttpMethod method,
     required String url,
@@ -196,9 +195,6 @@ class BytesFirstNetworkClient {
     Object? body,
     List<int>? bodyBytes,
     bool expectLargeResponse = false,
-    bool isJitterSensitive = false,
-    bool isTransferTask = false,
-    int? contentLengthHint,
     NetChannel? forceChannel,
   }) {
     return requestRaw(
@@ -210,9 +206,6 @@ class BytesFirstNetworkClient {
         body: body,
         bodyBytes: bodyBytes,
         expectLargeResponse: expectLargeResponse,
-        isJitterSensitive: isJitterSensitive,
-        isTransferTask: isTransferTask,
-        contentLengthHint: contentLengthHint,
         forceChannel: forceChannel,
       ),
       forceChannel: forceChannel,

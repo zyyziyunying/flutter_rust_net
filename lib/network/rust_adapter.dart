@@ -53,9 +53,9 @@ class RustAdapter implements NetAdapter {
     bool initialized = false,
     RustRequestHandler? requestHandler,
     RustBridgeApi? bridgeApi,
-  })  : _initialized = initialized,
-        _requestHandler = requestHandler,
-        _bridgeApi = bridgeApi ?? FrbRustBridgeApi();
+  }) : _initialized = initialized,
+       _requestHandler = requestHandler,
+       _bridgeApi = bridgeApi ?? FrbRustBridgeApi();
 
   @override
   bool get isReady => _initialized;
@@ -224,8 +224,9 @@ class RustAdapter implements NetAdapter {
       requestId: _nextRequestId(),
       method: request.method,
       path: path,
-      query:
-          mergedQuery.entries.map((entry) => (entry.key, entry.value)).toList(),
+      query: mergedQuery.entries
+          .map((entry) => (entry.key, entry.value))
+          .toList(),
       headers: request.headers.entries
           .map((entry) => (entry.key, entry.value))
           .toList(),
@@ -237,7 +238,7 @@ class RustAdapter implements NetAdapter {
       bodyFilePath: null,
       expectLargeResponse: request.expectLargeResponse,
       saveToFilePath: null,
-      priority: request.isTransferTask ? 0 : 1,
+      priority: 1,
     );
   }
 
@@ -253,8 +254,9 @@ class RustAdapter implements NetAdapter {
           .map((entry) => (entry.key, entry.value))
           .toList(),
       localPath: request.localPath,
-      resumeFrom:
-          request.resumeFrom == null ? null : BigInt.from(request.resumeFrom!),
+      resumeFrom: request.resumeFrom == null
+          ? null
+          : BigInt.from(request.resumeFrom!),
       expectedTotal: request.expectedTotal == null
           ? null
           : BigInt.from(request.expectedTotal!),
@@ -279,8 +281,9 @@ class RustAdapter implements NetAdapter {
     final headers = <String, String>{};
     for (final header in response.headers) {
       final previous = headers[header.$1];
-      headers[header.$1] =
-          previous == null ? header.$2 : '$previous,${header.$2}';
+      headers[header.$1] = previous == null
+          ? header.$2
+          : '$previous,${header.$2}';
     }
 
     return NetResponse(
@@ -387,8 +390,9 @@ class RustAdapter implements NetAdapter {
     int? statusCode,
     String? requestId,
   }) {
-    final parsedStatusCode =
-        statusCode == null || statusCode == 0 ? null : statusCode;
+    final parsedStatusCode = statusCode == null || statusCode == 0
+        ? null
+        : statusCode;
     switch (kind) {
       case rust_api.NetErrorKind.timeout:
         return NetException(
@@ -528,8 +532,9 @@ class RustAdapter implements NetAdapter {
       );
     }
 
-    var parsedStatusCode =
-        statusCode == null || statusCode == 0 ? null : statusCode;
+    var parsedStatusCode = statusCode == null || statusCode == 0
+        ? null
+        : statusCode;
     if (parsedStatusCode == null) {
       final match = RegExp(r'^http\s+(\d{3})[:\s]').firstMatch(normalized);
       if (match != null) {

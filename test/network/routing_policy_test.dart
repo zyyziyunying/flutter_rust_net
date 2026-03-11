@@ -36,10 +36,7 @@ void main() {
         const NetRequest(
           method: 'GET',
           url: 'https://example.com/api/v1/jitter',
-          isTransferTask: true,
           expectLargeResponse: true,
-          contentLengthHint: 2048,
-          isJitterSensitive: true,
         ),
         const NetFeatureFlag(enableRustChannel: true),
       );

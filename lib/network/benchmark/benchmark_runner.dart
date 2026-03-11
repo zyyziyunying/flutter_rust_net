@@ -271,7 +271,8 @@ NetRequest _buildRequest({
   final uri = Uri.parse('$baseUrl${config.scenario.path}').replace(
     queryParameters: query.map((key, value) => MapEntry(key, value.toString())),
   );
-  final isLarge = config.scenario == BenchmarkScenario.largePayload ||
+  final isLarge =
+      config.scenario == BenchmarkScenario.largePayload ||
       config.scenario == BenchmarkScenario.largeJson;
   final headers = includeBenchChannelHeader
       ? <String, String>{scenarioBenchChannelHeader: channel.cliName}
@@ -282,7 +283,6 @@ NetRequest _buildRequest({
     url: uri.toString(),
     headers: headers,
     expectLargeResponse: isLarge,
-    contentLengthHint: isLarge ? config.largePayloadBytes : null,
     forceChannel: channel.netChannel,
   );
 }
