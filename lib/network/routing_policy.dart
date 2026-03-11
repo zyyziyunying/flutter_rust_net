@@ -11,6 +11,9 @@ class RoutingDecision {
 class RoutingPolicy {
   const RoutingPolicy();
 
+  /// Selects a channel using only [NetRequest.forceChannel] and the Rust
+  /// feature flag. Other request hints are transport metadata and are ignored
+  /// here.
   RoutingDecision decide(NetRequest request, NetFeatureFlag featureFlag) {
     if (request.forceChannel != null) {
       return RoutingDecision(

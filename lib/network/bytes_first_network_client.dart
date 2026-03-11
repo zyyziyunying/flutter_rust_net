@@ -103,9 +103,9 @@ class JsonModelDecoder<T> implements NetBodyDecoder<T> {
     bool requireJsonContentType = false,
     bool allowMalformedUtf8 = false,
   }) : _jsonDecoder = JsonBodyDecoder(
-          requireJsonContentType: requireJsonContentType,
-          allowMalformedUtf8: allowMalformedUtf8,
-        );
+         requireJsonContentType: requireJsonContentType,
+         allowMalformedUtf8: allowMalformedUtf8,
+       );
 
   @override
   Future<T> decode(Uint8List bodyBytes, {required NetResponse response}) async {
@@ -182,6 +182,12 @@ class BytesFirstNetworkClient {
     return adapter is DioAdapter ? adapter : null;
   }
 
+  /// Sends a regular request through the gateway.
+  ///
+  /// Routing currently only uses [forceChannel] and the client's feature flag.
+  /// [expectLargeResponse] and [isTransferTask] are Rust transport hints.
+  /// [isJitterSensitive] and [contentLengthHint] are reserved metadata and do
+  /// not currently affect routing or adapter behavior.
   Future<NetResponse> request({
     required NetHttpMethod method,
     required String url,

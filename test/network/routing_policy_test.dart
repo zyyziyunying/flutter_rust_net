@@ -31,7 +31,7 @@ void main() {
       expect(decision.reason, 'rust_enabled');
     });
 
-    test('routes to rust for request tags when switch is enabled', () {
+    test('ignores non-routing hints when deciding the channel', () {
       final decision = policy.decide(
         const NetRequest(
           method: 'GET',

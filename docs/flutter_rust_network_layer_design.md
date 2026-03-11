@@ -60,6 +60,8 @@ Flutter UI / Repository / UseCase
 - 负责总开关与强制通道的判定。
 - `enableRustChannel=true` 时默认走 Rust，`enableRustChannel=false` 时默认走 Dio。
 - 支持强制通道（用于实验、压测、线上排障）。
+- 当前只有 `forceChannel` 和 `enableRustChannel` 会参与路由决策。
+- `expectLargeResponse`、`isTransferTask` 属于 Rust 传输 hint；`isJitterSensitive`、`contentLengthHint` 目前仅保留为未来扩展位，不影响当前路由。
 
 ### 3.4 DioAdapter
 - 承担常规 API 请求通道。

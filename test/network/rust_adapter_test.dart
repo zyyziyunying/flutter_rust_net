@@ -112,6 +112,44 @@ void main() {
       expect(response.fromCache, isTrue);
     });
 
+    test(
+      'forwards the rust transport hints that have runtime effects',
+      () async {
+        final fakeBridge = _FakeRustBridgeApi(
+          requestResponder: (spec) async {
+            expect(spec.expectLargeResponse, isTrue);
+            expect(spec.priority, 0);
+            return rust_api.ResponseMeta(
+              requestId: spec.requestId,
+              statusCode: 200,
+              headers: const [('content-type', 'application/octet-stream')],
+              bodyInline: Uint8List.fromList(const [1, 2, 3]),
+              bodyFilePath: null,
+              fromCache: false,
+              costMs: 3,
+              error: null,
+            );
+          },
+        );
+        final adapter = RustAdapter(bridgeApi: fakeBridge);
+        await adapter.initializeEngine();
+
+        final response = await adapter.request(
+          const NetRequest(
+            method: 'GET',
+            url: 'https://example.com/large.bin',
+            expectLargeResponse: true,
+            isTransferTask: true,
+            isJitterSensitive: true,
+            contentLengthHint: 4096,
+          ),
+        );
+
+        expect(response.channel, NetChannel.rust);
+        expect(response.statusCode, 200);
+      },
+    );
+
     test('maps typed rust timeout error as fallback eligible', () async {
       final fakeBridge = _FakeRustBridgeApi(
         requestResponder: (spec) async {
@@ -215,39 +253,43 @@ void main() {
       );
     });
 
-    test('keeps legacy string-prefix mapping as compatibility fallback',
-        () async {
-      final fakeBridge = _FakeRustBridgeApi(
-        requestResponder: (spec) async {
-          return rust_api.ResponseMeta(
-            requestId: spec.requestId,
-            statusCode: 0,
-            headers: const [],
-            bodyInline: null,
-            bodyFilePath: null,
-            fromCache: false,
-            costMs: 1,
-            error: 'dns: lookup failed',
-          );
-        },
-      );
-      final adapter = RustAdapter(bridgeApi: fakeBridge);
-      await adapter.initializeEngine();
+    test(
+      'keeps legacy string-prefix mapping as compatibility fallback',
+      () async {
+        final fakeBridge = _FakeRustBridgeApi(
+          requestResponder: (spec) async {
+            return rust_api.ResponseMeta(
+              requestId: spec.requestId,
+              statusCode: 0,
+              headers: const [],
+              bodyInline: null,
+              bodyFilePath: null,
+              fromCache: false,
+              costMs: 1,
+              error: 'dns: lookup failed',
+            );
+          },
+        );
+        final adapter = RustAdapter(bridgeApi: fakeBridge);
+        await adapter.initializeEngine();
 
-      expect(
-        adapter.request(const NetRequest(method: 'GET', url: 'https://a.com')),
-        throwsA(
-          isA<NetException>()
-              .having((error) => error.code, 'code', NetErrorCode.dns)
-              .having(
-                (error) => error.fallbackEligible,
-                'fallbackEligible',
-                isTrue,
-              )
-              .having((error) => error.requestId, 'requestId', isNotNull),
-        ),
-      );
-    });
+        expect(
+          adapter.request(
+            const NetRequest(method: 'GET', url: 'https://a.com'),
+          ),
+          throwsA(
+            isA<NetException>()
+                .having((error) => error.code, 'code', NetErrorCode.dns)
+                .having(
+                  (error) => error.fallbackEligible,
+                  'fallbackEligible',
+                  isTrue,
+                )
+                .having((error) => error.requestId, 'requestId', isNotNull),
+          ),
+        );
+      },
+    );
 
     test('maps unknown rust error as non-fallback internal', () async {
       final fakeBridge = _FakeRustBridgeApi(
@@ -293,8 +335,7 @@ void main() {
       expect(fakeBridge.initCalls, 1);
     });
 
-    test('adds rebuild hint when rust init reports bridge payload mismatch',
-        () {
+    test('adds rebuild hint when rust init reports bridge payload mismatch', () {
       final fakeBridge = _FakeRustBridgeApi(
         initError: Exception(
           'PanicException(called `Result::unwrap()` on an `Err` value: '
@@ -409,11 +450,11 @@ class _FakeRustBridgeApi implements RustBridgeApi {
   rust_api.NetEngineConfig? lastInitConfig;
   final Exception? initError;
   final Future<rust_api.ResponseMeta> Function(rust_api.RequestSpec spec)?
-      requestResponder;
+  requestResponder;
   final Future<String> Function(rust_api.TransferTaskSpec spec)?
-      startTransferResponder;
+  startTransferResponder;
   final Future<List<rust_api.NetEvent>> Function(int limit)?
-      pollEventsResponder;
+  pollEventsResponder;
   final Future<bool> Function(String id)? cancelResponder;
   final Future<int> Function(String? namespace)? clearCacheResponder;
 
