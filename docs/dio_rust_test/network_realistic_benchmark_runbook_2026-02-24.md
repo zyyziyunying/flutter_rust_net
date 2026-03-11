@@ -1,10 +1,12 @@
 ---
-title: Dio vs Rust 网络测试执行手册（2026-02-24，v3）
+title: Dio vs Rust 网络测试执行手册（2026-02-24 起，补记至 2026-03-11，v4）
 ---
 
-# Dio vs Rust 网络测试执行手册（2026-02-24，v3）
+# Dio vs Rust 网络测试执行手册（2026-02-24 起，补记至 2026-03-11，v4）
 
 > 适用范围（2026-02-25 拆分后）：网络相关命令统一在 `flutter_rust_net` 执行；目标是快速、稳定地跑出可对比结论，并指导路由策略。
+>
+> 2026-03-11 补记：保留历史基准执行手册主体不变；当前补充重点放在“公网 `--base-url` 可用”“归档命名 / 额外字段 / 回执口径”三件事。
 
 ## 0) 当前已知结果（基于 2026-02-24 更新轮次）
 
@@ -124,30 +126,50 @@ dart run tool/network_bench.dart --scenario=jitter_latency --channels=dio,rust -
 
 ---
 
-## 8) 真机结果归档（2026-02-28 更新）
+## 8) 真机结果归档（2026-03-11 更新）
 
-已确认日志上传入口：
+当前已确认的服务口径：
 
 1. `baseUrl=http://47.110.52.208:7777`
 2. `upload endpoint=/upload`
-3. 登录接口：`POST /user/login`（示例 App 上传前会先登录，再以请求头 `token: <actual-token>` 上传）
+3. 登录接口：`POST /user/login`
+4. 当前探测结果：
+   - `GET /healthz -> 200`
+   - `GET /bench/small-json?id=1 -> 200`
+   - 未登录 `POST /upload -> 401`
 
 真机侧可直接使用 `flutter_rust_net/example` 的 **Upload last report** 按钮上传。
+但要注意：当前示例 App 预设默认仍产出 loopback 报告；若要归档“当前公网服务”报告，应优先使用 `tool/network_bench.dart --base-url=...` 生成 JSON，或自行扩展 example 暴露 `scenarioBaseUrl`。
 
 建议使用 `flutter_rust_net/tool/upload_bench_log.dart` 归档 benchmark JSON：
 
-```bash
+```powershell
+$runId=$(Get-Date -Format "yyyyMMdd_HHmm")
+$day=$(Get-Date -Format "yyyyMMdd")
+$networkProfile="wifi"
+$device="android_real"
+$linkType="public_remote"
+$archivePrefix="flutter_rust_net/$day/$networkProfile/$device/$runId"
+
 # 单文件上传
-dart run tool/upload_bench_log.dart --input=build/bench_jitter.json --extra-field=project=flutter_rust_net --extra-field=network_profile=wifi
+dart run tool/upload_bench_log.dart --input=build/bench_jitter.json --base-url=http://47.110.52.208:7777 --endpoint=/upload --remote-prefix=$archivePrefix --extra-field=project=flutter_rust_net --extra-field=run_id=$runId --extra-field=network_profile=$networkProfile --extra-field=device=$device --extra-field=link_type=$linkType
 
 # 目录批量上传（默认递归，默认过滤 json/log/txt）
-dart run tool/upload_bench_log.dart --input=build/p1_jitter/20260225_1448 --ext=json --extra-field=session=20260228 --extra-field=device=android_real
+dart run tool/upload_bench_log.dart --input=build/p1_jitter/20260225_1448 --ext=json --base-url=http://47.110.52.208:7777 --endpoint=/upload --remote-prefix=$archivePrefix --extra-field=project=flutter_rust_net --extra-field=run_id=$runId --extra-field=network_profile=$networkProfile --extra-field=device=$device --extra-field=link_type=$linkType
 
-# 如需鉴权头
-dart run tool/upload_bench_log.dart --input=build/bench_small.json --header=Authorization:Bearer <token>
+# 建议优先使用 token 头；Authorization 兼容保留
+dart run tool/upload_bench_log.dart --input=build/bench_small.json --base-url=http://47.110.52.208:7777 --endpoint=/upload --remote-prefix=$archivePrefix --extra-field=project=flutter_rust_net --extra-field=run_id=$runId --extra-field=network_profile=$networkProfile --extra-field=device=$device --extra-field=link_type=$linkType --header=token:<actual-token>
 ```
 
-> 说明：若服务端字段名不是 `file`，可通过 `--field-name=<name>` 覆盖。
+归档建议：
+
+1. 目录层级优先使用 `--remote-prefix`，推荐格式：`flutter_rust_net/<YYYYMMDD>/<network_profile>/<device>/<run_id>`。
+2. 最少额外字段：`project`、`run_id`、`network_profile`、`device`、`link_type`。
+3. `network_profile` 建议只用固定枚举：`wifi` / `4g` / `weaknet` / `ethernet`。
+4. `link_type` 建议只用固定枚举：`loopback` / `public_remote`。
+5. 若服务端字段名不是 `file`，可通过 `--field-name=<name>` 覆盖。
+6. 上传成功以 **HTTP 2xx** 为准；`upload_bench_log.dart` 输出里的 `status / costMs / response=<preview>` 视作本轮客户端回执，建议一并记入测试记录。
+7. 未登录返回 `401` 时，应先排查 token / 登录态，不应直接判定上传服务失效。
 
 ---
 
