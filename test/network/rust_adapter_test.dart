@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -321,16 +322,307 @@ void main() {
       );
     });
 
-    test('treats already initialized init error as success', () async {
-      final fakeBridge = _FakeRustBridgeApi(
-        initError: Exception('AnyhowException(NetEngine already initialized)'),
-      );
+    test('allows same adapter reinitialization when config matches', () async {
+      final fakeBridge = _FakeRustBridgeApi();
       final adapter = RustAdapter(bridgeApi: fakeBridge);
+      const options = RustEngineInitOptions(cacheDefaultTtlSeconds: 12);
 
-      await adapter.initializeEngine();
+      await adapter.initializeEngine(options: options);
+      await adapter.initializeEngine(options: options);
+
       expect(adapter.isInitialized, isTrue);
       expect(fakeBridge.initCalls, 1);
     });
+
+    test('rejects conflicting reinitialization on same adapter', () async {
+      final fakeBridge = _FakeRustBridgeApi();
+      final adapter = RustAdapter(bridgeApi: fakeBridge);
+
+      await adapter.initializeEngine(
+        options: const RustEngineInitOptions(cacheDefaultTtlSeconds: 12),
+      );
+
+      await expectLater(
+        adapter.initializeEngine(
+          options: const RustEngineInitOptions(cacheDefaultTtlSeconds: 30),
+        ),
+        throwsA(
+          isA<NetException>()
+              .having(
+                (error) => error.code,
+                'code',
+                NetErrorCode.infrastructure,
+              )
+              .having(
+                (error) => error.fallbackEligible,
+                'fallbackEligible',
+                isFalse,
+              )
+              .having(
+                (error) => error.message,
+                'message',
+                contains('cacheDefaultTtlSeconds=12 -> 30'),
+              ),
+        ),
+      );
+      expect(fakeBridge.initCalls, 1);
+    });
+
+    test('coalesces concurrent initialization when config matches', () async {
+      final gate = Completer<void>();
+      final fakeBridge = _FakeRustBridgeApi(
+        initResponder: (config) async {
+          await gate.future;
+        },
+      );
+      final firstAdapter = RustAdapter(bridgeApi: fakeBridge);
+      final secondAdapter = RustAdapter(bridgeApi: fakeBridge);
+      const options = RustEngineInitOptions(cacheDefaultTtlSeconds: 12);
+
+      final firstInit = firstAdapter.initializeEngine(options: options);
+      final secondInit = secondAdapter.initializeEngine(options: options);
+
+      await Future<void>.delayed(Duration.zero);
+      expect(fakeBridge.initCalls, 1);
+
+      gate.complete();
+      await Future.wait([firstInit, secondInit]);
+
+      expect(firstAdapter.isInitialized, isTrue);
+      expect(secondAdapter.isInitialized, isTrue);
+      expect(fakeBridge.initCalls, 1);
+    });
+
+    test(
+      'rejects conflicting concurrent initialization before second init attempt',
+      () async {
+        final gate = Completer<void>();
+        final fakeBridge = _FakeRustBridgeApi(
+          initResponder: (config) async {
+            await gate.future;
+          },
+        );
+        final firstAdapter = RustAdapter(bridgeApi: fakeBridge);
+        final secondAdapter = RustAdapter(bridgeApi: fakeBridge);
+
+        final firstInit = firstAdapter.initializeEngine(
+          options: const RustEngineInitOptions(cacheDefaultTtlSeconds: 12),
+        );
+        final secondInit = secondAdapter.initializeEngine(
+          options: const RustEngineInitOptions(cacheDefaultTtlSeconds: 30),
+        );
+
+        await expectLater(
+          secondInit,
+          throwsA(
+            isA<NetException>()
+                .having(
+                  (error) => error.code,
+                  'code',
+                  NetErrorCode.infrastructure,
+                )
+                .having(
+                  (error) => error.fallbackEligible,
+                  'fallbackEligible',
+                  isFalse,
+                )
+                .having(
+                  (error) => error.message,
+                  'message',
+                  contains('cacheDefaultTtlSeconds=12 -> 30'),
+                ),
+          ),
+        );
+
+        gate.complete();
+        await firstInit;
+
+        expect(firstAdapter.isInitialized, isTrue);
+        expect(secondAdapter.isInitialized, isFalse);
+        expect(fakeBridge.initCalls, 1);
+      },
+    );
+
+    test('allows already initialized branch when config matches', () async {
+      var initAttempt = 0;
+      final fakeBridge = _FakeRustBridgeApi(
+        initResponder: (config) async {
+          initAttempt += 1;
+          if (initAttempt >= 2) {
+            throw Exception('AnyhowException(NetEngine already initialized)');
+          }
+        },
+      );
+      final firstAdapter = RustAdapter(bridgeApi: fakeBridge);
+      final secondAdapter = RustAdapter(bridgeApi: fakeBridge);
+      const options = RustEngineInitOptions(cacheDefaultTtlSeconds: 12);
+
+      await firstAdapter.initializeEngine(options: options);
+      await secondAdapter.initializeEngine(options: options);
+
+      expect(firstAdapter.isInitialized, isTrue);
+      expect(secondAdapter.isInitialized, isTrue);
+      expect(fakeBridge.initCalls, 2);
+    });
+
+    test(
+      'rejects conflicting config when bridge reports already initialized',
+      () async {
+        var initAttempt = 0;
+        final fakeBridge = _FakeRustBridgeApi(
+          initResponder: (config) async {
+            initAttempt += 1;
+            if (initAttempt >= 2) {
+              throw Exception('AnyhowException(NetEngine already initialized)');
+            }
+          },
+        );
+        final firstAdapter = RustAdapter(bridgeApi: fakeBridge);
+        final secondAdapter = RustAdapter(bridgeApi: fakeBridge);
+
+        await firstAdapter.initializeEngine(
+          options: const RustEngineInitOptions(cacheDefaultTtlSeconds: 12),
+        );
+
+        await expectLater(
+          secondAdapter.initializeEngine(
+            options: const RustEngineInitOptions(cacheDefaultTtlSeconds: 30),
+          ),
+          throwsA(
+            isA<NetException>()
+                .having(
+                  (error) => error.code,
+                  'code',
+                  NetErrorCode.infrastructure,
+                )
+                .having(
+                  (error) => error.fallbackEligible,
+                  'fallbackEligible',
+                  isFalse,
+                )
+                .having(
+                  (error) => error.message,
+                  'message',
+                  contains('cacheDefaultTtlSeconds=12 -> 30'),
+                ),
+          ),
+        );
+        expect(secondAdapter.isInitialized, isFalse);
+        expect(fakeBridge.initCalls, 2);
+      },
+    );
+
+    test(
+      'allows matching reinitialization when actual config is unknown',
+      () async {
+        final fakeBridge = _FakeRustBridgeApi(
+          initError: Exception(
+            'AnyhowException(NetEngine already initialized)',
+          ),
+        );
+        final adapter = RustAdapter(bridgeApi: fakeBridge);
+        const options = RustEngineInitOptions(cacheDefaultTtlSeconds: 12);
+
+        await adapter.initializeEngine(options: options);
+        await adapter.initializeEngine(options: options);
+        expect(adapter.isInitialized, isTrue);
+        expect(fakeBridge.initCalls, 1);
+      },
+    );
+
+    test(
+      'rejects conflicting config after accepting unknown actual config',
+      () async {
+        final fakeBridge = _FakeRustBridgeApi(
+          initError: Exception(
+            'AnyhowException(NetEngine already initialized)',
+          ),
+        );
+        final firstAdapter = RustAdapter(bridgeApi: fakeBridge);
+        final secondAdapter = RustAdapter(bridgeApi: fakeBridge);
+
+        await firstAdapter.initializeEngine(
+          options: const RustEngineInitOptions(cacheDefaultTtlSeconds: 12),
+        );
+
+        await expectLater(
+          secondAdapter.initializeEngine(
+            options: const RustEngineInitOptions(cacheDefaultTtlSeconds: 30),
+          ),
+          throwsA(
+            isA<NetException>()
+                .having(
+                  (error) => error.code,
+                  'code',
+                  NetErrorCode.infrastructure,
+                )
+                .having(
+                  (error) => error.fallbackEligible,
+                  'fallbackEligible',
+                  isFalse,
+                )
+                .having(
+                  (error) => error.message,
+                  'message',
+                  allOf(
+                    contains('already initialized before Dart could observe'),
+                    contains('cacheDefaultTtlSeconds=12 -> 30'),
+                  ),
+                ),
+          ),
+        );
+
+        expect(firstAdapter.isInitialized, isTrue);
+        expect(secondAdapter.isInitialized, isFalse);
+        expect(fakeBridge.initCalls, 2);
+      },
+    );
+
+    test(
+      'rejects conflicting reinitialization on same adapter when actual config is unknown',
+      () async {
+        final fakeBridge = _FakeRustBridgeApi(
+          initError: Exception(
+            'AnyhowException(NetEngine already initialized)',
+          ),
+        );
+        final adapter = RustAdapter(bridgeApi: fakeBridge);
+
+        await adapter.initializeEngine(
+          options: const RustEngineInitOptions(cacheDefaultTtlSeconds: 12),
+        );
+
+        await expectLater(
+          adapter.initializeEngine(
+            options: const RustEngineInitOptions(cacheDefaultTtlSeconds: 30),
+          ),
+          throwsA(
+            isA<NetException>()
+                .having(
+                  (error) => error.code,
+                  'code',
+                  NetErrorCode.infrastructure,
+                )
+                .having(
+                  (error) => error.fallbackEligible,
+                  'fallbackEligible',
+                  isFalse,
+                )
+                .having(
+                  (error) => error.message,
+                  'message',
+                  allOf(
+                    contains('already initialized before Dart could observe'),
+                    contains('cacheDefaultTtlSeconds=12 -> 30'),
+                  ),
+                ),
+          ),
+        );
+
+        expect(adapter.isInitialized, isTrue);
+        expect(fakeBridge.initCalls, 1);
+      },
+    );
 
     test('adds rebuild hint when rust init reports bridge payload mismatch', () {
       final fakeBridge = _FakeRustBridgeApi(
@@ -448,6 +740,7 @@ class _FakeRustBridgeApi implements RustBridgeApi {
   int clearCacheCalls = 0;
   rust_api.NetEngineConfig? lastInitConfig;
   final Exception? initError;
+  final Future<void> Function(rust_api.NetEngineConfig config)? initResponder;
   final Future<rust_api.ResponseMeta> Function(rust_api.RequestSpec spec)?
   requestResponder;
   final Future<String> Function(rust_api.TransferTaskSpec spec)?
@@ -459,6 +752,7 @@ class _FakeRustBridgeApi implements RustBridgeApi {
 
   _FakeRustBridgeApi({
     this.initError,
+    this.initResponder,
     this.requestResponder,
     this.startTransferResponder,
     this.pollEventsResponder,
@@ -475,6 +769,11 @@ class _FakeRustBridgeApi implements RustBridgeApi {
   Future<void> initNetEngine({required rust_api.NetEngineConfig config}) async {
     initCalls += 1;
     lastInitConfig = config;
+    final responder = initResponder;
+    if (responder != null) {
+      await responder(config);
+      return;
+    }
     if (initError != null) {
       throw initError!;
     }

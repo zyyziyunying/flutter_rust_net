@@ -8,7 +8,7 @@
   - `flutter analyze`
   - `flutter test`
 
-结论先行：截至 2026-03-09，本次审查里已关闭六项高优先级风险：原始 P0（双通道 request body 编码漂移）、后续暴露的 P1（`List<int>` body 语义歧义）、下载 fallback 静默破坏断点续传契约的问题、Dio 下载脏文件污染最终路径的问题、“默认 API 让人误以为 Rust 已启用”的误导性接入路径，以及 Rust 错误分类完全依赖字符串前缀的问题。当前剩余优先处理项主要集中在 transfer 状态管理缺少边界，其次是初始化配置一致性问题。
+结论先行：截至 2026-03-12，本次审查里原始八项已识别问题中，大部分已经闭环，包括：原始 P0（双通道 request body 编码漂移）、后续暴露的 P1（`List<int>` body 语义歧义）、下载 fallback 静默破坏断点续传契约的问题、Dio 下载脏文件污染最终路径的问题、“默认 API 让人误以为 Rust 已启用”的误导性接入路径、Rust 错误分类完全依赖字符串前缀的问题、公开 request hint 字段制造错误预期的问题，以及 Rust 初始化 `already initialized` 分支吞掉配置冲突的问题。当前剩余优先处理项不只一项：除了 transfer 状态管理缺少边界外，Rust 初始化状态还缺少 shutdown/reset 生命周期清理，且默认 `FrbRustBridgeApi` 共享作用域路径仍缺少直接回归测试。
 
 ## 主要问题
 
@@ -170,7 +170,7 @@
   - 该项 P1 风险已关闭。
   - 现有残余兼容逻辑只作为过渡保护；后续若 bridge 已全面升级，可再评估是否移除 legacy 字符串分支。
 
-### 8. 中：公开的请求 hint 字段几乎没有实际作用，容易制造错误预期
+### 8. 已修复（2026-03-11）：公开的请求 hint 字段几乎没有实际作用，容易制造错误预期
 
 - 证据：
   - `lib/network/net_models.dart:54-77`
@@ -185,30 +185,81 @@
   - 业务很容易写出依赖错觉，后期再改真实路由逻辑时也容易发生行为回归。
 - 建议优先级：P2
 
-### 9. 中：Rust 初始化的“already initialized”分支会吞掉配置冲突
+### 9. 已修复（2026-03-11）：Rust 重复初始化/并发初始化已补齐配置一致性校验
+
+- 修复证据：
+  - `lib/network/rust_adapter.dart:72-115`
+  - `lib/network/rust_adapter.dart:610-680`
+  - `test/network/rust_adapter_test.dart:324-449`
+- 修复后实现：
+  - `RustAdapter.initializeEngine(...)` 现在会先把 `RustEngineInitOptions` 归一化成有效的 `NetEngineConfig`，再进入初始化流程。
+  - 首次初始化成功后，Dart 会按 bridge scope 记录已知首配；`FrbRustBridgeApi` 走进程级共享作用域，自定义 bridge 按实例隔离，避免测试或注入场景互相污染。
+  - 同一个 `RustAdapter` 已初始化后再次调用 `initializeEngine(...)` 时，会先比较请求配置与已知首配；一致则直接返回，不一致会抛 `NetException.infrastructure`，并在 message 中列出发生漂移的字段。
+  - 同 scope 下若已有 in-flight 初始化，后续相同配置会复用同一个初始化 future；冲突配置会在 Dart 侧直接失败，不再发起第二次 `initNetEngine(...)`。
+  - 如果 bridge 返回 `already initialized`，Dart 也不再无条件吞掉：已知首配场景会直接比对已知配置；首配未知场景会记录“第一份被接受的请求配置”作为兼容基线，后续只有同配置才能继续通过，冲突配置会显式报错。
+- 验证：
+  - 已新增 Dart 回归，覆盖：
+    - 同配置重复初始化可重入；
+    - 同 adapter 重复初始化但配置冲突会直接失败；
+    - 同 scope 并发初始化时，相同配置会共享同一次初始化；
+    - 同 scope 并发初始化时，冲突配置会在第二次 init 发生前直接失败；
+    - 共享 bridge 命中 `already initialized` 时，一致配置允许通过、冲突配置显式报错；
+    - 首配未知时，会保留兼容入口，但会锁定第一份被接受的请求配置；后续同配置允许通过、冲突配置显式报错。
+  - 本地验证通过：`flutter analyze`、`flutter test`。
+- 结论：
+  - 该项 P2 风险已关闭。
+  - 当前包内通过 `RustAdapter` 管理初始化的接入路径，已不会再在 Dart 侧静默接受后续配置漂移。
+  - 残余边界是：若 Rust engine 在包外已被预先初始化，Dart 当前仍拿不到真实首配，只能把“第一份被接受的请求配置”当作兼容基线；若要彻底封死该场景，需要 Rust 侧进一步暴露当前生效配置或配置指纹。
+
+### 10. 中：Rust 初始化状态缺少 shutdown/reset 生命周期清理
 
 - 证据：
-  - `lib/network/rust_adapter.dart:82-121`
-  - `lib/network/rust_adapter.dart:103-105`
+  - `lib/network/rust_adapter.dart:64-81`
+  - `lib/network/rust_adapter/rust_adapter_init.dart:5-7`
+  - `lib/network/rust_adapter/rust_adapter_init.dart:92-99`
+  - `lib/network/rust_adapter/rust_adapter_init.dart:267-280`
+  - `lib/rust_bridge/api.dart:33-34`
 - 现状：
-  - 如果 Rust 侧返回 `already initialized`，Dart 直接视为成功。
-  - 当前没有校验二次初始化的配置是否与首次一致。
+  - `_RustAdapterInitTracker` 会按 bridge scope 缓存 `knownConfig` / `acceptedConfigWhenActualUnknown`，但没有正式 reset 路径。
+  - `RustAdapter` 自身只保留 `_initialized` 本地状态；请求与再次初始化时都会参考这份本地状态。
+  - 底层 FRB 仍暴露 `shutdownNetEngine()`，但 `RustBridgeApi`/`RustAdapter` 没有配套的 shutdown 生命周期管理。
 - 风险：
-  - 调用方可能以为自己的新配置生效了，实际上被无声忽略。
-  - 这类配置漂移问题在 benchmark、灰度环境和多入口初始化场景下尤其难查。
+  - 如果宿主绕过 `RustAdapter` 直接 shutdown，旧 adapter 可能继续把自己当作 ready。
+  - 外部 shutdown 后继续复用同一个 adapter 时，Dart 侧可能仍受旧 `_initialized` / `knownConfig` 影响，出现“引擎已重置但本地状态未清”的脏状态。
+  - 额外本地 probe 表明：shutdown 后新建新的 adapter 当前可以重新 init；因此风险边界主要落在“旧 adapter 复用”与“缺少受控 reset”，不是“所有 restart 都会失败”。
 - 建议优先级：P2
+
+### 11. 中：默认 `FrbRustBridgeApi` 共享作用域路径仍缺少直接回归
+
+- 证据：
+  - `lib/network/rust_adapter.dart:51-57`
+  - `lib/network/rust_adapter/rust_adapter_init.dart:278-279`
+  - `test/network/rust_adapter_test.dart:371-466`
+  - `test/network/rust_adapter_test.dart:533-623`
+- 现状：
+  - 生产默认路径下，每个 `RustAdapter()` 都会创建新的 `FrbRustBridgeApi()`。
+  - 真正的共享初始化语义依赖 `bridgeApi is FrbRustBridgeApi ? _sharedBridgeConfigScope : bridgeApi` 这条特殊分支。
+  - 现有新增测试主要覆盖“多个 adapter 共用同一个 fake bridge 实例”，没有直接锁住“不同 FRB bridge 实例但共享同一默认 scope”的生产路径。
+- 风险：
+  - 这类测试即使持续为绿，也不足以证明默认生产路径没有被后续重构悄悄破坏。
+  - 当前额外本地 probe 未发现实现 bug，但缺少正式回归意味着这一行为仍可能在后续改动中退化。
+- 建议优先级：P3
 
 ## 当前测试盲区
 
 - transfer 长时间运行、业务不轮询或低频轮询时的内存边界。
-- Rust 错误字符串协议在版本升级后的兼容性约束。
-- Rust 初始化重复调用且配置不一致时的行为。
+- Rust shutdown/reset 与长生命周期 adapter 复用的生命周期边界。
+- 默认 `FrbRustBridgeApi` 共享作用域路径缺少直接回归。
+- Rust typed error 已落地后，legacy 字符串兼容分支在版本升级后的保留策略。
+- 若 Rust engine 被包外路径预先初始化，Dart 侧缺少读取当前生效配置的桥接能力。
 
 ## 建议处理顺序
 
 1. 给 transfer 事件与 task 状态增加上限、过期策略或背压策略。
-2. 把 Rust 错误从字符串协议升级为结构化错误码。
-3. 为 Rust 重复初始化补齐配置一致性校验，避免 `already initialized` 吞掉冲突。
+2. 为 Rust 初始化补一个受控 shutdown/reset 路径，或明确声明不支持 runtime restart。
+3. 把默认 `FrbRustBridgeApi` 共享作用域路径与 shutdown/restart 场景纳入正式回归。
+4. 在 bridge 全量升级后，评估是否收敛或移除 Dart 侧 legacy 错误字符串兼容分支。
+5. 若要覆盖包外预初始化场景，在 Rust bridge 暴露当前生效 `NetEngineConfig` 或配置指纹。
 
 ## 备注
 
