@@ -14,11 +14,14 @@ import 'package:flutter_rust_net/network/rust_adapter.dart';
 void main() {
   group('BytesFirstNetworkClient', () {
     test('standard factory wires default adapters and keeps rust disabled', () {
-      final client = BytesFirstNetworkClient.standard();
+      final client = BytesFirstNetworkClient.standard(
+        baseUrl: 'https://api.example.com',
+      );
 
       expect(client.dioAdapter, isNotNull);
       expect(client.rustAdapter, isNotNull);
       expect(client.gateway.featureFlag.enableRustChannel, isFalse);
+      expect(client.baseUrl, 'https://api.example.com');
     });
 
     test('standard factory rejects rust enablement without ready adapter', () {
@@ -30,54 +33,58 @@ void main() {
       );
     });
 
-    test('standard factory accepts ready rust adapter when explicitly enabled',
-        () {
-      final rustAdapter = RustAdapter(
-        initialized: true,
-        requestHandler: (request) async => NetResponse(
-          statusCode: 200,
-          headers: const <String, String>{},
-          bodyBytes: const <int>[],
-          bridgeBytes: 0,
-          channel: NetChannel.rust,
-          fromFallback: false,
-          costMs: 1,
-        ),
-      );
+    test(
+      'standard factory accepts ready rust adapter when explicitly enabled',
+      () {
+        final rustAdapter = RustAdapter(
+          initialized: true,
+          requestHandler: (request) async => NetResponse(
+            statusCode: 200,
+            headers: const <String, String>{},
+            bodyBytes: const <int>[],
+            bridgeBytes: 0,
+            channel: NetChannel.rust,
+            fromFallback: false,
+            costMs: 1,
+          ),
+        );
 
-      final client = BytesFirstNetworkClient.standard(
-        featureFlag: const NetFeatureFlag(enableRustChannel: true),
-        rustAdapter: rustAdapter,
-      );
+        final client = BytesFirstNetworkClient.standard(
+          featureFlag: const NetFeatureFlag(enableRustChannel: true),
+          rustAdapter: rustAdapter,
+        );
 
-      expect(client.gateway.featureFlag.enableRustChannel, isTrue);
-      expect(client.rustAdapter, same(rustAdapter));
-    });
+        expect(client.gateway.featureFlag.enableRustChannel, isTrue);
+        expect(client.rustAdapter, same(rustAdapter));
+      },
+    );
 
-    test('standardWithRust initializes rust adapter before returning',
-        () async {
-      final rustAdapter = RustAdapter(
-        requestHandler: (request) async => NetResponse(
-          statusCode: 200,
-          headers: const <String, String>{},
-          bodyBytes: const <int>[],
-          bridgeBytes: 0,
-          channel: NetChannel.rust,
-          fromFallback: false,
-          costMs: 1,
-        ),
-      );
+    test(
+      'standardWithRust initializes rust adapter before returning',
+      () async {
+        final rustAdapter = RustAdapter(
+          requestHandler: (request) async => NetResponse(
+            statusCode: 200,
+            headers: const <String, String>{},
+            bodyBytes: const <int>[],
+            bridgeBytes: 0,
+            channel: NetChannel.rust,
+            fromFallback: false,
+            costMs: 1,
+          ),
+        );
 
-      expect(rustAdapter.isReady, isFalse);
+        expect(rustAdapter.isReady, isFalse);
 
-      final client = await BytesFirstNetworkClient.standardWithRust(
-        rustAdapter: rustAdapter,
-      );
+        final client = await BytesFirstNetworkClient.standardWithRust(
+          rustAdapter: rustAdapter,
+        );
 
-      expect(rustAdapter.isReady, isTrue);
-      expect(client.gateway.featureFlag.enableRustChannel, isTrue);
-      expect(client.rustAdapter, same(rustAdapter));
-    });
+        expect(rustAdapter.isReady, isTrue);
+        expect(client.gateway.featureFlag.enableRustChannel, isTrue);
+        expect(client.rustAdapter, same(rustAdapter));
+      },
+    );
 
     test('request helper builds NetRequest from enum method', () async {
       NetRequest? capturedRequest;
@@ -124,6 +131,106 @@ void main() {
       expect(capturedRequest!.url, 'https://example.com/feed');
       expect(capturedRequest!.headers['x-request-id'], 'abc');
     });
+
+    test(
+      'request helper applies client default baseUrl to relative urls',
+      () async {
+        NetRequest? capturedRequest;
+        final client = BytesFirstNetworkClient(
+          baseUrl: 'https://api.example.com/v1',
+          gateway: NetworkGateway(
+            routingPolicy: const RoutingPolicy(),
+            featureFlag: const NetFeatureFlag(enableRustChannel: false),
+            dioAdapter: _FakeAdapter((request, {fromFallback = false}) async {
+              capturedRequest = request;
+              return NetResponse(
+                statusCode: 200,
+                headers: const <String, String>{},
+                bodyBytes: const <int>[],
+                bridgeBytes: 0,
+                channel: NetChannel.dio,
+                fromFallback: fromFallback,
+                costMs: 1,
+              );
+            }),
+            rustAdapter: _FakeAdapter((request, {fromFallback = false}) async {
+              return NetResponse(
+                statusCode: 200,
+                headers: const <String, String>{},
+                bodyBytes: const <int>[],
+                bridgeBytes: 0,
+                channel: NetChannel.rust,
+                fromFallback: fromFallback,
+                costMs: 1,
+              );
+            }),
+          ),
+        );
+
+        await client.request(method: NetHttpMethod.get, url: 'feed/items');
+
+        expect(capturedRequest, isNotNull);
+        expect(capturedRequest!.url, 'https://api.example.com/v1/feed/items');
+        expect(capturedRequest!.baseUrl, 'https://api.example.com/v1');
+      },
+    );
+
+    test(
+      'startTransferTask applies client default baseUrl to relative urls',
+      () async {
+        NetTransferTaskRequest? capturedRequest;
+        final client = BytesFirstNetworkClient(
+          baseUrl: 'https://cdn.example.com/assets',
+          gateway: NetworkGateway(
+            routingPolicy: const RoutingPolicy(),
+            featureFlag: const NetFeatureFlag(enableRustChannel: false),
+            dioAdapter: _FakeAdapter(
+              (request, {fromFallback = false}) async => NetResponse(
+                statusCode: 200,
+                headers: const <String, String>{},
+                bodyBytes: const <int>[],
+                bridgeBytes: 0,
+                channel: NetChannel.dio,
+                fromFallback: fromFallback,
+                costMs: 1,
+              ),
+              startTransferDelegate: (request) async {
+                capturedRequest = request;
+                return request.taskId;
+              },
+            ),
+            rustAdapter: _FakeAdapter((request, {fromFallback = false}) async {
+              return NetResponse(
+                statusCode: 200,
+                headers: const <String, String>{},
+                bodyBytes: const <int>[],
+                bridgeBytes: 0,
+                channel: NetChannel.rust,
+                fromFallback: fromFallback,
+                costMs: 1,
+              );
+            }),
+          ),
+        );
+
+        final result = await client.startTransferTask(
+          const NetTransferTaskRequest(
+            taskId: 'transfer-relative-1',
+            kind: NetTransferKind.download,
+            url: 'images/cat.png',
+            localPath: '/tmp/cat.png',
+          ),
+        );
+
+        expect(result.taskId, 'transfer-relative-1');
+        expect(capturedRequest, isNotNull);
+        expect(
+          capturedRequest!.url,
+          'https://cdn.example.com/assets/images/cat.png',
+        );
+        expect(capturedRequest!.baseUrl, 'https://cdn.example.com/assets');
+      },
+    );
 
     test('decodes inline json bytes into model', () async {
       final payload = utf8.encode('{"id":1,"title":"harry"}');
@@ -261,9 +368,15 @@ BytesFirstNetworkClient _buildClient(NetResponse response) {
 
 class _FakeAdapter implements NetAdapter {
   final Future<NetResponse> Function(NetRequest request, {bool fromFallback})
-      _delegate;
+  _delegate;
+  final Future<String> Function(NetTransferTaskRequest request)?
+  _startTransferDelegate;
 
-  _FakeAdapter(this._delegate);
+  _FakeAdapter(
+    this._delegate, {
+    Future<String> Function(NetTransferTaskRequest request)?
+    startTransferDelegate,
+  }) : _startTransferDelegate = startTransferDelegate;
 
   @override
   bool get isReady => true;
@@ -275,6 +388,10 @@ class _FakeAdapter implements NetAdapter {
 
   @override
   Future<String> startTransferTask(NetTransferTaskRequest request) async {
+    final delegate = _startTransferDelegate;
+    if (delegate != null) {
+      return delegate(request);
+    }
     return request.taskId;
   }
 

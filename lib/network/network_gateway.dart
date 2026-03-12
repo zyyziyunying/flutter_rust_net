@@ -4,6 +4,7 @@ import 'net_adapter.dart';
 import 'net_feature_flag.dart';
 import 'net_models.dart';
 import 'routing_policy.dart';
+import 'url_resolution.dart';
 
 class NetworkGateway {
   static const int _maxTrackedTransferTasks = 256;
@@ -47,9 +48,13 @@ class NetworkGateway {
     NetRequest request, {
     NetChannel? forceChannel,
   }) async {
-    final effectiveRequest = forceChannel == null
+    final channelScopedRequest = forceChannel == null
         ? request
         : request.withForceChannel(forceChannel);
+    final effectiveRequest = resolveNetRequestUrl(
+      channelScopedRequest,
+      requireBaseUrlForRelative: false,
+    );
     final decision = routingPolicy.decide(effectiveRequest, featureFlag);
 
     if (decision.channel == NetChannel.rust) {
@@ -70,9 +75,13 @@ class NetworkGateway {
     NetTransferTaskRequest request, {
     NetChannel? forceChannel,
   }) async {
-    final effectiveRequest = forceChannel == null
+    final channelScopedRequest = forceChannel == null
         ? request
         : request.withForceChannel(forceChannel);
+    final effectiveRequest = resolveNetTransferTaskUrl(
+      channelScopedRequest,
+      requireBaseUrlForRelative: false,
+    );
     final decision = routingPolicy.decide(
       _toTransferProbeRequest(effectiveRequest),
       featureFlag,
@@ -283,6 +292,7 @@ class NetworkGateway {
       NetRequest(
         method: request.method,
         url: request.url,
+        baseUrl: request.baseUrl,
         headers: request.headers,
       ),
     );
@@ -292,6 +302,7 @@ class NetworkGateway {
     return NetRequest(
       method: request.method,
       url: request.url,
+      baseUrl: request.baseUrl,
       headers: request.headers,
       forceChannel: request.forceChannel,
     );

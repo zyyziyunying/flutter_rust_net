@@ -103,6 +103,40 @@ void main() {
       expect(response.requestId, isNotEmpty);
     });
 
+    test('resolves request baseUrl before bridging request path', () async {
+      final fakeBridge = FakeRustBridgeApi(
+        requestResponder: (spec) async {
+          expect(spec.path, 'https://example.com/api/todos/1');
+          expect(spec.query, contains(('lang', 'en')));
+          expect(spec.query, contains(('limit', '10')));
+          return rust_api.ResponseMeta(
+            requestId: spec.requestId,
+            statusCode: 200,
+            headers: const [('content-type', 'application/json')],
+            bodyInline: Uint8List.fromList(const [123, 125]),
+            bodyFilePath: null,
+            fromCache: false,
+            costMs: 7,
+            error: null,
+          );
+        },
+      );
+      final adapter = RustAdapter(bridgeApi: fakeBridge);
+
+      await adapter.initializeEngine();
+      final response = await adapter.request(
+        const NetRequest(
+          method: 'GET',
+          url: 'todos/1?lang=en',
+          baseUrl: 'https://example.com/api',
+          queryParameters: {'limit': 10},
+        ),
+      );
+
+      expect(response.statusCode, 200);
+      expect(response.channel, NetChannel.rust);
+    });
+
     test('passes cache policy options to rust init config', () async {
       final fakeBridge = FakeRustBridgeApi();
       final adapter = RustAdapter(bridgeApi: fakeBridge);

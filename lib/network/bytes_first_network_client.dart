@@ -8,6 +8,7 @@ import 'net_models.dart';
 import 'network_gateway.dart';
 import 'routing_policy.dart';
 import 'rust_adapter.dart';
+import 'url_resolution.dart';
 
 class NetDecodeMetrics {
   final int materializeBodyMs;
@@ -116,8 +117,9 @@ class JsonModelDecoder<T> implements NetBodyDecoder<T> {
 
 class BytesFirstNetworkClient {
   final NetworkGateway gateway;
+  final String baseUrl;
 
-  const BytesFirstNetworkClient({required this.gateway});
+  const BytesFirstNetworkClient({required this.gateway, this.baseUrl = ''});
 
   /// Safe default client: keeps Rust routing disabled until the caller opts in.
   factory BytesFirstNetworkClient.standard({
@@ -126,6 +128,7 @@ class BytesFirstNetworkClient {
       enableRustChannel: false,
       enableFallback: true,
     ),
+    String baseUrl = '',
     DioAdapter? dioAdapter,
     RustAdapter? rustAdapter,
   }) {
@@ -146,6 +149,7 @@ class BytesFirstNetworkClient {
         dioAdapter: resolvedDioAdapter,
         rustAdapter: resolvedRustAdapter,
       ),
+      baseUrl: baseUrl,
     );
   }
 
@@ -153,6 +157,7 @@ class BytesFirstNetworkClient {
   static Future<BytesFirstNetworkClient> standardWithRust({
     RoutingPolicy routingPolicy = const RoutingPolicy(),
     bool enableFallback = true,
+    String baseUrl = '',
     DioAdapter? dioAdapter,
     RustAdapter? rustAdapter,
     RustEngineInitOptions rustInitOptions = const RustEngineInitOptions(),
@@ -167,6 +172,7 @@ class BytesFirstNetworkClient {
         enableRustChannel: true,
         enableFallback: enableFallback,
       ),
+      baseUrl: baseUrl,
       dioAdapter: dioAdapter,
       rustAdapter: resolvedRustAdapter,
     );
@@ -190,6 +196,7 @@ class BytesFirstNetworkClient {
   Future<NetResponse> request({
     required NetHttpMethod method,
     required String url,
+    String? baseUrl,
     Map<String, String> headers = const {},
     Map<String, dynamic> queryParameters = const {},
     Object? body,
@@ -201,6 +208,7 @@ class BytesFirstNetworkClient {
       NetRequest(
         method: method.wireName,
         url: url,
+        baseUrl: baseUrl ?? this.baseUrl,
         headers: headers,
         queryParameters: queryParameters,
         body: body,
@@ -216,14 +224,20 @@ class BytesFirstNetworkClient {
     NetRequest request, {
     NetChannel? forceChannel,
   }) {
-    return gateway.request(request, forceChannel: forceChannel);
+    return gateway.request(
+      _applyDefaultRequestBaseUrl(request),
+      forceChannel: forceChannel,
+    );
   }
 
   Future<NetTransferTaskStartResult> startTransferTask(
     NetTransferTaskRequest request, {
     NetChannel? forceChannel,
   }) {
-    return gateway.startTransferTask(request, forceChannel: forceChannel);
+    return gateway.startTransferTask(
+      _applyDefaultTransferBaseUrl(request),
+      forceChannel: forceChannel,
+    );
   }
 
   Future<List<NetTransferEvent>> pollTransferEvents({int limit = 64}) {
@@ -239,7 +253,10 @@ class BytesFirstNetworkClient {
     required NetBodyDecoder<T> decoder,
     NetChannel? forceChannel,
   }) async {
-    final raw = await gateway.request(request, forceChannel: forceChannel);
+    final raw = await gateway.request(
+      _applyDefaultRequestBaseUrl(request),
+      forceChannel: forceChannel,
+    );
 
     final materializeWatch = Stopwatch()..start();
     final bodyBytes = await _materializeBodyBytes(raw);
@@ -326,6 +343,22 @@ class BytesFirstNetworkClient {
     } on FileSystemException {
       // best effort: materialization success should not be blocked by cleanup
     }
+  }
+
+  NetRequest _applyDefaultRequestBaseUrl(NetRequest request) {
+    if (!hasBaseUrl(baseUrl) || hasBaseUrl(request.baseUrl)) {
+      return request;
+    }
+    return request.withBaseUrl(baseUrl);
+  }
+
+  NetTransferTaskRequest _applyDefaultTransferBaseUrl(
+    NetTransferTaskRequest request,
+  ) {
+    if (!hasBaseUrl(baseUrl) || hasBaseUrl(request.baseUrl)) {
+      return request;
+    }
+    return request.withBaseUrl(baseUrl);
   }
 }
 

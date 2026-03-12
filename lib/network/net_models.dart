@@ -59,6 +59,7 @@ enum NetErrorCode {
 class NetRequest {
   final String method;
   final String url;
+  final String baseUrl;
   final Map<String, String> headers;
   final Map<String, dynamic> queryParameters;
 
@@ -82,6 +83,7 @@ class NetRequest {
   const NetRequest({
     required this.method,
     required this.url,
+    this.baseUrl = '',
     this.headers = const {},
     this.queryParameters = const {},
     this.body,
@@ -99,6 +101,35 @@ class NetRequest {
     return NetRequest(
       method: method,
       url: url,
+      baseUrl: baseUrl,
+      headers: headers,
+      queryParameters: queryParameters,
+      body: body,
+      bodyBytes: bodyBytes,
+      expectLargeResponse: expectLargeResponse,
+      forceChannel: forceChannel,
+    );
+  }
+
+  NetRequest withBaseUrl(String baseUrl) {
+    return NetRequest(
+      method: method,
+      url: url,
+      baseUrl: baseUrl,
+      headers: headers,
+      queryParameters: queryParameters,
+      body: body,
+      bodyBytes: bodyBytes,
+      expectLargeResponse: expectLargeResponse,
+      forceChannel: forceChannel,
+    );
+  }
+
+  NetRequest withResolvedUrl(String url) {
+    return NetRequest(
+      method: method,
+      url: url,
+      baseUrl: baseUrl,
       headers: headers,
       queryParameters: queryParameters,
       body: body,
@@ -115,6 +146,7 @@ class NetTransferTaskRequest {
   final String taskId;
   final NetTransferKind kind;
   final String url;
+  final String baseUrl;
   final String method;
   final Map<String, String> headers;
   final String localPath;
@@ -127,6 +159,7 @@ class NetTransferTaskRequest {
     required this.taskId,
     required this.kind,
     required this.url,
+    this.baseUrl = '',
     required this.localPath,
     this.method = 'GET',
     this.headers = const {},
@@ -144,6 +177,39 @@ class NetTransferTaskRequest {
       taskId: taskId,
       kind: kind,
       url: url,
+      baseUrl: baseUrl,
+      method: method,
+      headers: headers,
+      localPath: localPath,
+      resumeFrom: resumeFrom,
+      expectedTotal: expectedTotal,
+      priority: priority,
+      forceChannel: forceChannel,
+    );
+  }
+
+  NetTransferTaskRequest withBaseUrl(String baseUrl) {
+    return NetTransferTaskRequest(
+      taskId: taskId,
+      kind: kind,
+      url: url,
+      baseUrl: baseUrl,
+      method: method,
+      headers: headers,
+      localPath: localPath,
+      resumeFrom: resumeFrom,
+      expectedTotal: expectedTotal,
+      priority: priority,
+      forceChannel: forceChannel,
+    );
+  }
+
+  NetTransferTaskRequest withResolvedUrl(String url) {
+    return NetTransferTaskRequest(
+      taskId: taskId,
+      kind: kind,
+      url: url,
+      baseUrl: baseUrl,
       method: method,
       headers: headers,
       localPath: localPath,

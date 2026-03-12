@@ -72,6 +72,23 @@ final client = BytesFirstNetworkClient.standard(
 );
 ```
 
+Or configure a client-level `baseUrl` and send relative paths:
+
+```dart
+final client = BytesFirstNetworkClient.standard(
+  baseUrl: 'https://example.com/api',
+);
+
+final response = await client.request(
+  method: NetHttpMethod.get,
+  url: '/feed',
+);
+```
+
+`NetRequest` and `NetTransferTaskRequest` also accept `baseUrl` for per-request
+overrides. The gateway resolves relative URLs before routing/fallback so Dio and
+Rust channels see the same absolute URL.
+
 Supported lifecycle usage:
 
 ```dart
@@ -83,6 +100,9 @@ lifecycle API. Avoid calling the generated FRB `shutdownNetEngine()` directly,
 because that bypasses Dart-side shared-scope lifecycle tracking.
 The constructor `initialized` flag and `markInitialized()` are intended only
 for `requestHandler`-backed test doubles, not bridge-backed adapters.
+`RustEngineInitOptions.baseUrl` remains available for Rust-engine-specific
+compatibility, but cross-channel code should prefer the request/client
+`baseUrl` API above.
 
 `body` uses one shared contract on both Dio and Rust channels:
 

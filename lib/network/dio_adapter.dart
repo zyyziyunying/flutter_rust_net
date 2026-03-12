@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'net_adapter.dart';
 import 'net_models.dart';
 import 'request_body_codec.dart';
+import 'url_resolution.dart';
 
 class DioAdapter implements NetAdapter {
   static int _requestCounter = 0;
@@ -29,20 +30,21 @@ class DioAdapter implements NetAdapter {
   }) async {
     final watch = Stopwatch()..start();
     final requestId = _nextRequestId();
-    final uri = _buildUri(request.url, request.queryParameters);
+    final resolvedRequest = resolveNetRequestUrl(request);
+    final uri = _buildUri(resolvedRequest.url, resolvedRequest.queryParameters);
 
     try {
       final bodyBytes = encodeRequestBody(
-        request.body,
-        bodyBytes: request.bodyBytes,
+        resolvedRequest.body,
+        bodyBytes: resolvedRequest.bodyBytes,
         channel: NetChannel.dio,
       );
       final response = await _client.requestUri<List<int>>(
         uri,
         data: bodyBytes,
         options: Options(
-          method: request.method,
-          headers: request.headers,
+          method: resolvedRequest.method,
+          headers: resolvedRequest.headers,
           responseType: ResponseType.bytes,
           validateStatus: (_) => true,
         ),
@@ -70,7 +72,8 @@ class DioAdapter implements NetAdapter {
 
   @override
   Future<String> startTransferTask(NetTransferTaskRequest request) async {
-    final taskId = request.taskId;
+    final resolvedRequest = resolveNetTransferTaskUrl(request);
+    final taskId = resolvedRequest.taskId;
     if (taskId.isEmpty) {
       throw NetException(
         code: NetErrorCode.parse,
@@ -101,12 +104,12 @@ class DioAdapter implements NetAdapter {
         id: taskId,
         kind: NetTransferEventKind.queued,
         transferred: 0,
-        total: request.expectedTotal,
+        total: resolvedRequest.expectedTotal,
         channel: NetChannel.dio,
       ),
     );
 
-    unawaited(_runTransferTask(request, cancelToken));
+    unawaited(_runTransferTask(resolvedRequest, cancelToken));
     return taskId;
   }
 

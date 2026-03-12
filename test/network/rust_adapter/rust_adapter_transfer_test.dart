@@ -69,6 +69,30 @@ void main() {
       },
     );
 
+    test('resolves transfer baseUrl before bridging transfer task', () async {
+      final fakeBridge = FakeRustBridgeApi(
+        startTransferResponder: (spec) async {
+          expect(spec.url, 'https://example.com/assets/images/file.bin');
+          return spec.taskId;
+        },
+      );
+      final adapter = RustAdapter(bridgeApi: fakeBridge);
+
+      await adapter.initializeEngine();
+      final taskId = await adapter.startTransferTask(
+        const NetTransferTaskRequest(
+          taskId: 'transfer-relative-1',
+          kind: NetTransferKind.download,
+          url: 'images/file.bin',
+          baseUrl: 'https://example.com/assets',
+          localPath: '/tmp/file.bin',
+        ),
+      );
+
+      expect(taskId, 'transfer-relative-1');
+      expect(fakeBridge.startTransferCalls, 1);
+    });
+
     test('clears cache through rust bridge', () async {
       final fakeBridge = FakeRustBridgeApi(
         clearCacheResponder: (namespace) async {

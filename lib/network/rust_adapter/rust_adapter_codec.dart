@@ -4,11 +4,17 @@ class _RustAdapterCodec {
   static int _requestCounter = 0;
 
   static rust_api.RequestSpec toRustRequestSpec(NetRequest request) {
-    final uri = Uri.parse(request.url);
-    final path = uri.hasQuery ? request.url.split('?').first : request.url;
+    final resolvedRequest = resolveNetRequestUrl(
+      request,
+      requireBaseUrlForRelative: false,
+    );
+    final uri = Uri.parse(resolvedRequest.url);
+    final path = uri.hasQuery
+        ? resolvedRequest.url.split('?').first
+        : resolvedRequest.url;
 
     final mergedQuery = <String, String>{...uri.queryParameters};
-    request.queryParameters.forEach((key, value) {
+    resolvedRequest.queryParameters.forEach((key, value) {
       if (value == null) {
         return;
       }
@@ -17,21 +23,21 @@ class _RustAdapterCodec {
 
     return rust_api.RequestSpec(
       requestId: _nextRequestId(),
-      method: request.method,
+      method: resolvedRequest.method,
       path: path,
       query: mergedQuery.entries
           .map((entry) => (entry.key, entry.value))
           .toList(),
-      headers: request.headers.entries
+      headers: resolvedRequest.headers.entries
           .map((entry) => (entry.key, entry.value))
           .toList(),
       bodyBytes: encodeRequestBody(
-        request.body,
-        bodyBytes: request.bodyBytes,
+        resolvedRequest.body,
+        bodyBytes: resolvedRequest.bodyBytes,
         channel: NetChannel.rust,
       ),
       bodyFilePath: null,
-      expectLargeResponse: request.expectLargeResponse,
+      expectLargeResponse: resolvedRequest.expectLargeResponse,
       saveToFilePath: null,
       priority: 1,
     );
@@ -40,22 +46,23 @@ class _RustAdapterCodec {
   static rust_api.TransferTaskSpec toRustTransferTaskSpec(
     NetTransferTaskRequest request,
   ) {
+    final resolvedRequest = resolveNetTransferTaskUrl(request);
     return rust_api.TransferTaskSpec(
-      taskId: request.taskId,
-      kind: request.kind.name,
-      url: request.url,
-      method: request.method,
-      headers: request.headers.entries
+      taskId: resolvedRequest.taskId,
+      kind: resolvedRequest.kind.name,
+      url: resolvedRequest.url,
+      method: resolvedRequest.method,
+      headers: resolvedRequest.headers.entries
           .map((entry) => (entry.key, entry.value))
           .toList(),
-      localPath: request.localPath,
-      resumeFrom: request.resumeFrom == null
+      localPath: resolvedRequest.localPath,
+      resumeFrom: resolvedRequest.resumeFrom == null
           ? null
-          : BigInt.from(request.resumeFrom!),
-      expectedTotal: request.expectedTotal == null
+          : BigInt.from(resolvedRequest.resumeFrom!),
+      expectedTotal: resolvedRequest.expectedTotal == null
           ? null
-          : BigInt.from(request.expectedTotal!),
-      priority: request.priority,
+          : BigInt.from(resolvedRequest.expectedTotal!),
+      priority: resolvedRequest.priority,
     );
   }
 

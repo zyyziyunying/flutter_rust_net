@@ -141,6 +141,50 @@ void main() {
       },
     );
 
+    test('resolves request baseUrl before rust fallback to dio', () async {
+      NetRequest? rustRequest;
+      NetRequest? dioRequest;
+
+      final dio = FakeNetAdapter((request, {fromFallback = false}) async {
+        dioRequest = request;
+        return okResponse(channel: NetChannel.dio, fromFallback: fromFallback);
+      });
+      final rust = FakeNetAdapter((request, {fromFallback = false}) async {
+        rustRequest = request;
+        throw NetException.infrastructure(
+          message: 'rust transport failed',
+          channel: NetChannel.rust,
+        );
+      });
+
+      final gateway = NetworkGateway(
+        routingPolicy: const RoutingPolicy(),
+        featureFlag: const NetFeatureFlag(
+          enableRustChannel: true,
+          enableFallback: true,
+        ),
+        dioAdapter: dio,
+        rustAdapter: rust,
+      );
+
+      final response = await gateway.request(
+        const NetRequest(
+          method: 'GET',
+          url: 'users/me',
+          baseUrl: 'https://api.example.com/v2',
+          forceChannel: NetChannel.rust,
+        ),
+      );
+
+      expect(rustRequest, isNotNull);
+      expect(dioRequest, isNotNull);
+      expect(rustRequest!.url, 'https://api.example.com/v2/users/me');
+      expect(dioRequest!.url, 'https://api.example.com/v2/users/me');
+      expect(response.channel, NetChannel.dio);
+      expect(response.fromFallback, isTrue);
+      expect(response.routeReason, 'force_channel -> fallback_dio');
+    });
+
     test('does not fallback when fallback switch is disabled', () async {
       final dio = FakeNetAdapter((request, {fromFallback = false}) async {
         return okResponse(channel: NetChannel.dio, fromFallback: fromFallback);

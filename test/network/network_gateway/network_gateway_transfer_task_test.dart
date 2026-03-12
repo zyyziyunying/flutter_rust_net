@@ -281,6 +281,68 @@ void main() {
       },
     );
 
+    test('resolves transfer baseUrl before rust fallback to dio', () async {
+      NetTransferTaskRequest? rustRequest;
+      NetTransferTaskRequest? dioRequest;
+
+      final dio = FakeNetAdapter(
+        (request, {fromFallback = false}) async {
+          return okResponse(
+            channel: NetChannel.dio,
+            fromFallback: fromFallback,
+          );
+        },
+        startTransferDelegate: (request) async {
+          dioRequest = request;
+          return request.taskId;
+        },
+      );
+      final rust = FakeNetAdapter(
+        (request, {fromFallback = false}) async {
+          return okResponse(
+            channel: NetChannel.rust,
+            fromFallback: fromFallback,
+          );
+        },
+        startTransferDelegate: (request) async {
+          rustRequest = request;
+          throw NetException.infrastructure(
+            message: 'rust transfer start failed',
+            channel: NetChannel.rust,
+          );
+        },
+      );
+
+      final gateway = NetworkGateway(
+        routingPolicy: const RoutingPolicy(),
+        featureFlag: const NetFeatureFlag(
+          enableRustChannel: true,
+          enableFallback: true,
+        ),
+        dioAdapter: dio,
+        rustAdapter: rust,
+      );
+
+      final startResult = await gateway.startTransferTask(
+        const NetTransferTaskRequest(
+          taskId: 'task-relative-transfer-1',
+          kind: NetTransferKind.download,
+          url: 'images/file.bin',
+          baseUrl: 'https://cdn.example.com/root',
+          localPath: '/tmp/file.bin',
+          forceChannel: NetChannel.rust,
+        ),
+      );
+
+      expect(rustRequest, isNotNull);
+      expect(dioRequest, isNotNull);
+      expect(rustRequest!.url, 'https://cdn.example.com/root/images/file.bin');
+      expect(dioRequest!.url, 'https://cdn.example.com/root/images/file.bin');
+      expect(startResult.channel, NetChannel.dio);
+      expect(startResult.fromFallback, isTrue);
+      expect(startResult.routeReason, 'force_channel -> fallback_dio');
+    });
+
     test(
       'does not fallback resume download transfer to dio when rust start fails',
       () async {

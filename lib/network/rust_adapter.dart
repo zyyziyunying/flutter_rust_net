@@ -6,6 +6,7 @@ import 'net_adapter.dart';
 import 'net_models.dart';
 import 'request_body_codec.dart';
 import 'rust_bridge_api.dart';
+import 'url_resolution.dart';
 
 part 'rust_adapter/rust_adapter_codec.dart';
 part 'rust_adapter/rust_adapter_errors.dart';
