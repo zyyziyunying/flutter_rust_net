@@ -424,6 +424,76 @@ void main() {
       },
     );
 
+    test(
+      'preserves tracked cancel error and does not probe the other adapter',
+      () async {
+        var dioCancelCalls = 0;
+        var rustCancelCalls = 0;
+
+        final dio = _FakeAdapter(
+          (request, {fromFallback = false}) async {
+            return _ok(channel: NetChannel.dio, fromFallback: fromFallback);
+          },
+          cancelTransferDelegate: (taskId) async {
+            dioCancelCalls += 1;
+            return true;
+          },
+        );
+        final rust = _FakeAdapter(
+          (request, {fromFallback = false}) async {
+            return _ok(channel: NetChannel.rust, fromFallback: fromFallback);
+          },
+          cancelTransferDelegate: (taskId) async {
+            rustCancelCalls += 1;
+            if (rustCancelCalls == 1) {
+              throw NetException.infrastructure(
+                message: 'rust cancel transport failure',
+                channel: NetChannel.rust,
+              );
+            }
+            return true;
+          },
+        );
+
+        final gateway = NetworkGateway(
+          routingPolicy: const RoutingPolicy(),
+          featureFlag: const NetFeatureFlag(enableRustChannel: true),
+          dioAdapter: dio,
+          rustAdapter: rust,
+        );
+
+        await gateway.startTransferTask(
+          const NetTransferTaskRequest(
+            taskId: 'task-rust-cancel-error-1',
+            kind: NetTransferKind.download,
+            url: 'https://example.com/file.bin',
+            localPath: '/tmp/file.bin',
+          ),
+        );
+
+        await expectLater(
+          gateway.cancelTransferTask('task-rust-cancel-error-1'),
+          throwsA(
+            isA<NetException>()
+                .having(
+                  (error) => error.code,
+                  'code',
+                  NetErrorCode.infrastructure,
+                )
+                .having((error) => error.channel, 'channel', NetChannel.rust),
+          ),
+        );
+
+        final canceled = await gateway.cancelTransferTask(
+          'task-rust-cancel-error-1',
+        );
+
+        expect(canceled, isTrue);
+        expect(rustCancelCalls, 2);
+        expect(dioCancelCalls, 0);
+      },
+    );
+
     test('routes transfer task to dio when rust is not ready', () async {
       var dioStartCalls = 0;
       var rustStartCalls = 0;
@@ -659,101 +729,99 @@ void main() {
       expect(dioStartCalls, 0);
     });
 
-    test('surfaces dio rejection for resume download when rust is not ready',
-        () async {
-      var dioStartCalls = 0;
-      var rustStartCalls = 0;
+    test(
+      'surfaces dio rejection for resume download when rust is not ready',
+      () async {
+        var dioStartCalls = 0;
+        var rustStartCalls = 0;
 
-      final dio = _FakeAdapter(
-        (request, {fromFallback = false}) async {
-          return _ok(channel: NetChannel.dio, fromFallback: fromFallback);
-        },
-        startTransferDelegate: (request) async {
-          dioStartCalls += 1;
-          throw const NetException(
-            code: NetErrorCode.infrastructure,
-            message:
-                'Dio download does not support resumeFrom; use the Rust channel for resume downloads.',
-            channel: NetChannel.dio,
-            fallbackEligible: false,
-          );
-        },
-      );
-      final rust = _FakeAdapter(
-        (request, {fromFallback = false}) async {
-          return _ok(channel: NetChannel.rust, fromFallback: fromFallback);
-        },
-        isReady: false,
-        startTransferDelegate: (request) async {
-          rustStartCalls += 1;
-          return request.taskId;
-        },
-      );
+        final dio = _FakeAdapter(
+          (request, {fromFallback = false}) async {
+            return _ok(channel: NetChannel.dio, fromFallback: fromFallback);
+          },
+          startTransferDelegate: (request) async {
+            dioStartCalls += 1;
+            throw const NetException(
+              code: NetErrorCode.infrastructure,
+              message:
+                  'Dio download does not support resumeFrom; use the Rust channel for resume downloads.',
+              channel: NetChannel.dio,
+              fallbackEligible: false,
+            );
+          },
+        );
+        final rust = _FakeAdapter(
+          (request, {fromFallback = false}) async {
+            return _ok(channel: NetChannel.rust, fromFallback: fromFallback);
+          },
+          isReady: false,
+          startTransferDelegate: (request) async {
+            rustStartCalls += 1;
+            return request.taskId;
+          },
+        );
 
-      final gateway = NetworkGateway(
-        routingPolicy: const RoutingPolicy(),
-        featureFlag: const NetFeatureFlag(enableRustChannel: true),
-        dioAdapter: dio,
-        rustAdapter: rust,
-      );
+        final gateway = NetworkGateway(
+          routingPolicy: const RoutingPolicy(),
+          featureFlag: const NetFeatureFlag(enableRustChannel: true),
+          dioAdapter: dio,
+          rustAdapter: rust,
+        );
 
-      await expectLater(
-        gateway.startTransferTask(
-          const NetTransferTaskRequest(
-            taskId: 'task-resume-rust-not-ready',
-            kind: NetTransferKind.download,
-            url: 'https://example.com/file.bin',
-            localPath: '/tmp/file.bin',
-            resumeFrom: 256,
-            forceChannel: NetChannel.rust,
+        await expectLater(
+          gateway.startTransferTask(
+            const NetTransferTaskRequest(
+              taskId: 'task-resume-rust-not-ready',
+              kind: NetTransferKind.download,
+              url: 'https://example.com/file.bin',
+              localPath: '/tmp/file.bin',
+              resumeFrom: 256,
+              forceChannel: NetChannel.rust,
+            ),
           ),
-        ),
-        throwsA(
-          isA<NetException>()
-              .having(
-                (error) => error.code,
-                'code',
-                NetErrorCode.infrastructure,
-              )
-              .having(
-                (error) => error.channel,
-                'channel',
-                NetChannel.dio,
-              )
-              .having(
-                (error) => error.fallbackEligible,
-                'fallbackEligible',
-                isFalse,
-              ),
-        ),
-      );
-      expect(rustStartCalls, 0);
-      expect(dioStartCalls, 1);
-    });
+          throwsA(
+            isA<NetException>()
+                .having(
+                  (error) => error.code,
+                  'code',
+                  NetErrorCode.infrastructure,
+                )
+                .having((error) => error.channel, 'channel', NetChannel.dio)
+                .having(
+                  (error) => error.fallbackEligible,
+                  'fallbackEligible',
+                  isFalse,
+                ),
+          ),
+        );
+        expect(rustStartCalls, 0);
+        expect(dioStartCalls, 1);
+      },
+    );
   });
 }
 
 class _FakeAdapter implements NetAdapter {
   final bool _isReady;
   final Future<NetResponse> Function(NetRequest request, {bool fromFallback})
-      _delegate;
+  _delegate;
   final Future<String> Function(NetTransferTaskRequest request)
-      _startTransferDelegate;
+  _startTransferDelegate;
   final Future<List<NetTransferEvent>> Function({int limit})
-      _pollTransferDelegate;
+  _pollTransferDelegate;
   final Future<bool> Function(String taskId) _cancelTransferDelegate;
 
   _FakeAdapter(
     this._delegate, {
     bool isReady = true,
     Future<String> Function(NetTransferTaskRequest request)?
-        startTransferDelegate,
+    startTransferDelegate,
     Future<List<NetTransferEvent>> Function({int limit})? pollTransferDelegate,
     Future<bool> Function(String taskId)? cancelTransferDelegate,
-  })  : _isReady = isReady,
-        _startTransferDelegate = startTransferDelegate ?? _defaultStartTransfer,
-        _pollTransferDelegate = pollTransferDelegate ?? _defaultPollTransfer,
-        _cancelTransferDelegate = cancelTransferDelegate ?? _defaultCancel;
+  }) : _isReady = isReady,
+       _startTransferDelegate = startTransferDelegate ?? _defaultStartTransfer,
+       _pollTransferDelegate = pollTransferDelegate ?? _defaultPollTransfer,
+       _cancelTransferDelegate = cancelTransferDelegate ?? _defaultCancel;
 
   @override
   bool get isReady => _isReady;

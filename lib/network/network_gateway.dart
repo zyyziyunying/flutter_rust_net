@@ -121,7 +121,7 @@ class NetworkGateway {
   Future<bool> cancelTransferTask(String taskId) async {
     final tracked = _transferTaskChannels[taskId];
     if (tracked == NetChannel.rust) {
-      final canceled = await _safeCancelTransferTask(rustAdapter, taskId);
+      final canceled = await rustAdapter.cancelTransferTask(taskId);
       if (canceled) {
         _transferTaskChannels.remove(taskId);
         return true;
@@ -130,7 +130,7 @@ class NetworkGateway {
       return _safeCancelTransferTask(dioAdapter, taskId);
     }
     if (tracked == NetChannel.dio) {
-      final canceled = await _safeCancelTransferTask(dioAdapter, taskId);
+      final canceled = await dioAdapter.cancelTransferTask(taskId);
       if (canceled) {
         _transferTaskChannels.remove(taskId);
         return true;

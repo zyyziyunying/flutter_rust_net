@@ -9,6 +9,7 @@
 - `docs/plan/`：方案、执行模板、联调计划。
 - `docs/progress/`：阶段状态事实源，只记录当前 Done / In Progress / Next。
 - `docs/dio_rust_test/`：测试说明、runbook、策略、结果与验证结论。
+- 详细会话补记、旧判断、替换前的状态快照默认不继续堆在 `docs/progress/`，迁到 `docs/archived/` 保留追溯。
 
 建议命名：
 
