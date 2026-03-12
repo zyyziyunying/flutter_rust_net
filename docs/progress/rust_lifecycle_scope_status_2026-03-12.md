@@ -10,9 +10,9 @@ title: Rust 生命周期与共享作用域修复状态（2026-03-12）
 
 ## 快速跳转（同日文档）
 
-- 修复计划：[`flutter_rust_net/docs/plan/flutter_rust_net_lifecycle_scope_fix_plan_2026-03-12.md`](../plan/flutter_rust_net_lifecycle_scope_fix_plan_2026-03-12.md)
-- 跟进问题：[`flutter_rust_net/docs/questions/flutter_rust_net_staged_review_followups_2026-03-11.md`](../questions/flutter_rust_net_staged_review_followups_2026-03-11.md)
-- 风险审查：[`flutter_rust_net/docs/questions/flutter_rust_net_risk_review_findings_2026-03-09.md`](../questions/flutter_rust_net_risk_review_findings_2026-03-09.md)
+- 修复计划：[`flutter_rust_net/docs/archived/flutter_rust_net_lifecycle_scope_fix_plan_2026-03-12.md`](../archived/flutter_rust_net_lifecycle_scope_fix_plan_2026-03-12.md)
+- 跟进问题：[`flutter_rust_net/docs/archived/flutter_rust_net_staged_review_followups_2026-03-11.md`](../archived/flutter_rust_net_staged_review_followups_2026-03-11.md)
+- 风险审查：[`flutter_rust_net/docs/archived/flutter_rust_net_risk_review_findings_2026-03-09.md`](../archived/flutter_rust_net_risk_review_findings_2026-03-09.md)
 - 架构概览：[`flutter_rust_net/FLUTTER_RUST_NET_OVERVIEW_ZH.md`](../../FLUTTER_RUST_NET_OVERVIEW_ZH.md)
 
 ## 文档口径（事实源）
