@@ -4,6 +4,7 @@ import 'net_models.dart';
 import 'routing_policy.dart';
 
 class NetworkGateway {
+  static const int _maxTrackedTransferTasks = 256;
   static const String _rustNotReadyRouteSuffix = 'rust_not_ready_dio';
   static const Set<String> _idempotentMethods = {
     'GET',
@@ -111,7 +112,7 @@ class NetworkGateway {
       if (_terminalTransferEventKinds.contains(event.kind)) {
         _transferTaskChannels.remove(event.id);
       } else {
-        _transferTaskChannels[event.id] = event.channel;
+        _trackTransferTaskChannel(event.id, event.channel);
       }
     }
     return merged;
@@ -120,18 +121,22 @@ class NetworkGateway {
   Future<bool> cancelTransferTask(String taskId) async {
     final tracked = _transferTaskChannels[taskId];
     if (tracked == NetChannel.rust) {
-      final canceled = await rustAdapter.cancelTransferTask(taskId);
+      final canceled = await _safeCancelTransferTask(rustAdapter, taskId);
       if (canceled) {
         _transferTaskChannels.remove(taskId);
+        return true;
       }
-      return canceled;
+      _transferTaskChannels.remove(taskId);
+      return _safeCancelTransferTask(dioAdapter, taskId);
     }
     if (tracked == NetChannel.dio) {
-      final canceled = await dioAdapter.cancelTransferTask(taskId);
+      final canceled = await _safeCancelTransferTask(dioAdapter, taskId);
       if (canceled) {
         _transferTaskChannels.remove(taskId);
+        return true;
       }
-      return canceled;
+      _transferTaskChannels.remove(taskId);
+      return _safeCancelTransferTask(rustAdapter, taskId);
     }
 
     final dioCanceled = await _safeCancelTransferTask(dioAdapter, taskId);
@@ -220,7 +225,7 @@ class NetworkGateway {
   }) async {
     final adapter = channel == NetChannel.rust ? rustAdapter : dioAdapter;
     final taskId = await adapter.startTransferTask(request);
-    _transferTaskChannels[taskId] = channel;
+    _trackTransferTaskChannel(taskId, channel);
     return NetTransferTaskStartResult(
       taskId: taskId,
       channel: channel,
@@ -324,5 +329,20 @@ class NetworkGateway {
   bool _isTransferInfrastructureIssue(NetException error) {
     return error.code == NetErrorCode.infrastructure ||
         error.code == NetErrorCode.internal;
+  }
+
+  void _trackTransferTaskChannel(String taskId, NetChannel channel) {
+    _transferTaskChannels[taskId] = channel;
+    final overflow = _transferTaskChannels.length - _maxTrackedTransferTasks;
+    if (overflow <= 0) {
+      return;
+    }
+
+    final staleTaskIds = _transferTaskChannels.keys
+        .take(overflow)
+        .toList(growable: false);
+    for (final staleTaskId in staleTaskIds) {
+      _transferTaskChannels.remove(staleTaskId);
+    }
   }
 }

@@ -8,7 +8,7 @@
   - `flutter analyze`
   - `flutter test`
 
-结论先行：截至 2026-03-12，本次审查里原始八项已识别问题中，大部分已经闭环，包括：原始 P0（双通道 request body 编码漂移）、后续暴露的 P1（`List<int>` body 语义歧义）、下载 fallback 静默破坏断点续传契约的问题、Dio 下载脏文件污染最终路径的问题、“默认 API 让人误以为 Rust 已启用”的误导性接入路径、Rust 错误分类完全依赖字符串前缀的问题、公开 request hint 字段制造错误预期的问题，以及 Rust 初始化 `already initialized` 分支吞掉配置冲突的问题。2026-03-12 的 staged 修复又补齐了 `RustAdapter` 的受控 shutdown/reinitialize 生命周期，并为默认 `FrbRustBridgeApi` 共享作用域路径补上了直接回归。当前剩余优先处理项主要集中在 transfer 状态管理缺少边界；生命周期侧的残余约束已收敛为一条明确不受支持的低层路径：若宿主绕过 `RustAdapter.shutdownEngine()`，直接调用 `RustBridgeApi.shutdownNetEngine()`，Dart 侧共享 scope 状态不会自动同步。
+结论先行：截至 2026-03-12，本次审查里原始八项已识别问题中，大部分已经闭环，包括：原始 P0（双通道 request body 编码漂移）、后续暴露的 P1（`List<int>` body 语义歧义）、下载 fallback 静默破坏断点续传契约的问题、Dio 下载脏文件污染最终路径的问题、“默认 API 让人误以为 Rust 已启用”的误导性接入路径、Rust 错误分类完全依赖字符串前缀的问题、公开 request hint 字段制造错误预期的问题，以及 Rust 初始化 `already initialized` 分支吞掉配置冲突的问题。2026-03-12 的后续修复又补齐了 transfer 事件/任务状态边界、`RustAdapter` 的受控 shutdown/reinitialize 生命周期，并为默认 `FrbRustBridgeApi` 共享作用域路径补上了直接回归。当前高优先级代码风险已基本闭环；剩余关注点主要收敛为低层 `shutdownNetEngine()` 误用面、legacy 错误兼容收缩策略，以及包外预初始化场景下的配置可观测性。
 
 ## 主要问题
 
@@ -108,27 +108,26 @@
   - 当前 Dio download 契约已明确为“临时文件写入 + 成功后发布”，不会再把失败产物直接暴露给业务最终路径。
   - 若未来补 resume 语义，需要在此基础上继续设计分片 append、校验与原子发布，而不是回退到直接覆盖最终文件。
 
-### 5. 中高：transfer 事件队列与任务路由状态都可能无界增长
+### 5. 已修复（2026-03-12）：transfer 事件队列与任务路由状态已补边界收口
 
 - 证据：
-  - `lib/network/dio_adapter.dart:16-17`
-  - `lib/network/dio_adapter.dart:240-247`
-  - `lib/network/dio_adapter.dart:266-273`
-  - `lib/network/dio_adapter.dart:483-484`
-  - `lib/network/network_gateway.dart:33`
-  - `lib/network/network_gateway.dart:109-116`
-  - `lib/network/network_gateway.dart:221-223`
-- 现状：
-  - Dio transfer 的 progress 事件全部进入 `_transferEvents` 内存列表。
-  - 只有业务主动调用 `pollTransferEvents` 才会出队。
-  - 网关中的 `_transferTaskChannels` 只在轮询到终态事件时清理。
-- 风险：
-  - 长时间下载/上传且业务轮询不及时，会导致内存持续增长。
-  - 即使任务已经结束，只要终态事件没有被消费，路由状态也会一直滞留。
-  - 后续 `cancelTransferTask` 会基于陈旧状态做判断。
-- 当前测试缺口：
-  - 没有覆盖“不轮询、低频轮询、超长任务”的行为。
-- 建议优先级：P1
+  - `lib/network/dio_adapter.dart`
+  - `lib/network/network_gateway.dart`
+  - `test/network/dio_adapter_transfer_state_test.dart`
+  - `test/network/network_gateway_transfer_state_test.dart`
+- 修复后实现：
+  - `DioAdapter` 的 transfer 事件缓冲已改为有界保留；同一任务的中间 progress 会被压缩为最新快照，任务进入终态后会收口为单个 terminal 事件，不再让未轮询的历史事件无限堆积。
+  - `NetworkGateway` 的 `_transferTaskChannels` 已改为有上限跟踪；当 tracked channel 失效时，`cancelTransferTask()` 会自动探测另一侧 adapter，而不是继续依赖陈旧映射。
+  - 因此，长时间不轮询或低频轮询的场景下，Dio 侧事件缓冲与 gateway 路由状态都不会继续无界增长。
+- 验证：
+  - 已新增 Dio 回归：覆盖“完成后延迟轮询只保留终态事件”以及“多任务长期不轮询时事件缓冲有界”。
+  - 已新增 gateway 回归：覆盖“tracked channel stale 时自动探测另一侧 cancel”以及“旧任务被淘汰后仍可通过双侧探测 cancel”。
+  - 本地验证通过：`flutter test test/network/dio_adapter_transfer_state_test.dart`、`flutter test test/network/network_gateway_transfer_state_test.dart`。
+- 残余约束：
+  - 当前实现是“有界 + 有损保留”策略；如果宿主长期不调用 `pollTransferEvents()`，不保证保留全部中间 progress 轨迹，但会尽量保留最新状态与终态事件。
+- 结论：
+  - 该项 P1 风险已关闭。
+  - transfer 侧当前剩余重点不再是 Dart 内存边界，而是 native/Rust 内部队列策略是否还需要更细粒度可观测性。
 
 ### 6. 已修复（2026-03-09）：默认 API 不再暗示 Rust 已启用，Rust 接入改为显式 opt-in
 
@@ -254,17 +253,15 @@
 
 ## 当前测试盲区
 
-- transfer 长时间运行、业务不轮询或低频轮询时的内存边界。
 - 直接调用低层 `RustBridgeApi.shutdownNetEngine()` 的误用路径仍未纳入正式回归；当前依赖 API/README 合同把它声明为不受支持。
 - Rust typed error 已落地后，legacy 字符串兼容分支在版本升级后的保留策略。
 - 若 Rust engine 被包外路径预先初始化，Dart 侧缺少读取当前生效配置的桥接能力。
 
 ## 建议处理顺序
 
-1. 给 transfer 事件与 task 状态增加上限、过期策略或背压策略。
-2. 评估是否继续收窄低层 `RustBridgeApi.shutdownNetEngine()` 的公开误用面，或为这条路径补更显式的保护/说明。
-3. 在 bridge 全量升级后，评估是否收敛或移除 Dart 侧 legacy 错误字符串兼容分支。
-4. 若要覆盖包外预初始化场景，在 Rust bridge 暴露当前生效 `NetEngineConfig` 或配置指纹。
+1. 评估是否继续收窄低层 `RustBridgeApi.shutdownNetEngine()` 的公开误用面，或为这条路径补更显式的保护/说明。
+2. 在 bridge 全量升级后，评估是否收敛或移除 Dart 侧 legacy 错误字符串兼容分支。
+3. 若要覆盖包外预初始化场景，在 Rust bridge 暴露当前生效 `NetEngineConfig` 或配置指纹。
 
 ## 备注
 

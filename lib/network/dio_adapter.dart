@@ -9,6 +9,7 @@ import 'request_body_codec.dart';
 
 class DioAdapter implements NetAdapter {
   static int _requestCounter = 0;
+  static const int _maxPendingTransferEvents = 256;
   static const String _resumeDownloadUnsupportedMessage =
       'Dio download does not support resumeFrom; use the Rust channel for resume downloads.';
 
@@ -114,8 +115,9 @@ class DioAdapter implements NetAdapter {
     if (limit <= 0 || _transferEvents.isEmpty) {
       return const [];
     }
-    final size =
-        limit < _transferEvents.length ? limit : _transferEvents.length;
+    final size = limit < _transferEvents.length
+        ? limit
+        : _transferEvents.length;
     final events = _transferEvents.sublist(0, size);
     _transferEvents.removeRange(0, size);
     return events;
@@ -481,15 +483,46 @@ class DioAdapter implements NetAdapter {
   }
 
   void _emitTransferEvent(NetTransferEvent event) {
+    if (_isTerminalTransferEvent(event.kind)) {
+      _transferEvents.removeWhere((existing) => existing.id == event.id);
+      _transferEvents.add(event);
+      _trimBufferedTransferEvents();
+      return;
+    }
+
+    if (event.kind == NetTransferEventKind.progress) {
+      final existingIndex = _transferEvents.lastIndexWhere(
+        (existing) =>
+            existing.id == event.id &&
+            existing.kind == NetTransferEventKind.progress,
+      );
+      if (existingIndex >= 0) {
+        _transferEvents[existingIndex] = event;
+        return;
+      }
+    }
+
     _transferEvents.add(event);
+    _trimBufferedTransferEvents();
+  }
+
+  bool _isTerminalTransferEvent(NetTransferEventKind kind) {
+    return kind == NetTransferEventKind.completed ||
+        kind == NetTransferEventKind.failed ||
+        kind == NetTransferEventKind.canceled;
+  }
+
+  void _trimBufferedTransferEvents() {
+    final overflow = _transferEvents.length - _maxPendingTransferEvents;
+    if (overflow <= 0) {
+      return;
+    }
+    _transferEvents.removeRange(0, overflow);
   }
 }
 
 class _DownloadTarget {
-  const _DownloadTarget({
-    required this.finalFile,
-    required this.tempFile,
-  });
+  const _DownloadTarget({required this.finalFile, required this.tempFile});
 
   final File finalFile;
   final File tempFile;
