@@ -47,6 +47,7 @@ class RustAdapter implements NetAdapter {
   final RustRequestHandler? _requestHandler;
   final RustBridgeApi _bridgeApi;
   bool _initialized;
+  int? _boundGeneration;
 
   RustAdapter({
     bool initialized = false,
@@ -54,14 +55,38 @@ class RustAdapter implements NetAdapter {
     RustBridgeApi? bridgeApi,
   }) : _initialized = initialized,
        _requestHandler = requestHandler,
-       _bridgeApi = bridgeApi ?? FrbRustBridgeApi();
+       _bridgeApi = bridgeApi ?? FrbRustBridgeApi() {
+    if (initialized && requestHandler == null) {
+      throw ArgumentError.value(
+        initialized,
+        'initialized',
+        'Use initializeEngine() for Rust bridge-backed adapters. '
+            'The constructor flag is only supported for requestHandler-backed adapters.',
+      );
+    }
+  }
 
   @override
-  bool get isReady => _initialized;
+  bool get isReady {
+    if (_requestHandler != null) {
+      return _initialized;
+    }
+    return _initialized &&
+        _RustAdapterInitTracker.isActiveGeneration(
+          _bridgeApi,
+          generation: _boundGeneration,
+        );
+  }
 
-  bool get isInitialized => _initialized;
+  bool get isInitialized => isReady;
 
   void markInitialized([bool value = true]) {
+    if (_requestHandler == null) {
+      throw StateError(
+        'markInitialized() is only supported for requestHandler-backed adapters. '
+        'Use initializeEngine()/shutdownEngine() for Rust bridge-backed adapters.',
+      );
+    }
     _initialized = value;
   }
 
@@ -73,12 +98,34 @@ class RustAdapter implements NetAdapter {
       return;
     }
 
-    await _RustAdapterInitTracker.initialize(
+    final generation = await _RustAdapterInitTracker.initialize(
       bridgeApi: _bridgeApi,
-      alreadyInitialized: _initialized,
+      alreadyInitialized: isReady,
       options: options,
     );
     _initialized = true;
+    _boundGeneration = generation;
+  }
+
+  /// Supported shutdown entry that keeps Dart-side lifecycle tracking in sync.
+  Future<void> shutdownEngine() async {
+    if (_requestHandler != null) {
+      _initialized = false;
+      return;
+    }
+
+    _ensureInitialized();
+    final generation = _boundGeneration;
+    if (generation == null) {
+      _throwNotInitialized();
+    }
+
+    await _RustAdapterInitTracker.shutdown(
+      bridgeApi: _bridgeApi,
+      generation: generation,
+    );
+    _initialized = false;
+    _boundGeneration = null;
   }
 
   @override
@@ -179,11 +226,16 @@ class RustAdapter implements NetAdapter {
   }
 
   void _ensureInitialized() {
-    if (_initialized) {
+    if (isReady) {
       return;
     }
+    _throwNotInitialized();
+  }
+
+  Never _throwNotInitialized() {
     throw NetException.infrastructure(
-      message: 'Rust engine not initialized, call init_net_engine first',
+      message:
+          'Rust engine not initialized; call RustAdapter.initializeEngine() first',
       channel: NetChannel.rust,
     );
   }

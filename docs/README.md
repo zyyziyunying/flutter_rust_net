@@ -10,6 +10,8 @@
 
 当前索引：
 
+- `plan/flutter_rust_net_lifecycle_scope_fix_plan_2026-03-12.md`：Rust 生命周期与共享作用域修复计划。
+- `progress/rust_lifecycle_scope_status_2026-03-12.md`：Rust 生命周期与共享作用域修复状态。
 - `plan/network_p1_execution_template_2026-02-25.md`：P1 执行模板。
 - `plan/golang_remote_benchmark_server_plan_2026-03-02.md`：远端真机压测 Go 服务方案。
 - `archived/flutter_rust_network_layer_design_review_findings_2026-02-24.md`：已闭环的设计评审与修复建议。

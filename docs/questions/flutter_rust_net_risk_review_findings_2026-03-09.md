@@ -8,7 +8,7 @@
   - `flutter analyze`
   - `flutter test`
 
-结论先行：截至 2026-03-12，本次审查里原始八项已识别问题中，大部分已经闭环，包括：原始 P0（双通道 request body 编码漂移）、后续暴露的 P1（`List<int>` body 语义歧义）、下载 fallback 静默破坏断点续传契约的问题、Dio 下载脏文件污染最终路径的问题、“默认 API 让人误以为 Rust 已启用”的误导性接入路径、Rust 错误分类完全依赖字符串前缀的问题、公开 request hint 字段制造错误预期的问题，以及 Rust 初始化 `already initialized` 分支吞掉配置冲突的问题。当前剩余优先处理项不只一项：除了 transfer 状态管理缺少边界外，Rust 初始化状态还缺少 shutdown/reset 生命周期清理，且默认 `FrbRustBridgeApi` 共享作用域路径仍缺少直接回归测试。
+结论先行：截至 2026-03-12，本次审查里原始八项已识别问题中，大部分已经闭环，包括：原始 P0（双通道 request body 编码漂移）、后续暴露的 P1（`List<int>` body 语义歧义）、下载 fallback 静默破坏断点续传契约的问题、Dio 下载脏文件污染最终路径的问题、“默认 API 让人误以为 Rust 已启用”的误导性接入路径、Rust 错误分类完全依赖字符串前缀的问题、公开 request hint 字段制造错误预期的问题，以及 Rust 初始化 `already initialized` 分支吞掉配置冲突的问题。2026-03-12 的 staged 修复又补齐了 `RustAdapter` 的受控 shutdown/reinitialize 生命周期，并为默认 `FrbRustBridgeApi` 共享作用域路径补上了直接回归。当前剩余优先处理项主要集中在 transfer 状态管理缺少边界；生命周期侧的残余约束已收敛为一条明确不受支持的低层路径：若宿主绕过 `RustAdapter.shutdownEngine()`，直接调用 `RustBridgeApi.shutdownNetEngine()`，Dart 侧共享 scope 状态不会自动同步。
 
 ## 主要问题
 
@@ -211,55 +211,60 @@
   - 当前包内通过 `RustAdapter` 管理初始化的接入路径，已不会再在 Dart 侧静默接受后续配置漂移。
   - 残余边界是：若 Rust engine 在包外已被预先初始化，Dart 当前仍拿不到真实首配，只能把“第一份被接受的请求配置”当作兼容基线；若要彻底封死该场景，需要 Rust 侧进一步暴露当前生效配置或配置指纹。
 
-### 10. 中：Rust 初始化状态缺少 shutdown/reset 生命周期清理
+### 10. 已修复（2026-03-12）：`RustAdapter` 已补受控 shutdown/reinitialize 生命周期；残余风险收敛到低层 bridge 直调 shutdown
 
-- 证据：
-  - `lib/network/rust_adapter.dart:64-81`
-  - `lib/network/rust_adapter/rust_adapter_init.dart:5-7`
-  - `lib/network/rust_adapter/rust_adapter_init.dart:92-99`
-  - `lib/network/rust_adapter/rust_adapter_init.dart:267-280`
-  - `lib/rust_bridge/api.dart:33-34`
-- 现状：
-  - `_RustAdapterInitTracker` 会按 bridge scope 缓存 `knownConfig` / `acceptedConfigWhenActualUnknown`，但没有正式 reset 路径。
-  - `RustAdapter` 自身只保留 `_initialized` 本地状态；请求与再次初始化时都会参考这份本地状态。
-  - 底层 FRB 仍暴露 `shutdownNetEngine()`，但 `RustBridgeApi`/`RustAdapter` 没有配套的 shutdown 生命周期管理。
-- 风险：
-  - 如果宿主绕过 `RustAdapter` 直接 shutdown，旧 adapter 可能继续把自己当作 ready。
-  - 外部 shutdown 后继续复用同一个 adapter 时，Dart 侧可能仍受旧 `_initialized` / `knownConfig` 影响，出现“引擎已重置但本地状态未清”的脏状态。
-  - 额外本地 probe 表明：shutdown 后新建新的 adapter 当前可以重新 init；因此风险边界主要落在“旧 adapter 复用”与“缺少受控 reset”，不是“所有 restart 都会失败”。
-- 建议优先级：P2
+- 修复证据：
+  - `lib/network/rust_adapter.dart`
+  - `lib/network/rust_adapter/rust_adapter_init.dart`
+  - `lib/network/rust_bridge_api.dart`
+  - `test/network/rust_adapter_lifecycle_test.dart`
+  - `README.md`
+- 修复后实现：
+  - `RustAdapter` 新增受支持的 `shutdownEngine()` 生命周期入口；bridge-backed adapter 的 `isReady` / `isInitialized` 不再只看本地 `_initialized`，还会校验当前 adapter 绑定的 `generation` 是否仍是共享 scope 的活动代次。
+  - `_RustAdapterInitTracker` 现在会按 scope 串行化 `initialize` / `shutdown`，并在 shutdown 成功后清空 `knownConfig` / `acceptedConfigWhenActualUnknown`，同时推进 `generation`，让同一 scope 下旧代次 adapter 全部失效。
+  - shutdown 成功后，同一 scope 已允许以新配置重新初始化；shutdown 失败时，Dart 侧保持保守语义，不会误清空当前已初始化状态。
+  - README 与设计文档已同步把生命周期入口收口到 `RustAdapter.initializeEngine()` / `shutdownEngine()`。
+- 验证：
+  - 已新增 lifecycle 回归，覆盖：
+    - shutdown 后单 adapter 失效；
+    - 同 scope 其他 adapter 联动失效；
+    - shutdown 后允许以新配置 reinitialize；
+    - shutdown 失败时保持保守 ready 状态。
+  - 本地验证通过：`flutter analyze`、`flutter test`。
+- 残余边界：
+  - `RustBridgeApi.shutdownNetEngine()` 仍保留为低层 bridge passthrough；如果宿主绕过 `RustAdapter.shutdownEngine()` 直接调用它，Dart 侧共享 tracker 不会自动同步。
+  - 因此，当前受支持的生命周期语义只覆盖 `RustAdapter` 入口；“直调底层 shutdown 后再复用旧 adapter”仍属于明确不受支持的误用路径。
+- 结论：
+  - 原始“缺少受控 shutdown/reset 生命周期清理”的 P2 风险已在受支持路径上关闭。
+  - 当前剩余的是 API 约束问题，而不是 `RustAdapter` 已支持路径本身仍缺 reset。
 
-### 11. 中：默认 `FrbRustBridgeApi` 共享作用域路径仍缺少直接回归
+### 11. 已修复（2026-03-12）：默认 `FrbRustBridgeApi` 共享作用域路径已补直接回归
 
-- 证据：
-  - `lib/network/rust_adapter.dart:51-57`
-  - `lib/network/rust_adapter/rust_adapter_init.dart:278-279`
-  - `test/network/rust_adapter_test.dart:371-466`
-  - `test/network/rust_adapter_test.dart:533-623`
-- 现状：
-  - 生产默认路径下，每个 `RustAdapter()` 都会创建新的 `FrbRustBridgeApi()`。
-  - 真正的共享初始化语义依赖 `bridgeApi is FrbRustBridgeApi ? _sharedBridgeConfigScope : bridgeApi` 这条特殊分支。
-  - 现有新增测试主要覆盖“多个 adapter 共用同一个 fake bridge 实例”，没有直接锁住“不同 FRB bridge 实例但共享同一默认 scope”的生产路径。
-- 风险：
-  - 这类测试即使持续为绿，也不足以证明默认生产路径没有被后续重构悄悄破坏。
-  - 当前额外本地 probe 未发现实现 bug，但缺少正式回归意味着这一行为仍可能在后续改动中退化。
-- 建议优先级：P3
+- 修复证据：
+  - `lib/network/rust_adapter/rust_adapter_init.dart`
+  - `test/network/rust_adapter_shared_scope_test.dart`
+- 修复后实现：
+  - 已新增直接覆盖默认生产路径的共享 scope 回归，不再只依赖“多个 adapter 共用同一个 fake bridge 实例”的测试缝隙。
+  - 新增测试现在会直接验证：两个不同的 `FrbRustBridgeApi` 子类实例在默认生产路径下仍共享同一 scope，并覆盖顺序初始化、并发同配置初始化，以及 shutdown 后以新配置重启。
+- 验证：
+  - 本地验证通过：`flutter analyze`、`flutter test`。
+- 结论：
+  - 该项 P3 测试缺口已关闭。
+  - 后续若再调整 bridge 注入层或 `FrbRustBridgeApi` 包装方式，应优先保留并先跑这组回归，避免真实生产路径再次被 fake bridge 测试掩盖。
 
 ## 当前测试盲区
 
 - transfer 长时间运行、业务不轮询或低频轮询时的内存边界。
-- Rust shutdown/reset 与长生命周期 adapter 复用的生命周期边界。
-- 默认 `FrbRustBridgeApi` 共享作用域路径缺少直接回归。
+- 直接调用低层 `RustBridgeApi.shutdownNetEngine()` 的误用路径仍未纳入正式回归；当前依赖 API/README 合同把它声明为不受支持。
 - Rust typed error 已落地后，legacy 字符串兼容分支在版本升级后的保留策略。
 - 若 Rust engine 被包外路径预先初始化，Dart 侧缺少读取当前生效配置的桥接能力。
 
 ## 建议处理顺序
 
 1. 给 transfer 事件与 task 状态增加上限、过期策略或背压策略。
-2. 为 Rust 初始化补一个受控 shutdown/reset 路径，或明确声明不支持 runtime restart。
-3. 把默认 `FrbRustBridgeApi` 共享作用域路径与 shutdown/restart 场景纳入正式回归。
-4. 在 bridge 全量升级后，评估是否收敛或移除 Dart 侧 legacy 错误字符串兼容分支。
-5. 若要覆盖包外预初始化场景，在 Rust bridge 暴露当前生效 `NetEngineConfig` 或配置指纹。
+2. 评估是否继续收窄低层 `RustBridgeApi.shutdownNetEngine()` 的公开误用面，或为这条路径补更显式的保护/说明。
+3. 在 bridge 全量升级后，评估是否收敛或移除 Dart 侧 legacy 错误字符串兼容分支。
+4. 若要覆盖包外预初始化场景，在 Rust bridge 暴露当前生效 `NetEngineConfig` 或配置指纹。
 
 ## 备注
 

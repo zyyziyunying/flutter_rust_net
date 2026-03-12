@@ -72,6 +72,18 @@ final client = BytesFirstNetworkClient.standard(
 );
 ```
 
+Supported lifecycle usage:
+
+```dart
+await rustAdapter.shutdownEngine();
+```
+
+Use `RustAdapter.initializeEngine()` / `shutdownEngine()` as the supported
+lifecycle API. Avoid calling the generated FRB `shutdownNetEngine()` directly,
+because that bypasses Dart-side shared-scope lifecycle tracking.
+The constructor `initialized` flag and `markInitialized()` are intended only
+for `requestHandler`-backed test doubles, not bridge-backed adapters.
+
 `body` uses one shared contract on both Dio and Rust channels:
 
 - `bodyBytes`: sent as raw bytes

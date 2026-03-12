@@ -42,9 +42,7 @@ void main() {
     test(
       'json int array body stays aligned when rust falls back to dio',
       () async {
-        final capture = await _exerciseFallback(
-          body: <int>[1, 2, 256, -1],
-        );
+        final capture = await _exerciseFallback(body: <int>[1, 2, 256, -1]);
 
         expect(capture.rustSpec.bodyBytes, isNotNull);
         expect(
@@ -57,21 +55,23 @@ void main() {
       },
     );
 
-    test('raw byte payload stays aligned when rust falls back to dio',
-        () async {
-      final capture = await _exerciseFallback(
-        bodyBytes: const <int>[65, 66, 67, 0, 255],
-      );
+    test(
+      'raw byte payload stays aligned when rust falls back to dio',
+      () async {
+        final capture = await _exerciseFallback(
+          bodyBytes: const <int>[65, 66, 67, 0, 255],
+        );
 
-      expect(capture.rustSpec.bodyBytes, isNotNull);
-      expect(
-        capture.dioRequest.bodyBytes,
-        capture.rustSpec.bodyBytes!.toList(growable: false),
-      );
-      expect(capture.dioRequest.bodyBytes, [65, 66, 67, 0, 255]);
-      expect(capture.dioRequest.contentType, isNull);
-      expect(_headerValue(capture.rustSpec.headers, 'content-type'), isNull);
-    });
+        expect(capture.rustSpec.bodyBytes, isNotNull);
+        expect(
+          capture.dioRequest.bodyBytes,
+          capture.rustSpec.bodyBytes!.toList(growable: false),
+        );
+        expect(capture.dioRequest.bodyBytes, [65, 66, 67, 0, 255]);
+        expect(capture.dioRequest.contentType, isNull);
+        expect(_headerValue(capture.rustSpec.headers, 'content-type'), isNull);
+      },
+    );
   });
 }
 
@@ -171,10 +171,7 @@ class _RecordedRequest {
   final List<int> bodyBytes;
   final String? contentType;
 
-  const _RecordedRequest({
-    required this.bodyBytes,
-    required this.contentType,
-  });
+  const _RecordedRequest({required this.bodyBytes, required this.contentType});
 }
 
 class _CapturingRustBridgeApi implements RustBridgeApi {
@@ -187,6 +184,9 @@ class _CapturingRustBridgeApi implements RustBridgeApi {
   Future<void> initNetEngine({
     required rust_api.NetEngineConfig config,
   }) async {}
+
+  @override
+  Future<void> shutdownNetEngine() async {}
 
   @override
   Future<rust_api.ResponseMeta> request({
@@ -206,9 +206,7 @@ class _CapturingRustBridgeApi implements RustBridgeApi {
   }
 
   @override
-  Future<String> startTransferTask({
-    required rust_api.TransferTaskSpec spec,
-  }) {
+  Future<String> startTransferTask({required rust_api.TransferTaskSpec spec}) {
     throw UnimplementedError();
   }
 

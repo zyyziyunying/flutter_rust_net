@@ -83,6 +83,7 @@
 - Rust `DiskCache` 已有首版可用能力（GET + TTL/ETag/LRU + namespace 清理），策略参数化与更细粒度一致性仍待补齐。
 - 暂无内建“业务拦截器链”与“声明式 API 客户端生成”能力。
 - 协议/网络策略控制面（HTTP/3 显式配置、代理、证书高级能力）仍待扩展。
+- Rust 引擎生命周期的受支持入口已收口到 `RustAdapter.initializeEngine()` / `shutdownEngine()`；直接调用底层 FRB 生成的 `shutdownNetEngine()` 不属于受支持路径，因为 Dart 侧共享 scope 状态无法自动同步。
 
 ## 8) 打分制对比表（用于选型）
 

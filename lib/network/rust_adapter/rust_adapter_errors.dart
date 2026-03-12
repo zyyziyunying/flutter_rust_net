@@ -65,6 +65,14 @@ class _RustAdapterErrors {
     );
   }
 
+  static NetException wrapShutdownError(Object error) {
+    return NetException.infrastructure(
+      message: 'Rust shutdown failed: $error',
+      channel: NetChannel.rust,
+      cause: error,
+    );
+  }
+
   static NetException _mapTypedRustError(
     rust_api.NetErrorKind kind,
     String message, {

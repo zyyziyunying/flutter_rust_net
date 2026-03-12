@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+//TODO 拆分
 const Set<String> _supportedChannels = {'dio', 'rust'};
 
 Future<void> main(List<String> args) async {

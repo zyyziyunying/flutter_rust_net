@@ -10,6 +10,12 @@ abstract class RustBridgeApi {
 
   Future<void> initNetEngine({required rust_api.NetEngineConfig config});
 
+  /// Low-level bridge shutdown passthrough.
+  ///
+  /// This does not update Dart-side shared lifecycle tracking by itself.
+  /// Host code should use `RustAdapter.shutdownEngine()` instead.
+  Future<void> shutdownNetEngine();
+
   Future<rust_api.ResponseMeta> request({required rust_api.RequestSpec spec});
 
   Future<String> startTransferTask({required rust_api.TransferTaskSpec spec});
@@ -90,6 +96,11 @@ class FrbRustBridgeApi implements RustBridgeApi {
   @override
   Future<void> initNetEngine({required rust_api.NetEngineConfig config}) {
     return rust_api.initNetEngine(config: config);
+  }
+
+  @override
+  Future<void> shutdownNetEngine() {
+    return rust_api.shutdownNetEngine();
   }
 
   @override

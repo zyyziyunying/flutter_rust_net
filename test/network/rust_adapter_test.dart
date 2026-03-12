@@ -7,8 +7,37 @@ import 'package:flutter_rust_net/network/rust_adapter.dart';
 import 'package:flutter_rust_net/network/rust_bridge_api.dart';
 import 'package:flutter_rust_net/rust_bridge/api.dart' as rust_api;
 
+//TODO 拆分
 void main() {
   group('RustAdapter', () {
+    test('rejects initialized constructor flag for bridge-backed adapters', () {
+      expect(
+        () => RustAdapter(initialized: true, bridgeApi: _FakeRustBridgeApi()),
+        throwsA(
+          isA<ArgumentError>().having(
+            (error) => error.message,
+            'message',
+            contains('Use initializeEngine()'),
+          ),
+        ),
+      );
+    });
+
+    test('rejects markInitialized for bridge-backed adapters', () {
+      final adapter = RustAdapter(bridgeApi: _FakeRustBridgeApi());
+
+      expect(
+        () => adapter.markInitialized(),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'message',
+            contains('requestHandler-backed adapters'),
+          ),
+        ),
+      );
+    });
+
     test('throws infrastructure error before initialization', () async {
       final adapter = RustAdapter(bridgeApi: _FakeRustBridgeApi());
 
@@ -25,6 +54,11 @@ void main() {
                 (error) => error.fallbackEligible,
                 'fallbackEligible',
                 isTrue,
+              )
+              .having(
+                (error) => error.message,
+                'message',
+                contains('RustAdapter.initializeEngine()'),
               ),
         ),
       );
@@ -412,7 +446,7 @@ void main() {
           options: const RustEngineInitOptions(cacheDefaultTtlSeconds: 30),
         );
 
-        await expectLater(
+        final secondInitExpectation = expectLater(
           secondInit,
           throwsA(
             isA<NetException>()
@@ -436,6 +470,7 @@ void main() {
 
         gate.complete();
         await firstInit;
+        await secondInitExpectation;
 
         expect(firstAdapter.isInitialized, isTrue);
         expect(secondAdapter.isInitialized, isFalse);
@@ -443,16 +478,8 @@ void main() {
       },
     );
 
-    test('allows already initialized branch when config matches', () async {
-      var initAttempt = 0;
-      final fakeBridge = _FakeRustBridgeApi(
-        initResponder: (config) async {
-          initAttempt += 1;
-          if (initAttempt >= 2) {
-            throw Exception('AnyhowException(NetEngine already initialized)');
-          }
-        },
-      );
+    test('reuses shared initialized scope when config matches', () async {
+      final fakeBridge = _FakeRustBridgeApi();
       final firstAdapter = RustAdapter(bridgeApi: fakeBridge);
       final secondAdapter = RustAdapter(bridgeApi: fakeBridge);
       const options = RustEngineInitOptions(cacheDefaultTtlSeconds: 12);
@@ -462,55 +489,44 @@ void main() {
 
       expect(firstAdapter.isInitialized, isTrue);
       expect(secondAdapter.isInitialized, isTrue);
-      expect(fakeBridge.initCalls, 2);
+      expect(fakeBridge.initCalls, 1);
     });
 
-    test(
-      'rejects conflicting config when bridge reports already initialized',
-      () async {
-        var initAttempt = 0;
-        final fakeBridge = _FakeRustBridgeApi(
-          initResponder: (config) async {
-            initAttempt += 1;
-            if (initAttempt >= 2) {
-              throw Exception('AnyhowException(NetEngine already initialized)');
-            }
-          },
-        );
-        final firstAdapter = RustAdapter(bridgeApi: fakeBridge);
-        final secondAdapter = RustAdapter(bridgeApi: fakeBridge);
+    test('rejects conflicting config on shared initialized scope', () async {
+      final fakeBridge = _FakeRustBridgeApi();
+      final firstAdapter = RustAdapter(bridgeApi: fakeBridge);
+      final secondAdapter = RustAdapter(bridgeApi: fakeBridge);
 
-        await firstAdapter.initializeEngine(
-          options: const RustEngineInitOptions(cacheDefaultTtlSeconds: 12),
-        );
+      await firstAdapter.initializeEngine(
+        options: const RustEngineInitOptions(cacheDefaultTtlSeconds: 12),
+      );
 
-        await expectLater(
-          secondAdapter.initializeEngine(
-            options: const RustEngineInitOptions(cacheDefaultTtlSeconds: 30),
-          ),
-          throwsA(
-            isA<NetException>()
-                .having(
-                  (error) => error.code,
-                  'code',
-                  NetErrorCode.infrastructure,
-                )
-                .having(
-                  (error) => error.fallbackEligible,
-                  'fallbackEligible',
-                  isFalse,
-                )
-                .having(
-                  (error) => error.message,
-                  'message',
-                  contains('cacheDefaultTtlSeconds=12 -> 30'),
-                ),
-          ),
-        );
-        expect(secondAdapter.isInitialized, isFalse);
-        expect(fakeBridge.initCalls, 2);
-      },
-    );
+      await expectLater(
+        secondAdapter.initializeEngine(
+          options: const RustEngineInitOptions(cacheDefaultTtlSeconds: 30),
+        ),
+        throwsA(
+          isA<NetException>()
+              .having(
+                (error) => error.code,
+                'code',
+                NetErrorCode.infrastructure,
+              )
+              .having(
+                (error) => error.fallbackEligible,
+                'fallbackEligible',
+                isFalse,
+              )
+              .having(
+                (error) => error.message,
+                'message',
+                contains('cacheDefaultTtlSeconds=12 -> 30'),
+              ),
+        ),
+      );
+      expect(secondAdapter.isInitialized, isFalse);
+      expect(fakeBridge.initCalls, 1);
+    });
 
     test(
       'allows matching reinitialization when actual config is unknown',
@@ -574,7 +590,7 @@ void main() {
 
         expect(firstAdapter.isInitialized, isTrue);
         expect(secondAdapter.isInitialized, isFalse);
-        expect(fakeBridge.initCalls, 2);
+        expect(fakeBridge.initCalls, 1);
       },
     );
 
@@ -734,6 +750,7 @@ void main() {
 class _FakeRustBridgeApi implements RustBridgeApi {
   int ensureLoadedCalls = 0;
   int initCalls = 0;
+  int shutdownCalls = 0;
   int startTransferCalls = 0;
   int pollEventsCalls = 0;
   int cancelCalls = 0;
@@ -777,6 +794,11 @@ class _FakeRustBridgeApi implements RustBridgeApi {
     if (initError != null) {
       throw initError!;
     }
+  }
+
+  @override
+  Future<void> shutdownNetEngine() async {
+    shutdownCalls += 1;
   }
 
   @override

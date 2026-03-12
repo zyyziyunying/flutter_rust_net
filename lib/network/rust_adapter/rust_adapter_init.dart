@@ -6,68 +6,96 @@ class _RustAdapterInitTracker {
   static final Expando<_RustEngineInitState> _trackedInitStates =
       Expando<_RustEngineInitState>('rust_engine_init_states');
 
-  static Future<void> initialize({
+  static bool isActiveGeneration(
+    RustBridgeApi bridgeApi, {
+    required int? generation,
+  }) {
+    if (generation == null) {
+      return false;
+    }
+    final initState = _initStateFor(bridgeApi);
+    return initState.initialized && initState.generation == generation;
+  }
+
+  static Future<int> initialize({
     required RustBridgeApi bridgeApi,
     required bool alreadyInitialized,
     required RustEngineInitOptions options,
-  }) async {
+  }) {
     final config = toNetEngineConfig(options);
     final initState = _initStateFor(bridgeApi);
-    if (alreadyInitialized) {
-      _ensureInitConfigMatches(
-        bridgeApi,
-        requested: config,
-        activeConfig: initState.knownConfig,
-      );
-      return;
-    }
+    return _serializeLifecycle<int>(initState, () async {
+      if (alreadyInitialized && initState.initialized) {
+        _ensureInitConfigMatches(bridgeApi, requested: config);
+        return initState.generation;
+      }
 
-    final pendingInit = initState.inFlight;
-    if (pendingInit != null) {
-      _ensureInitConfigMatches(
-        bridgeApi,
-        requested: config,
-        activeConfig: initState.pendingConfig ?? initState.knownConfig,
-      );
-      await pendingInit;
-      return;
-    }
+      if (initState.initialized) {
+        _ensureInitConfigMatches(bridgeApi, requested: config);
+        return initState.generation;
+      }
 
-    final completer = Completer<void>();
-    initState.pendingConfig = config;
-    initState.inFlight = completer.future;
-    unawaited(completer.future.catchError((_) {}));
-
-    try {
-      await bridgeApi.ensureBridgeLoaded();
-      await bridgeApi.initNetEngine(config: config);
-      _rememberInitConfig(bridgeApi, config);
-      completer.complete();
-    } catch (error, stackTrace) {
-      final text = '$error';
-      if (text.contains('already initialized')) {
-        try {
+      initState.pendingConfig = config;
+      try {
+        await bridgeApi.ensureBridgeLoaded();
+        await bridgeApi.initNetEngine(config: config);
+        _rememberInitConfig(bridgeApi, config);
+        initState.initialized = true;
+        return initState.generation;
+      } catch (error, stackTrace) {
+        final text = '$error';
+        if (text.contains('already initialized')) {
           _acceptAlreadyInitializedConfig(
             bridgeApi,
             requested: config,
             cause: error,
           );
-          completer.complete();
-          return;
-        } catch (matchError, matchStackTrace) {
-          completer.completeError(matchError, matchStackTrace);
-          rethrow;
+          initState.initialized = true;
+          return initState.generation;
+        }
+        final initError = _RustAdapterErrors.wrapInitError(error, text);
+        Error.throwWithStackTrace(initError, stackTrace);
+      } finally {
+        if (initState.pendingConfig == config) {
+          initState.pendingConfig = null;
         }
       }
-      final initError = _RustAdapterErrors.wrapInitError(error, text);
-      completer.completeError(initError, stackTrace);
-      Error.throwWithStackTrace(initError, stackTrace);
-    } finally {
-      if (identical(initState.inFlight, completer.future)) {
-        initState.pendingConfig = null;
-        initState.inFlight = null;
+    });
+  }
+
+  static Future<void> shutdown({
+    required RustBridgeApi bridgeApi,
+    required int generation,
+  }) {
+    final initState = _initStateFor(bridgeApi);
+    return _serializeLifecycle<void>(initState, () async {
+      if (!initState.initialized || initState.generation != generation) {
+        return;
       }
-    }
+
+      final completer = Completer<void>();
+      initState.shutdownInFlight = completer.future;
+      unawaited(completer.future.catchError((_) {}));
+
+      try {
+        await bridgeApi.ensureBridgeLoaded();
+        await bridgeApi.shutdownNetEngine();
+        initState.knownConfig = null;
+        initState.acceptedConfigWhenActualUnknown = null;
+        initState.pendingConfig = null;
+        initState.initialized = false;
+        initState.generation += 1;
+        completer.complete();
+      } catch (error, stackTrace) {
+        final shutdownError = _RustAdapterErrors.wrapShutdownError(error);
+        completer.completeError(shutdownError, stackTrace);
+        Error.throwWithStackTrace(shutdownError, stackTrace);
+      } finally {
+        if (identical(initState.shutdownInFlight, completer.future)) {
+          initState.shutdownInFlight = null;
+        }
+      }
+    });
   }
 
   static rust_api.NetEngineConfig toNetEngineConfig(
@@ -279,6 +307,23 @@ class _RustAdapterInitTracker {
     return bridgeApi is FrbRustBridgeApi ? _sharedBridgeConfigScope : bridgeApi;
   }
 
+  static Future<T> _serializeLifecycle<T>(
+    _RustEngineInitState initState,
+    Future<T> Function() action,
+  ) async {
+    final previousLifecycle = initState.lifecycleInFlight;
+    final completer = Completer<void>();
+    initState.lifecycleInFlight = completer.future;
+    unawaited(completer.future.catchError((_) {}));
+
+    try {
+      await previousLifecycle.catchError((_) {});
+      return await action();
+    } finally {
+      completer.complete();
+    }
+  }
+
   static String _defaultCacheDirPath() {
     final tempPath = Directory.systemTemp.path;
     final separator = Platform.pathSeparator;
@@ -290,8 +335,11 @@ class _RustAdapterInitTracker {
 }
 
 class _RustEngineInitState {
+  int generation = 0;
+  bool initialized = false;
   rust_api.NetEngineConfig? knownConfig;
   rust_api.NetEngineConfig? acceptedConfigWhenActualUnknown;
   rust_api.NetEngineConfig? pendingConfig;
-  Future<void>? inFlight;
+  Future<void> lifecycleInFlight = Future<void>.value();
+  Future<void>? shutdownInFlight;
 }

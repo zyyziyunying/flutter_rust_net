@@ -74,6 +74,7 @@ Flutter UI / Repository / UseCase
 - 对 Rust 错误做统一分类并标记是否允许回退。
 - 桥接传输任务能力：`start_transfer_task / poll_events / cancel`。
 - 暴露 `clear_cache`，用于按 namespace 或全量清理 Rust 落盘缓存。
+- 公开受支持的 lifecycle 入口为 `RustAdapter.initializeEngine()` / `shutdownEngine()`；不建议业务代码直接调用底层 FRB 生成的 `shutdownNetEngine()`。
 
 ### 3.6 Rust NetEngine
 - 提供高并发 HTTP 能力与任务调度能力。

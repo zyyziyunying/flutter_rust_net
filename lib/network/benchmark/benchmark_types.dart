@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../net_models.dart';
 
+//TODO 拆分
 enum BenchmarkScenario {
   smallJson,
   largeJson,
