@@ -13,10 +13,11 @@
   - `flutter test test/network/dio_adapter_transfer_state_test.dart`
   - `flutter test test/network/network_gateway_test.dart`
   - `flutter test test/network/network_gateway_transfer_state_test.dart`
+  - `flutter test`
 
 ## 结论
 
-当前记录中的原始 3 个问题里，问题 1 已在 2026-03-12 修复并补回归；剩余 2 个中优先级行为/文档一致性问题待继续处理。按当前状态，仍建议先收敛剩余问题再放行合并。
+当前记录中的原始 3 个问题已在 2026-03-12 全部修复并补回归。按当前状态，可按正常流程继续合并。
 
 ## 主要问题
 
@@ -36,43 +37,37 @@
   - 该项高优先级语义回退已关闭。
   - 当前 transfer cancel 语义已收敛为：已知通道保留真实错误，未知或 stale 场景再走双侧安全探测。
 
-### 2. 中：Dio 事件队列并没有稳定保留“最新状态”，只是压缩了重复 progress
+### 2. 已修复（2026-03-12）：Dio 事件队列会刷新最新 progress 的保留顺序
 
-- 位置：
-  - `lib/network/dio_adapter.dart:493-500`
-  - `lib/network/dio_adapter.dart:515-520`
-- 现状：
-  - progress 事件命中同任务旧 progress 时是原位覆盖，不会把该事件移动到队尾。
-  - 队列截断策略是按列表头部 FIFO 删除。
-- 风险：
-  - 老任务即使刚刚上报了最新 progress，它的快照位置仍可能比一些更旧的新任务事件更靠前。
-  - 当后续有大量新任务事件涌入时，这个“最新 progress”会被更早淘汰。
-  - 因此，当前实现不能严格支撑“尽量保留最新状态”的说法。
-- 当前测试缺口：
-  - 新增测试没有覆盖“长任务持续 progress + 后续新任务挤压”的场景。
-- 建议：
-  - 如果目标是尽量保留最近状态，progress 更新时应同步刷新保留顺序，或者改为显式的按任务聚合缓冲结构。
+- 修复证据：
+  - `lib/network/dio_adapter.dart`
+  - `test/network/dio_adapter_transfer_state_test.dart`
+- 修复后实现：
+  - `progress` 事件命中同任务旧 `progress` 时，会先移除旧项再追加到队尾。
+  - 队列截断仍是有界 FIFO，但同任务最新 `progress` 的保留顺序会随着最近一次上报一起刷新。
+- 验证：
+  - 已新增 Dio 回归：覆盖“长任务持续 progress + 后续新任务挤压”场景，确认缓冲里保留下来的是最近快照而不是旧位置上的过期快照。
+  - 本地验证通过：`flutter test test/network/dio_adapter_transfer_state_test.dart`、`flutter analyze`、`flutter test`。
+- 结论：
+  - 当前实现已能支撑“尽量保留最近状态与终态”的表述；该项中优先级语义问题已关闭。
 
-### 3. 中：Gateway 的任务淘汰不是按最近活跃，而是按最早插入
+### 3. 已修复（2026-03-12）：Gateway tracked transfer 按最近活跃淘汰
 
-- 位置：
-  - `lib/network/network_gateway.dart:111-116`
-  - `lib/network/network_gateway.dart:334-345`
-- 现状：
-  - `pollTransferEvents()` 每次收到非终态事件都会调用 `_trackTransferTaskChannel()`。
-  - `_trackTransferTaskChannel()` 对同一个 `Map` key 的重复赋值不会刷新插入顺序。
-  - 实际淘汰结果是“最早插入 task 先被移除”，不是“最久未活跃 task 先被移除”。
-- 风险：
-  - 一个仍在持续活跃的老任务，也会在后续任务足够多时被挤出 `_transferTaskChannels`。
-  - 之后 `cancelTransferTask()` 会退化成双侧探测，行为虽然能兜底，但和“按状态活跃度追踪”的预期不一致。
-  - 相关文档把这部分描述为“有上限跟踪、风险已闭环”，表述偏乐观。
-- 当前测试缺口：
-  - 新增测试没有验证“持续活跃老任务是否应保留映射”的语义。
-- 建议：
-  - 如果目标是按最近活跃淘汰，需要显式刷新顺序或改用独立的 LRU/活动时间结构；如果只是固定容量 FIFO，应在文档里直说。
+- 修复证据：
+  - `lib/network/network_gateway.dart`
+  - `test/network/network_gateway_transfer_state_test.dart`
+- 修复后实现：
+  - `_transferTaskChannels` 显式使用 `LinkedHashMap` 维护顺序。
+  - `_trackTransferTaskChannel()` 在记录非终态事件时，会先移除旧 key 再重新插入，显式刷新最近活跃顺序。
+  - 当 tracked task 容量超限时，被淘汰的是“最久未活跃”的映射，而不是“最早插入”的映射。
+- 验证：
+  - 已新增 gateway 回归：覆盖“老任务收到 progress 刷新活跃度后，再发生容量溢出时仍保留映射，cancel 不退化成双侧探测”。
+  - 本地验证通过：`flutter test test/network/network_gateway_transfer_state_test.dart`、`flutter analyze`、`flutter test`。
+- 结论：
+  - 当前 gateway tracked task 的容量淘汰语义已与“按最近活跃跟踪”的实现和文档表述一致。
 
 ## 备注
 
 - 本记录基于 2026-03-12 的暂存区 diff 和本地验证结果整理。
 - 问题 1 已在 2026-03-12 修复并回写本文件与 `docs/progress/`。
-- 问题 2 / 3 尚未处理，后续修复时建议继续补对应回归后再更新结论文档。
+- 问题 2 / 3 已在 2026-03-12 修复并补回归，结论文档已同步更新。

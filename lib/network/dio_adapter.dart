@@ -497,8 +497,7 @@ class DioAdapter implements NetAdapter {
             existing.kind == NetTransferEventKind.progress,
       );
       if (existingIndex >= 0) {
-        _transferEvents[existingIndex] = event;
-        return;
+        _transferEvents.removeAt(existingIndex);
       }
     }
 

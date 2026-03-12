@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'net_adapter.dart';
 import 'net_feature_flag.dart';
 import 'net_models.dart';
@@ -31,7 +33,8 @@ class NetworkGateway {
   final NetFeatureFlag featureFlag;
   final NetAdapter dioAdapter;
   final NetAdapter rustAdapter;
-  final Map<String, NetChannel> _transferTaskChannels = <String, NetChannel>{};
+  final LinkedHashMap<String, NetChannel> _transferTaskChannels =
+      LinkedHashMap<String, NetChannel>();
 
   NetworkGateway({
     required this.routingPolicy,
@@ -332,6 +335,7 @@ class NetworkGateway {
   }
 
   void _trackTransferTaskChannel(String taskId, NetChannel channel) {
+    _transferTaskChannels.remove(taskId);
     _transferTaskChannels[taskId] = channel;
     final overflow = _transferTaskChannels.length - _maxTrackedTransferTasks;
     if (overflow <= 0) {
