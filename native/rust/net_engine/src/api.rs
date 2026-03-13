@@ -122,53 +122,98 @@ pub struct NetEvent {
 // ── FRB 暴露的顶层函数 ──
 
 use crate::engine::client::NetEngine;
+use std::sync::Arc;
 use std::sync::OnceLock;
+use tokio::sync::Mutex;
 
-static ENGINE: OnceLock<NetEngine> = OnceLock::new();
+static ENGINE: OnceLock<Mutex<Option<Arc<NetEngine>>>> = OnceLock::new();
 
-fn get_engine() -> anyhow::Result<&'static NetEngine> {
-    ENGINE
-        .get()
+fn engine_slot() -> &'static Mutex<Option<Arc<NetEngine>>> {
+    ENGINE.get_or_init(|| Mutex::new(None))
+}
+
+async fn get_engine() -> anyhow::Result<Arc<NetEngine>> {
+    let engine = engine_slot().lock().await;
+    engine
+        .clone()
         .ok_or_else(|| anyhow::anyhow!("NetEngine not initialized, call init_net_engine first"))
 }
 
 pub async fn init_net_engine(config: NetEngineConfig) -> anyhow::Result<()> {
-    let engine = NetEngine::new(config)?;
-    ENGINE
-        .set(engine)
-        .map_err(|_| anyhow::anyhow!("NetEngine already initialized"))?;
+    let mut engine_slot = engine_slot().lock().await;
+    if engine_slot.is_some() {
+        return Err(anyhow::anyhow!("NetEngine already initialized"));
+    }
+
+    *engine_slot = Some(Arc::new(NetEngine::new(config)?));
     tracing::info!("NetEngine initialized");
     Ok(())
 }
 
 pub async fn request(spec: RequestSpec) -> anyhow::Result<ResponseMeta> {
-    get_engine()?.request(spec).await
+    get_engine().await?.request(spec).await
 }
 
 pub async fn start_transfer_task(spec: TransferTaskSpec) -> anyhow::Result<String> {
-    get_engine()?.start_transfer_task(spec).await
+    get_engine().await?.start_transfer_task(spec).await
 }
 
 pub async fn poll_events(limit: u32) -> anyhow::Result<Vec<NetEvent>> {
-    get_engine()?.poll_events(limit).await
+    get_engine().await?.poll_events(limit).await
 }
 
 pub async fn cancel(id: String) -> anyhow::Result<bool> {
-    get_engine()?.cancel(id).await
+    get_engine().await?.cancel(id).await
 }
 
 pub async fn set_network_busy(is_busy: bool) -> anyhow::Result<()> {
-    get_engine()?.set_network_busy(is_busy).await
+    get_engine().await?.set_network_busy(is_busy).await
 }
 
 pub async fn clear_cache(namespace: Option<String>) -> anyhow::Result<u64> {
-    get_engine()?.clear_cache(namespace).await
+    get_engine().await?.clear_cache(namespace).await
 }
 
 pub async fn shutdown_net_engine() -> anyhow::Result<()> {
-    if let Some(engine) = ENGINE.get() {
+    let mut engine_slot = engine_slot().lock().await;
+    if let Some(engine) = engine_slot.take() {
         engine.shutdown().await?;
     }
     tracing::info!("NetEngine shut down");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{init_net_engine, shutdown_net_engine, NetEngineConfig};
+    use std::sync::OnceLock;
+    use tokio::sync::Mutex;
+
+    static API_TEST_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+
+    fn api_test_lock() -> &'static Mutex<()> {
+        API_TEST_LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    #[tokio::test]
+    async fn shutdown_allows_reinitialize_with_new_config() {
+        let _guard = api_test_lock().lock().await;
+        shutdown_net_engine().await.expect("reset global engine");
+
+        let mut first_config = NetEngineConfig::default();
+        first_config.cache_default_ttl_seconds = 12;
+        init_net_engine(first_config).await.expect("first init");
+
+        shutdown_net_engine()
+            .await
+            .expect("shutdown after first init");
+
+        let mut second_config = NetEngineConfig::default();
+        second_config.cache_default_ttl_seconds = 30;
+        init_net_engine(second_config)
+            .await
+            .expect("reinitialize after shutdown");
+
+        shutdown_net_engine().await.expect("cleanup global engine");
+    }
 }

@@ -6,7 +6,7 @@
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `get_engine`
+// These functions are ignored because they are not marked as `pub`: `engine_slot`, `get_engine`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 Future<void> initNetEngine({required NetEngineConfig config}) =>
@@ -109,7 +109,6 @@ enum NetErrorKind {
   parse,
   io,
   internal,
-  ;
 }
 
 class NetEvent {
@@ -155,15 +154,7 @@ class NetEvent {
           costMs == other.costMs;
 }
 
-enum NetEventKind {
-  queued,
-  started,
-  progress,
-  completed,
-  failed,
-  canceled,
-  ;
-}
+enum NetEventKind { queued, started, progress, completed, failed, canceled }
 
 class RequestSpec {
   final String requestId;

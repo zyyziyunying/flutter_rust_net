@@ -20,6 +20,9 @@ impl NetEngine {
         let cancel_token = CancellationToken::new();
         {
             let mut tokens = self.cancel_tokens.lock().await;
+            if tokens.contains_key(&task_id) {
+                return Err(anyhow::anyhow!("transfer task already exists: {task_id}"));
+            }
             tokens.insert(task_id.clone(), cancel_token.clone());
         }
 
@@ -443,7 +446,7 @@ mod tests {
     use uuid::Uuid;
 
     use super::{NetEngine, TransferTaskKind};
-    use crate::api::{NetEventKind, TransferTaskSpec};
+    use crate::api::{NetEngineConfig, NetEventKind, TransferTaskSpec};
     use crate::engine::error::NetError;
     use crate::engine::events::EventBus;
 
@@ -461,6 +464,35 @@ mod tests {
             TransferTaskKind::parse("sync"),
             Err(NetError::Parse(_))
         ));
+    }
+
+    #[tokio::test]
+    async fn start_transfer_task_rejects_duplicate_task_ids() {
+        let (url, server_handle) =
+            spawn_download_server_with_delay("200 OK", b"ok", Duration::from_millis(200)).await;
+        let target_path = create_temp_file_path("duplicate_download");
+        let engine = NetEngine::new(NetEngineConfig::default()).expect("create net engine");
+        let spec = build_download_spec("duplicate-task", &url, &target_path);
+
+        let task_id = engine
+            .start_transfer_task(spec.clone())
+            .await
+            .expect("start first transfer task");
+        let error = engine
+            .start_transfer_task(spec)
+            .await
+            .expect_err("duplicate task id should be rejected");
+
+        assert_eq!(task_id, "duplicate-task");
+        assert!(error
+            .to_string()
+            .contains("transfer task already exists: duplicate-task"));
+
+        engine.shutdown().await.expect("shutdown engine");
+        server_handle
+            .await
+            .expect("download server task should join");
+        let _ = tokio::fs::remove_file(&target_path).await;
     }
 
     #[tokio::test]
@@ -618,6 +650,20 @@ mod tests {
         }
     }
 
+    fn build_download_spec(task_id: &str, url: &str, local_path: &Path) -> TransferTaskSpec {
+        TransferTaskSpec {
+            task_id: task_id.to_owned(),
+            kind: "download".to_owned(),
+            url: url.to_owned(),
+            method: "GET".to_owned(),
+            headers: vec![],
+            local_path: local_path.to_string_lossy().into_owned(),
+            resume_from: None,
+            expected_total: None,
+            priority: 0,
+        }
+    }
+
     fn create_temp_file_path(label: &str) -> PathBuf {
         std::env::temp_dir().join(format!("net_engine_transfer_{label}_{}", Uuid::new_v4()))
     }
@@ -670,6 +716,51 @@ mod tests {
         });
 
         (format!("http://{addr}/upload"), handle)
+    }
+
+    async fn spawn_download_server_with_delay(
+        status_line: &str,
+        body: &[u8],
+        response_delay: Duration,
+    ) -> (String, tokio::task::JoinHandle<()>) {
+        let listener = TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind download server");
+        let addr = listener.local_addr().expect("server local addr");
+        let status_line = status_line.to_owned();
+        let body = body.to_vec();
+
+        let handle = tokio::spawn(async move {
+            let accept_result =
+                tokio::time::timeout(Duration::from_secs(1), listener.accept()).await;
+            let Ok(Ok((mut stream, _))) = accept_result else {
+                return;
+            };
+            let mut request = Vec::new();
+            let mut buf = [0_u8; 2048];
+            loop {
+                let read = stream.read(&mut buf).await.expect("read request bytes");
+                if read == 0 {
+                    // The duplicate-id regression only cares that the second start is rejected.
+                    // During shutdown, the first transfer may be canceled before headers finish sending.
+                    return;
+                }
+                request.extend_from_slice(&buf[..read]);
+                if find_header_end(&request).is_some() {
+                    break;
+                }
+            }
+
+            tokio::time::sleep(response_delay).await;
+            let response = format!(
+                "HTTP/1.1 {status_line}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            );
+            let _ = stream.write_all(response.as_bytes()).await;
+            let _ = stream.write_all(&body).await;
+        });
+
+        (format!("http://{addr}/download"), handle)
     }
 
     fn find_header_end(payload: &[u8]) -> Option<usize> {

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 import '../rust_bridge/api.dart' as rust_api;
+import '../rust_bridge/frb_loader_path.dart' as frb_loader_path;
 import '../rust_bridge/frb_generated.dart';
 
 abstract class RustBridgeApi {
@@ -28,9 +29,6 @@ abstract class RustBridgeApi {
 }
 
 class FrbRustBridgeApi implements RustBridgeApi {
-  static const List<String> _nativeProjectPathCandidates = [
-    'native/rust/net_engine',
-  ];
   static const String _rebuildHintCommand =
       'cd native/rust/net_engine && cargo build --release -p net_engine';
 
@@ -46,7 +44,7 @@ class FrbRustBridgeApi implements RustBridgeApi {
       return;
     }
 
-    final nativeRoot = _resolveNativeProjectRoot();
+    final nativeRoot = resolveNativeProjectRoot();
     if (nativeRoot != null) {
       final candidatePaths = [
         '$nativeRoot/target/debug/$fileName',
@@ -146,16 +144,10 @@ class FrbRustBridgeApi implements RustBridgeApi {
     return null;
   }
 
-  String? _resolveNativeProjectRoot() {
-    for (final relativePath in _nativeProjectPathCandidates) {
-      final candidate = Directory.fromUri(
-        Directory.current.uri.resolve('$relativePath/'),
-      );
-      if (candidate.existsSync()) {
-        return candidate.absolute.path.replaceAll('\\', '/');
-      }
-    }
-    return null;
+  String? resolveNativeProjectRoot({Directory? currentDirectory}) {
+    return frb_loader_path.resolveNativeProjectRootPath(
+      currentDirectoryPath: currentDirectory?.path,
+    );
   }
 
   DateTime? _latestModifiedAt(List<String> paths) {

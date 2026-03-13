@@ -167,7 +167,7 @@ class RustAdapter implements NetAdapter {
 
     try {
       await _bridgeApi.ensureBridgeLoaded();
-      return _bridgeApi.startTransferTask(
+      return await _bridgeApi.startTransferTask(
         spec: _RustAdapterCodec.toRustTransferTaskSpec(request),
       );
     } catch (error) {

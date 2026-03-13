@@ -6,6 +6,7 @@
 import 'api.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'frb_loader_path.dart' as frb_loader_path;
 import 'frb_generated.dart';
 import 'frb_generated.io.dart'
     if (dart.library.js_interop) 'frb_generated.web.dart';
@@ -66,10 +67,10 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   @override
   int get rustContentHash => 1854914876;
 
-  static const kDefaultExternalLibraryLoaderConfig =
+  static final kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
         stem: 'net_engine',
-        ioDirectory: 'native/rust/net_engine/target/release/',
+        ioDirectory: frb_loader_path.resolveFrbDefaultIoDirectory(),
         webPrefix: 'pkg/',
       );
 }

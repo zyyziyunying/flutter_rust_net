@@ -128,18 +128,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   NetEngineConfig sse_decode_box_autoadd_net_engine_config(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   NetErrorKind sse_decode_box_autoadd_net_error_kind(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   RequestSpec sse_decode_box_autoadd_request_spec(SseDeserializer deserializer);
 
   @protected
   TransferTaskSpec sse_decode_box_autoadd_transfer_task_spec(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   int sse_decode_box_autoadd_u_16(SseDeserializer deserializer);
@@ -161,7 +164,8 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<(String, String)> sse_decode_list_record_string_string(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   NetEngineConfig sse_decode_net_engine_config(SseDeserializer deserializer);
@@ -180,7 +184,8 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   NetErrorKind? sse_decode_opt_box_autoadd_net_error_kind(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   int? sse_decode_opt_box_autoadd_u_16(SseDeserializer deserializer);
@@ -196,7 +201,8 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   (String, String) sse_decode_record_string_string(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   RequestSpec sse_decode_request_spec(SseDeserializer deserializer);
@@ -224,7 +230,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_AnyhowException(
-      AnyhowException self, SseSerializer serializer);
+    AnyhowException self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_String(String self, SseSerializer serializer);
@@ -234,19 +242,27 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_box_autoadd_net_engine_config(
-      NetEngineConfig self, SseSerializer serializer);
+    NetEngineConfig self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_box_autoadd_net_error_kind(
-      NetErrorKind self, SseSerializer serializer);
+    NetErrorKind self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_box_autoadd_request_spec(
-      RequestSpec self, SseSerializer serializer);
+    RequestSpec self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_box_autoadd_transfer_task_spec(
-      TransferTaskSpec self, SseSerializer serializer);
+    TransferTaskSpec self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_box_autoadd_u_16(int self, SseSerializer serializer);
@@ -265,15 +281,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_list_prim_u_8_strict(
-      Uint8List self, SseSerializer serializer);
+    Uint8List self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_record_string_string(
-      List<(String, String)> self, SseSerializer serializer);
+    List<(String, String)> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_net_engine_config(
-      NetEngineConfig self, SseSerializer serializer);
+    NetEngineConfig self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_net_error_kind(NetErrorKind self, SseSerializer serializer);
@@ -289,7 +311,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_opt_box_autoadd_net_error_kind(
-      NetErrorKind? self, SseSerializer serializer);
+    NetErrorKind? self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_opt_box_autoadd_u_16(int? self, SseSerializer serializer);
@@ -302,11 +326,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_opt_list_prim_u_8_strict(
-      Uint8List? self, SseSerializer serializer);
+    Uint8List? self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_record_string_string(
-      (String, String) self, SseSerializer serializer);
+    (String, String) self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_request_spec(RequestSpec self, SseSerializer serializer);
@@ -316,7 +344,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_transfer_task_spec(
-      TransferTaskSpec self, SseSerializer serializer);
+    TransferTaskSpec self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_u_16(int self, SseSerializer serializer);
@@ -342,9 +372,9 @@ class RustLibWire implements BaseWire {
 
   /// Holds the symbol lookup function.
   final ffi.Pointer<T> Function<T extends ffi.NativeType>(String symbolName)
-      _lookup;
+  _lookup;
 
   /// The symbols are looked up in [dynamicLibrary].
   RustLibWire(ffi.DynamicLibrary dynamicLibrary)
-      : _lookup = dynamicLibrary.lookup;
+    : _lookup = dynamicLibrary.lookup;
 }

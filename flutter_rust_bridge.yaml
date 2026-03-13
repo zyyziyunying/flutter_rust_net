@@ -1,0 +1,11 @@
+# flutter_rust_bridge_codegen config for flutter_rust_net.
+# Keep Rust bridge paths package-local so regeneration stays aligned after moves.
+rust_input: crate::api
+dart_output: lib/rust_bridge
+dart_root: .
+rust_root: native/rust/net_engine
+rust_output: native/rust/net_engine/src/frb_generated.rs
+dart_entrypoint_class_name: RustLib
+default_external_library_loader_web_prefix: pkg/
+build_runner: false
+auto_upgrade_dependency: false
