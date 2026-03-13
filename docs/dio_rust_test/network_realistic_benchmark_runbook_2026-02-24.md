@@ -7,6 +7,8 @@ title: Dio vs Rust 网络测试执行手册（2026-02-24 起，补记至 2026-03
 > 适用范围（2026-02-25 拆分后）：网络相关命令统一在 `flutter_rust_net` 执行；目标是快速、稳定地跑出可对比结论，并指导路由策略。
 >
 > 2026-03-11 补记：保留历史基准执行手册主体不变；当前补充重点放在“公网 `--base-url` 可用”“归档命名 / 额外字段 / 回执口径”三件事。
+>
+> 2026-03-13 补记：已新增固定入口 `tool/p1_non_loopback_bench.dart`，可一键串联公网 benchmark、聚合摘要与 `run_manifest.json`；仓库内样例见 `docs/dio_rust_test/network_public_remote_sample_2026-03-13.md`。
 
 ## 0) 当前已知结果（基于 2026-02-24 更新轮次）
 
@@ -140,6 +142,26 @@ dart run tool/network_bench.dart --scenario=jitter_latency --channels=dio,rust -
 
 真机侧可直接使用 `flutter_rust_net/example` 的 **Upload last report** 按钮上传。
 但要注意：当前示例 App 预设默认仍产出 loopback 报告；若要归档“当前公网服务”报告，应优先使用 `tool/network_bench.dart --base-url=...` 生成 JSON，或自行扩展 example 暴露 `scenarioBaseUrl`。
+
+若只是要快速留一份“可追溯的 non-loopback 样例”，优先使用固定入口：
+
+```powershell
+dart run tool/p1_non_loopback_bench.dart --preset=smoke --network-profile=ethernet --device=host_windows
+```
+
+该入口会固定生成：
+
+1. benchmark JSON
+2. `aggregate_small_json.(md|json)`
+3. `aggregate_jitter_latency.(md|json)`
+4. `run_manifest.json`
+5. `logs/*.stdout.log` 与 `logs/*.stderr.log`
+
+若带鉴权上传，再追加：
+
+```powershell
+dart run tool/p1_non_loopback_bench.dart --preset=smoke --network-profile=wifi --device=android_real --upload=true --upload-header=token:<actual-token>
+```
 
 建议使用 `flutter_rust_net/tool/upload_bench_log.dart` 归档 benchmark JSON：
 

@@ -1,16 +1,17 @@
 ---
-title: flutter_rust_net 真机测试命令清单（2026-03-11）
+title: flutter_rust_net 真机测试命令清单（2026-03-13）
 ---
 
-# flutter_rust_net 真机测试命令清单（2026-03-11）
+# flutter_rust_net 真机测试命令清单（2026-03-13）
 
 > 适用范围：`flutter_rust_net` 真机回归与 Dio/Rust 对比。  
 > 执行目录默认从仓库根目录 `D:\dev\flutter_code\harrypet_flutter` 开始。
 >
-> 当前口径（2026-03-11）：
+> 当前口径（2026-03-13）：
 > 1. `example/` 里的预设主要用于真机 App 冒烟、Rust 打包链路和上传按钮回归，默认仍走本地 loopback。
-> 2. `tool/network_bench.dart` 已支持 `--base-url`，可直接核对“主机 -> 公网服务”非 loopback 链路。
-> 3. 若 Rust 初始化触发“本地 `net_engine` 动态库陈旧”保护，先执行 `cd flutter_rust_net && dart run tool/rust_build.dart --profile=release` 再复跑。
+> 2. 已新增固定入口 `tool/p1_non_loopback_bench.dart`，可一键串联公网 benchmark、聚合摘要和 `run_manifest.json`。
+> 3. `tool/network_bench.dart` 仍保留为底层命令入口，适合手工拆分单场景复验。
+> 4. 若 Rust 初始化触发“本地 `net_engine` 动态库陈旧”保护，先执行 `cd flutter_rust_net && dart run tool/rust_build.dart --profile=release` 再复跑。
 
 ## 0) 一次性预检查（建议先跑）
 
@@ -66,7 +67,34 @@ App 内建议顺序：
 
 ## 2) 严格 CLI 对比（可追溯 JSON 产物）
 
-### 2.1 公网 non-loopback smoke（主机 -> 公网服务）
+### 2.1 公网 non-loopback smoke（主机 -> 公网服务，推荐固定入口）
+
+推荐先跑固定入口：
+
+```powershell
+Set-Location .\flutter_rust_net
+
+dart run tool/p1_non_loopback_bench.dart --preset=smoke --network-profile=ethernet --device=host_windows
+```
+
+默认产物：
+
+1. `remote_small_dio.json`
+2. `remote_small_rust.json`
+3. `remote_jitter_mif32.json`
+4. `aggregate_small_json.(md|json)`
+5. `aggregate_jitter_latency.(md|json)`
+6. `run_manifest.json`
+7. `logs/*.stdout.log` 与 `logs/*.stderr.log`
+
+说明：
+
+1. 该入口默认输出到 `build/remote_public_<runId>/`，并把本轮 `git commit`、归档字段、每条实际执行命令都写进 `run_manifest.json`。
+2. 若需要上传，可追加 `--upload=true --upload-header=token:<actual-token>`；上传日志也会落到同一目录。
+3. 该入口会对 `--upload-header` 做脱敏；`run_manifest.json` 和命令摘要中只保留 `token:<redacted>`。
+4. 仓库内已留一份主机 smoke + 上传回执样例记录：`docs/dio_rust_test/network_public_remote_sample_2026-03-13.md`。
+
+如需手工拆分命令，再使用下面这组底层 CLI：
 
 ```powershell
 Set-Location .\flutter_rust_net
@@ -171,6 +199,9 @@ Set-Location .\flutter_rust_net
 # 先 dry-run 看会上传哪些文件
 dart run tool/upload_bench_log.dart --input=build --ext=json --dry-run
 
+# 推荐：直接用固定入口生成并上传
+dart run tool/p1_non_loopback_bench.dart --preset=smoke --network-profile=wifi --device=android_real --upload=true --upload-header=token:<actual-token>
+
 # 推荐先约定本轮归档元信息
 $runId = Get-Date -Format "yyyyMMdd_HHmm"
 $day = Get-Date -Format "yyyyMMdd"
@@ -196,6 +227,7 @@ dart run tool/upload_bench_log.dart --input=<your_output_dir> --ext=json --base-
 3. 若要进一步便于追溯，可再补：`commit`、`scenario_group`、`operator`。
 4. `POST /upload` 未携带有效登录态时，当前预期返回是 `401`；这应视为鉴权失败，不应误判为服务不可达。
 5. CLI 会输出统一回执摘要：`status=<code>, client=common.DioLogUploader, costMs=<ms>, response=<preview>`；建议把这串摘要原样同步到 `相关文档（按需）` 或本轮记录中。
+6. 若使用 `tool/p1_non_loopback_bench.dart --upload=true`，同目录下的 `run_manifest.json` 会保留本轮 `remotePrefix` / `extraFields`；上传 stdout/stderr 另存到 `logs/upload_json_reports.*.log`。
 
 ---
 
