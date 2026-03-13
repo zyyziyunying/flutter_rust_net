@@ -27,7 +27,11 @@ Runtime loading is handled by `FrbRustBridgeApi` and falls back to local debug/r
 
 - Example app: `flutter_rust_net/example/`
 - Android Rust `.so` build wiring: `flutter_rust_net/example/android/app/build.gradle.kts`
-- Example app log view also mirrors benchmark logs to console (`debugPrint`) for easier troubleshooting.
+- The example app now has two tabs:
+  - `Request Lab`: manual API testing with editable method/url/header/body and Dio/Rust routing controls
+  - `Benchmark`: local loopback benchmark + report upload
+- Default request/upload/login settings are centralized in `example/lib/apis/example_app_config.dart` and can be overridden with `--dart-define`.
+- Example app log views also mirror request / benchmark logs to console (`debugPrint`) for easier troubleshooting.
 
 Run:
 
