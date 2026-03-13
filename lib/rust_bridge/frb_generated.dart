@@ -35,12 +35,8 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 
   /// Initialize flutter_rust_bridge in mock mode.
   /// No libraries for FFI are loaded.
-  static void initMock({
-    required RustLibApi api,
-  }) {
-    instance.initMockImpl(
-      api: api,
-    );
+  static void initMock({required RustLibApi api}) {
+    instance.initMockImpl(api: api);
   }
 
   /// Dispose flutter_rust_bridge
@@ -72,10 +68,10 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
-    stem: 'net_engine',
-    ioDirectory: '../native/rust/net_engine/target/release/',
-    webPrefix: 'pkg/',
-  );
+        stem: 'net_engine',
+        ioDirectory: 'native/rust/net_engine/target/release/',
+        webPrefix: 'pkg/',
+      );
 }
 
 abstract class RustLibApi extends BaseApi {
@@ -108,218 +104,253 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @override
   Future<bool> crateApiCancel({required String id}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        sse_encode_String(id, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 1, port: port_);
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_bool,
-        decodeErrorData: sse_decode_AnyhowException,
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(id, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 1,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiCancelConstMeta,
+        argValues: [id],
+        apiImpl: this,
       ),
-      constMeta: kCrateApiCancelConstMeta,
-      argValues: [id],
-      apiImpl: this,
-    ));
+    );
   }
 
-  TaskConstMeta get kCrateApiCancelConstMeta => const TaskConstMeta(
-        debugName: "cancel",
-        argNames: ["id"],
-      );
+  TaskConstMeta get kCrateApiCancelConstMeta =>
+      const TaskConstMeta(debugName: "cancel", argNames: ["id"]);
 
   @override
   Future<BigInt> crateApiClearCache({String? namespace}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        sse_encode_opt_String(namespace, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 2, port: port_);
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_u_64,
-        decodeErrorData: sse_decode_AnyhowException,
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_opt_String(namespace, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 2,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_u_64,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiClearCacheConstMeta,
+        argValues: [namespace],
+        apiImpl: this,
       ),
-      constMeta: kCrateApiClearCacheConstMeta,
-      argValues: [namespace],
-      apiImpl: this,
-    ));
+    );
   }
 
-  TaskConstMeta get kCrateApiClearCacheConstMeta => const TaskConstMeta(
-        debugName: "clear_cache",
-        argNames: ["namespace"],
-      );
+  TaskConstMeta get kCrateApiClearCacheConstMeta =>
+      const TaskConstMeta(debugName: "clear_cache", argNames: ["namespace"]);
 
   @override
   Future<void> crateApiInitNetEngine({required NetEngineConfig config}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        sse_encode_box_autoadd_net_engine_config(config, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 3, port: port_);
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_unit,
-        decodeErrorData: sse_decode_AnyhowException,
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_net_engine_config(config, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 3,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiInitNetEngineConstMeta,
+        argValues: [config],
+        apiImpl: this,
       ),
-      constMeta: kCrateApiInitNetEngineConstMeta,
-      argValues: [config],
-      apiImpl: this,
-    ));
+    );
   }
 
-  TaskConstMeta get kCrateApiInitNetEngineConstMeta => const TaskConstMeta(
-        debugName: "init_net_engine",
-        argNames: ["config"],
-      );
+  TaskConstMeta get kCrateApiInitNetEngineConstMeta =>
+      const TaskConstMeta(debugName: "init_net_engine", argNames: ["config"]);
 
   @override
   Future<NetEngineConfig> crateApiNetEngineConfigDefault() {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 4, port: port_);
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_net_engine_config,
-        decodeErrorData: null,
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 4,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_net_engine_config,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiNetEngineConfigDefaultConstMeta,
+        argValues: [],
+        apiImpl: this,
       ),
-      constMeta: kCrateApiNetEngineConfigDefaultConstMeta,
-      argValues: [],
-      apiImpl: this,
-    ));
+    );
   }
 
   TaskConstMeta get kCrateApiNetEngineConfigDefaultConstMeta =>
-      const TaskConstMeta(
-        debugName: "net_engine_config_default",
-        argNames: [],
-      );
+      const TaskConstMeta(debugName: "net_engine_config_default", argNames: []);
 
   @override
   Future<List<NetEvent>> crateApiPollEvents({required int limit}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        sse_encode_u_32(limit, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 5, port: port_);
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_list_net_event,
-        decodeErrorData: sse_decode_AnyhowException,
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_u_32(limit, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 5,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_net_event,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiPollEventsConstMeta,
+        argValues: [limit],
+        apiImpl: this,
       ),
-      constMeta: kCrateApiPollEventsConstMeta,
-      argValues: [limit],
-      apiImpl: this,
-    ));
+    );
   }
 
-  TaskConstMeta get kCrateApiPollEventsConstMeta => const TaskConstMeta(
-        debugName: "poll_events",
-        argNames: ["limit"],
-      );
+  TaskConstMeta get kCrateApiPollEventsConstMeta =>
+      const TaskConstMeta(debugName: "poll_events", argNames: ["limit"]);
 
   @override
   Future<ResponseMeta> crateApiRequest({required RequestSpec spec}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        sse_encode_box_autoadd_request_spec(spec, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 6, port: port_);
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_response_meta,
-        decodeErrorData: sse_decode_AnyhowException,
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_request_spec(spec, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 6,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_response_meta,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiRequestConstMeta,
+        argValues: [spec],
+        apiImpl: this,
       ),
-      constMeta: kCrateApiRequestConstMeta,
-      argValues: [spec],
-      apiImpl: this,
-    ));
+    );
   }
 
-  TaskConstMeta get kCrateApiRequestConstMeta => const TaskConstMeta(
-        debugName: "request",
-        argNames: ["spec"],
-      );
+  TaskConstMeta get kCrateApiRequestConstMeta =>
+      const TaskConstMeta(debugName: "request", argNames: ["spec"]);
 
   @override
   Future<void> crateApiSetNetworkBusy({required bool isBusy}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        sse_encode_bool(isBusy, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 7, port: port_);
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_unit,
-        decodeErrorData: sse_decode_AnyhowException,
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_bool(isBusy, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 7,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiSetNetworkBusyConstMeta,
+        argValues: [isBusy],
+        apiImpl: this,
       ),
-      constMeta: kCrateApiSetNetworkBusyConstMeta,
-      argValues: [isBusy],
-      apiImpl: this,
-    ));
+    );
   }
 
-  TaskConstMeta get kCrateApiSetNetworkBusyConstMeta => const TaskConstMeta(
-        debugName: "set_network_busy",
-        argNames: ["isBusy"],
-      );
+  TaskConstMeta get kCrateApiSetNetworkBusyConstMeta =>
+      const TaskConstMeta(debugName: "set_network_busy", argNames: ["isBusy"]);
 
   @override
   Future<void> crateApiShutdownNetEngine() {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 8, port: port_);
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_unit,
-        decodeErrorData: sse_decode_AnyhowException,
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 8,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiShutdownNetEngineConstMeta,
+        argValues: [],
+        apiImpl: this,
       ),
-      constMeta: kCrateApiShutdownNetEngineConstMeta,
-      argValues: [],
-      apiImpl: this,
-    ));
+    );
   }
 
-  TaskConstMeta get kCrateApiShutdownNetEngineConstMeta => const TaskConstMeta(
-        debugName: "shutdown_net_engine",
-        argNames: [],
-      );
+  TaskConstMeta get kCrateApiShutdownNetEngineConstMeta =>
+      const TaskConstMeta(debugName: "shutdown_net_engine", argNames: []);
 
   @override
   Future<String> crateApiStartTransferTask({required TransferTaskSpec spec}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        sse_encode_box_autoadd_transfer_task_spec(spec, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 9, port: port_);
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_String,
-        decodeErrorData: sse_decode_AnyhowException,
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_transfer_task_spec(spec, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 9,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiStartTransferTaskConstMeta,
+        argValues: [spec],
+        apiImpl: this,
       ),
-      constMeta: kCrateApiStartTransferTaskConstMeta,
-      argValues: [spec],
-      apiImpl: this,
-    ));
+    );
   }
 
-  TaskConstMeta get kCrateApiStartTransferTaskConstMeta => const TaskConstMeta(
-        debugName: "start_transfer_task",
-        argNames: ["spec"],
-      );
+  TaskConstMeta get kCrateApiStartTransferTaskConstMeta =>
+      const TaskConstMeta(debugName: "start_transfer_task", argNames: ["spec"]);
 
   @protected
   AnyhowException dco_decode_AnyhowException(dynamic raw) {
@@ -499,10 +530,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     if (arr.length != 2) {
       throw Exception('Expected 2 elements, got ${arr.length}');
     }
-    return (
-      dco_decode_String(arr[0]),
-      dco_decode_String(arr[1]),
-    );
+    return (dco_decode_String(arr[0]), dco_decode_String(arr[1]));
   }
 
   @protected
@@ -615,28 +643,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   NetEngineConfig sse_decode_box_autoadd_net_engine_config(
-      SseDeserializer deserializer) {
+    SseDeserializer deserializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_net_engine_config(deserializer));
   }
 
   @protected
   NetErrorKind sse_decode_box_autoadd_net_error_kind(
-      SseDeserializer deserializer) {
+    SseDeserializer deserializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_net_error_kind(deserializer));
   }
 
   @protected
   RequestSpec sse_decode_box_autoadd_request_spec(
-      SseDeserializer deserializer) {
+    SseDeserializer deserializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_request_spec(deserializer));
   }
 
   @protected
   TransferTaskSpec sse_decode_box_autoadd_transfer_task_spec(
-      SseDeserializer deserializer) {
+    SseDeserializer deserializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_transfer_task_spec(deserializer));
   }
@@ -686,7 +718,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   List<(String, String)> sse_decode_list_record_string_string(
-      SseDeserializer deserializer) {
+    SseDeserializer deserializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     var len_ = sse_decode_i_32(deserializer);
@@ -713,18 +746,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_cacheMaxNamespaceBytes = sse_decode_u_32(deserializer);
     var var_userAgent = sse_decode_String(deserializer);
     return NetEngineConfig(
-        baseUrl: var_baseUrl,
-        connectTimeoutMs: var_connectTimeoutMs,
-        readTimeoutMs: var_readTimeoutMs,
-        writeTimeoutMs: var_writeTimeoutMs,
-        maxConnections: var_maxConnections,
-        maxConnectionsPerHost: var_maxConnectionsPerHost,
-        maxInFlightTasks: var_maxInFlightTasks,
-        largeBodyThresholdKb: var_largeBodyThresholdKb,
-        cacheDir: var_cacheDir,
-        cacheDefaultTtlSeconds: var_cacheDefaultTtlSeconds,
-        cacheMaxNamespaceBytes: var_cacheMaxNamespaceBytes,
-        userAgent: var_userAgent);
+      baseUrl: var_baseUrl,
+      connectTimeoutMs: var_connectTimeoutMs,
+      readTimeoutMs: var_readTimeoutMs,
+      writeTimeoutMs: var_writeTimeoutMs,
+      maxConnections: var_maxConnections,
+      maxConnectionsPerHost: var_maxConnectionsPerHost,
+      maxInFlightTasks: var_maxInFlightTasks,
+      largeBodyThresholdKb: var_largeBodyThresholdKb,
+      cacheDir: var_cacheDir,
+      cacheDefaultTtlSeconds: var_cacheDefaultTtlSeconds,
+      cacheMaxNamespaceBytes: var_cacheMaxNamespaceBytes,
+      userAgent: var_userAgent,
+    );
   }
 
   @protected
@@ -745,13 +779,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_message = sse_decode_opt_String(deserializer);
     var var_costMs = sse_decode_opt_box_autoadd_u_32(deserializer);
     return NetEvent(
-        id: var_id,
-        kind: var_kind,
-        transferred: var_transferred,
-        total: var_total,
-        statusCode: var_statusCode,
-        message: var_message,
-        costMs: var_costMs);
+      id: var_id,
+      kind: var_kind,
+      transferred: var_transferred,
+      total: var_total,
+      statusCode: var_statusCode,
+      message: var_message,
+      costMs: var_costMs,
+    );
   }
 
   @protected
@@ -774,7 +809,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   NetErrorKind? sse_decode_opt_box_autoadd_net_error_kind(
-      SseDeserializer deserializer) {
+    SseDeserializer deserializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     if (sse_decode_bool(deserializer)) {
@@ -830,7 +866,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   (String, String) sse_decode_record_string_string(
-      SseDeserializer deserializer) {
+    SseDeserializer deserializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_field0 = sse_decode_String(deserializer);
     var var_field1 = sse_decode_String(deserializer);
@@ -851,16 +888,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_saveToFilePath = sse_decode_opt_String(deserializer);
     var var_priority = sse_decode_u_8(deserializer);
     return RequestSpec(
-        requestId: var_requestId,
-        method: var_method,
-        path: var_path,
-        query: var_query,
-        headers: var_headers,
-        bodyBytes: var_bodyBytes,
-        bodyFilePath: var_bodyFilePath,
-        expectLargeResponse: var_expectLargeResponse,
-        saveToFilePath: var_saveToFilePath,
-        priority: var_priority);
+      requestId: var_requestId,
+      method: var_method,
+      path: var_path,
+      query: var_query,
+      headers: var_headers,
+      bodyBytes: var_bodyBytes,
+      bodyFilePath: var_bodyFilePath,
+      expectLargeResponse: var_expectLargeResponse,
+      saveToFilePath: var_saveToFilePath,
+      priority: var_priority,
+    );
   }
 
   @protected
@@ -876,15 +914,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_errorKind = sse_decode_opt_box_autoadd_net_error_kind(deserializer);
     var var_error = sse_decode_opt_String(deserializer);
     return ResponseMeta(
-        requestId: var_requestId,
-        statusCode: var_statusCode,
-        headers: var_headers,
-        bodyInline: var_bodyInline,
-        bodyFilePath: var_bodyFilePath,
-        fromCache: var_fromCache,
-        costMs: var_costMs,
-        errorKind: var_errorKind,
-        error: var_error);
+      requestId: var_requestId,
+      statusCode: var_statusCode,
+      headers: var_headers,
+      bodyInline: var_bodyInline,
+      bodyFilePath: var_bodyFilePath,
+      fromCache: var_fromCache,
+      costMs: var_costMs,
+      errorKind: var_errorKind,
+      error: var_error,
+    );
   }
 
   @protected
@@ -900,15 +939,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_expectedTotal = sse_decode_opt_box_autoadd_u_64(deserializer);
     var var_priority = sse_decode_u_8(deserializer);
     return TransferTaskSpec(
-        taskId: var_taskId,
-        kind: var_kind,
-        url: var_url,
-        method: var_method,
-        headers: var_headers,
-        localPath: var_localPath,
-        resumeFrom: var_resumeFrom,
-        expectedTotal: var_expectedTotal,
-        priority: var_priority);
+      taskId: var_taskId,
+      kind: var_kind,
+      url: var_url,
+      method: var_method,
+      headers: var_headers,
+      localPath: var_localPath,
+      resumeFrom: var_resumeFrom,
+      expectedTotal: var_expectedTotal,
+      priority: var_priority,
+    );
   }
 
   @protected
@@ -942,7 +982,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void sse_encode_AnyhowException(
-      AnyhowException self, SseSerializer serializer) {
+    AnyhowException self,
+    SseSerializer serializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.message, serializer);
   }
@@ -961,28 +1003,36 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void sse_encode_box_autoadd_net_engine_config(
-      NetEngineConfig self, SseSerializer serializer) {
+    NetEngineConfig self,
+    SseSerializer serializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_net_engine_config(self, serializer);
   }
 
   @protected
   void sse_encode_box_autoadd_net_error_kind(
-      NetErrorKind self, SseSerializer serializer) {
+    NetErrorKind self,
+    SseSerializer serializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_net_error_kind(self, serializer);
   }
 
   @protected
   void sse_encode_box_autoadd_request_spec(
-      RequestSpec self, SseSerializer serializer) {
+    RequestSpec self,
+    SseSerializer serializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_request_spec(self, serializer);
   }
 
   @protected
   void sse_encode_box_autoadd_transfer_task_spec(
-      TransferTaskSpec self, SseSerializer serializer) {
+    TransferTaskSpec self,
+    SseSerializer serializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_transfer_task_spec(self, serializer);
   }
@@ -1013,7 +1063,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void sse_encode_list_net_event(
-      List<NetEvent> self, SseSerializer serializer) {
+    List<NetEvent> self,
+    SseSerializer serializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
@@ -1023,7 +1075,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void sse_encode_list_prim_u_8_strict(
-      Uint8List self, SseSerializer serializer) {
+    Uint8List self,
+    SseSerializer serializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     serializer.buffer.putUint8List(self);
@@ -1031,7 +1085,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void sse_encode_list_record_string_string(
-      List<(String, String)> self, SseSerializer serializer) {
+    List<(String, String)> self,
+    SseSerializer serializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
@@ -1041,7 +1097,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void sse_encode_net_engine_config(
-      NetEngineConfig self, SseSerializer serializer) {
+    NetEngineConfig self,
+    SseSerializer serializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.baseUrl, serializer);
     sse_encode_u_32(self.connectTimeoutMs, serializer);
@@ -1093,7 +1151,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void sse_encode_opt_box_autoadd_net_error_kind(
-      NetErrorKind? self, SseSerializer serializer) {
+    NetErrorKind? self,
+    SseSerializer serializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     sse_encode_bool(self != null, serializer);
@@ -1134,7 +1194,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void sse_encode_opt_list_prim_u_8_strict(
-      Uint8List? self, SseSerializer serializer) {
+    Uint8List? self,
+    SseSerializer serializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     sse_encode_bool(self != null, serializer);
@@ -1145,7 +1207,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void sse_encode_record_string_string(
-      (String, String) self, SseSerializer serializer) {
+    (String, String) self,
+    SseSerializer serializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.$1, serializer);
     sse_encode_String(self.$2, serializer);
@@ -1182,7 +1246,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void sse_encode_transfer_task_spec(
-      TransferTaskSpec self, SseSerializer serializer) {
+    TransferTaskSpec self,
+    SseSerializer serializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.taskId, serializer);
     sse_encode_String(self.kind, serializer);

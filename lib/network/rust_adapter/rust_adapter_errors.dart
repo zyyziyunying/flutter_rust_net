@@ -2,7 +2,7 @@ part of 'package:flutter_rust_net/network/rust_adapter.dart';
 
 class _RustAdapterErrors {
   static const String _rustRebuildHintCommand =
-      'cd ../native/rust/net_engine && cargo build --release -p net_engine';
+      'cd native/rust/net_engine && cargo build --release -p net_engine';
 
   static NetException mapRustException(Object error, {String? requestId}) {
     final message = '$error';

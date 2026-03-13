@@ -18,7 +18,7 @@
 - `flutter test` - run package tests.
 - `dart run tool/network_bench.dart --help` - inspect benchmark options.
 - `cd example && flutter pub get && flutter run` - run example app for manual checks.
-- `cd ../native/rust/net_engine && cargo test -q` - run Rust tests when bridge contracts or Rust logic change.
+- `cd native/rust/net_engine && cargo test -q` - run Rust tests when bridge contracts or Rust logic change.
 
 ## Coding Style & Naming Conventions
 - Follow `analysis_options.yaml` (`flutter_lints`) with 2-space indentation.

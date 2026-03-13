@@ -114,7 +114,7 @@
 - 若补齐“声明式 API + 网络策略控制面 + 缓存体系”，`flutter_rust_net` 的综合分可明显上升。
 
 ## 9) 参考资料
-- 本仓库：`flutter_rust_net/lib/network/`、`native/rust/net_engine/src/`、`flutter_rust_net/docs/dio_rust_test/`（本地基准记录）。
+- 本仓库：`flutter_rust_net/lib/network/`、`flutter_rust_net/native/rust/net_engine/src/`、`flutter_rust_net/docs/dio_rust_test/`（本地基准记录）。
 - pub.dev：Dio、http、Chopper、Retrofit、rhttp（版本与能力说明，访问日期：2026-02-25）。
 - docs.rs：reqwest、hyper（版本与项目定位，访问日期：2026-02-25）。
 

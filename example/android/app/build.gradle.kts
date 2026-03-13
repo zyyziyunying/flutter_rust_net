@@ -8,7 +8,7 @@ plugins {
 }
 
 val rustAndroidAbis = listOf("arm64-v8a", "armeabi-v7a", "x86_64")
-val rustProjectDir = rootProject.projectDir.resolve("../../../native/rust/net_engine")
+val rustProjectDir = rootProject.projectDir.resolve("../../native/rust/net_engine")
 val rustOutputDir = layout.buildDirectory.dir("generated/rustJniLibs")
 val rustBuildProfile = providers.gradleProperty("rustProfile")
     .map { it.trim().lowercase() }

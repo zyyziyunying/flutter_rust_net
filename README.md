@@ -5,7 +5,7 @@
 - Dart gateway/routing/fallback (`NetworkGateway`)
 - Dio adapter (`DioAdapter`)
 - Rust adapter via flutter_rust_bridge (`RustAdapter`)
-- Generated FRB bridge files for `native/rust/net_engine`
+- Generated FRB bridge files for package-local `native/rust/net_engine`
 
 ## What this package provides
 
@@ -19,7 +19,7 @@
 
 This package expects the Rust dynamic library built from:
 
-- `../native/rust/net_engine` (relative to this repository root)
+- `native/rust/net_engine` (relative to this repository root)
 
 Runtime loading is handled by `FrbRustBridgeApi` and falls back to local debug/release library paths when default loading fails.
 

@@ -1,0 +1,51 @@
+[package]
+name = "net_engine"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+# HTTP 客户端
+reqwest = { version = "0.12", default-features = false, features = [
+    "json",
+    "stream",
+    "multipart",
+    "cookies",
+    "rustls-tls",
+] }
+
+# 异步运行时
+tokio = { version = "1", features = ["full"] }
+
+# 序列化
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# 重试 + 退避
+backon = "1"
+
+# 限流 / 并发控制
+tower = { version = "0.5", features = ["limit", "retry", "timeout"] }
+
+# 磁盘 KV（缓存元数据）
+redb = "2"
+
+# 结构化日志
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# 错误处理
+anyhow = "1"
+thiserror = "2"
+
+# 工具
+uuid = { version = "1", features = ["v4"] }
+bytes = "1"
+futures = "0.3"
+tokio-util = "0.7"
+http = "1"
+
+# FRB
+flutter_rust_bridge = "=2.11.1"
