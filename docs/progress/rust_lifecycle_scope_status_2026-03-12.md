@@ -51,7 +51,7 @@ title: Rust 生命周期与共享作用域修复状态（2026-03-12）
 ```powershell
 flutter analyze
 flutter test
-flutter test test/network/rust_adapter_test.dart
+flutter test test/network/rust_adapter/
 flutter test test/network/rust_adapter_lifecycle_test.dart
 flutter test test/network/rust_adapter_shared_scope_test.dart
 flutter test test/network/request_body_channel_consistency_test.dart
