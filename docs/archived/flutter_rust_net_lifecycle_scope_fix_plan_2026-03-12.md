@@ -131,7 +131,7 @@ flutter test
 如果实施过程中引入了新的 Rust bridge 合同或需要重新生成绑定，再追加：
 
 ```powershell
-cd ../native/rust/net_engine
+cd native/rust/net_engine
 cargo test -q
 cargo fmt --check
 ```

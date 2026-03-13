@@ -6,6 +6,7 @@
 - `progress/`：阶段执行进度与状态事实源（如 P1/P2 状态、当前 In Progress / Next）。
 - `plan/`：仍在执行或待执行的方案、执行模板、联调计划。
 - `dio_rust_test/`：测试方案说明、runbook、策略建议、基准结果、验证结论。
+- `problems/`：阻塞问题、提交门槛、持续跟踪中的问题单。
 - `questions/`：审查问题记录、待收敛 follow-up、临时问题单。
 - `archived/`：已完成或已失效但需要保留追溯价值的历史文档。
 
@@ -13,6 +14,7 @@
 
 - `progress/p1_status_2026-02-25.md`：P1 当前状态（精简版状态页）。
 - `progress/rust_lifecycle_scope_status_2026-03-12.md`：Rust 生命周期与共享作用域修复状态。
+- `problems/rust_net_engine_blockers_2026-03-13.md`：当前 git 更改区 Rust net_engine 接入的阻塞问题追踪。
 - `plan/network_p1_execution_template_2026-02-25.md`：P1 执行模板。
 - `plan/golang_remote_benchmark_server_plan_2026-03-02.md`：远端真机压测 Go 服务方案。
 - `questions/git_staged_review_findings_2026-03-12.md`：当前 staged review follow-up 与待收敛问题。

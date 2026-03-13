@@ -10,7 +10,7 @@ title: flutter_rust_net 真机测试命令清单（2026-03-11）
 > 当前口径（2026-03-11）：
 > 1. `example/` 里的预设主要用于真机 App 冒烟、Rust 打包链路和上传按钮回归，默认仍走本地 loopback。
 > 2. `tool/network_bench.dart` 已支持 `--base-url`，可直接核对“主机 -> 公网服务”非 loopback 链路。
-> 3. 若 Rust 初始化触发“本地 `net_engine` 动态库陈旧”保护，先执行 `cd flutter_rust_net/native/rust/net_engine && cargo build --release -p net_engine` 再复跑。
+> 3. 若 Rust 初始化触发“本地 `net_engine` 动态库陈旧”保护，先执行 `cd flutter_rust_net && dart run tool/rust_build.dart --profile=release` 再复跑。
 
 ## 0) 一次性预检查（建议先跑）
 
@@ -26,12 +26,10 @@ flutter test test/network -r expanded
 flutter test test/network/network_realistic_flow_test.dart -r expanded
 
 # 如需严格核对当前 Rust 侧状态，再补：
-Set-Location .\native\rust\net_engine
-cargo test -q
+dart run tool/rust_build.dart --build=false --test=true
 
 # 如遇 stale library 预检或准备远端 Rust 对比，再补：
-cargo build --release -p net_engine
-Set-Location ..\..\..
+dart run tool/rust_build.dart --profile=release
 ```
 
 Android 真机补充检查（Rust 构建链路）：
@@ -94,9 +92,7 @@ dart run tool/network_bench.dart --base-url=$baseUrl --scenario=jitter_latency -
 2. 若 Rust 被跳过并提示 `Detected stale net_engine native library`，先执行：
 
 ```powershell
-Set-Location .\native\rust\net_engine
-cargo build --release -p net_engine
-Set-Location ..\..\..
+dart run tool/rust_build.dart --profile=release
 ```
 
 3. 当前已确认 `http://47.110.52.208:7777` 可返回：

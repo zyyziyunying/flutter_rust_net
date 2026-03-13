@@ -100,7 +100,7 @@ title: P1 详细历史记录（归档于 2026-03-12）
 10. 已在 benchmark CLI 暴露 `--base-url` 并透传 `scenarioBaseUrl`，可直接跑“真机/公网服务”非 loopback 命令。
 11. 本会话验证命令已通过：`cargo fmt --check`、`cargo test -q`、`flutter analyze`、`flutter test`。
 12. P1 未闭环项收敛为三类：Rust 配置项生效性验证、真机弱网/远端链路补测、JSON 归档命名与服务端回执口径固化。
-13. 已定位并解除 Rust init `UnexpectedEof` 阻塞：根因是本地 `net_engine` 动态库陈旧（与当前源码构建产物不一致）；执行 `cd ../native/rust/net_engine && cargo build --release -p net_engine` 后恢复。
+13. 已定位并解除 Rust init `UnexpectedEof` 阻塞：根因是本地 `net_engine` 动态库陈旧（与当前源码构建产物不一致）；执行 `cd native/rust/net_engine && cargo build --release -p net_engine` 后恢复。
 14. 已补防回归保护：Rust bridge 加载前增加“本地动态库是否陈旧”预检，命中时直接给出重建命令，避免再次出现 `frb_generated.rs` 解码阶段 Panic。
 15. `jitter` Rust 通道最小复跑已恢复（`--scenario=jitter_latency --channels=rust --initialize-rust=true --require-rust=true` 可正常完成）。
 
@@ -143,7 +143,7 @@ title: P1 详细历史记录（归档于 2026-03-12）
    - 未登录 `POST /upload -> 401`
 4. 已完成一次最小远端 smoke 核对：
    - 初次运行命中本地 `net_engine.dll` 陈旧保护
-   - 执行 `cd ../native/rust/net_engine && cargo build --release -p net_engine` 后恢复
+   - 执行 `cd native/rust/net_engine && cargo build --release -p net_engine` 后恢复
    - Rust-only `small_json` 远端 smoke 可完成 `4/4`、`exceptions=0`、`fallback=0`
 5. 已确认早期“TOS 待定”口径不再代表当前事实；当前已知归档方向是 `47.110.52.208:7777/upload`，但“命名约定 / 服务端回执口径 / 样例归档”仍未在仓库内形成稳定规范文档。
 6. 结论更新：截至 2026-03-11，P1 的工程实现与基础远端链路已基本打通，但仍不建议宣称“已完成最终准入”；后续应先补非 loopback 证据归档和剩余高优先级风险闭环，再输出业务接入决策。

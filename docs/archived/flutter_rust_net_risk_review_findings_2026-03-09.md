@@ -265,5 +265,5 @@
 
 ## 备注
 
-- 本次结论主要基于 `flutter_rust_net/` Dart 侧审查；未同步深入审阅 `../native/rust/net_engine` Rust 实现。
+- 本次结论主要基于 `flutter_rust_net/` Dart 侧审查；未同步深入审阅 `native/rust/net_engine` Rust 实现。
 - `flutter analyze` 与 `flutter test` 均通过，但这只能证明当前测试集没有命中上述风险，不能证明这些风险不存在。

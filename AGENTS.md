@@ -14,8 +14,10 @@
 
 ## Build, Test, and Development Commands
 - `flutter pub get` - install or update package dependencies.
-- `flutter analyze` - run static analysis.
+- Do not run `flutter analyze` by default; if static analysis is relevant, provide the exact command for the user to run.
 - `flutter test` - run package tests.
+- `dart run tool/rust_codegen.dart` - regenerate flutter_rust_bridge bindings from `native/rust/net_engine`.
+- `dart run tool/rust_build.dart --profile=release` - build the package-local Rust native library.
 - `dart run tool/network_bench.dart --help` - inspect benchmark options.
 - `cd example && flutter pub get && flutter run` - run example app for manual checks.
 - `cd native/rust/net_engine && cargo test -q` - run Rust tests when bridge contracts or Rust logic change.

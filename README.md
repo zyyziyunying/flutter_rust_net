@@ -23,6 +23,13 @@ This package expects the Rust dynamic library built from:
 
 Runtime loading is handled by `FrbRustBridgeApi` and falls back to local debug/release library paths when default loading fails.
 
+Regenerate bindings and rebuild the host library from the package root with:
+
+```bash
+dart run tool/rust_codegen.dart
+dart run tool/rust_build.dart --profile=release
+```
+
 ## Standalone example (recommended for local device validation)
 
 - Example app: `flutter_rust_net/example/`
