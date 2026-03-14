@@ -10,7 +10,8 @@ use tokio_util::sync::CancellationToken;
 
 use crate::api::NetEngineConfig;
 use crate::engine::cache::{
-    DiskCache, DEFAULT_CACHE_MAX_NAMESPACE_BYTES, DEFAULT_CACHE_TTL_SECONDS,
+    normalize_namespace, DiskCache, DEFAULT_CACHE_MAX_NAMESPACE_BYTES, DEFAULT_CACHE_TTL_SECONDS,
+    RESPONSE_CACHE_NAMESPACE,
 };
 use crate::engine::error::NetError;
 use crate::engine::events::EventBus;
@@ -33,6 +34,7 @@ pub struct NetEngine {
     connection_limiter: ConnectionLimiter,
     cancel_tokens: Arc<Mutex<HashMap<String, CancellationToken>>>,
     disk_cache: Option<DiskCache>,
+    response_cache_namespace: String,
     is_busy: AtomicBool,
 }
 
@@ -81,9 +83,9 @@ impl NetEngine {
         let scheduler = Scheduler::new(config.max_in_flight_tasks); // 控制并发
         let connection_limiter =
             ConnectionLimiter::new(config.max_connections, config.max_connections_per_host);
-        let disk_cache = if config.cache_dir.trim().is_empty() {
-            None
-        } else {
+        let cache_enabled = !config.cache_dir.trim().is_empty();
+        let (disk_cache, response_cache_namespace) = if cache_enabled {
+            let response_cache_namespace = normalize_namespace(&config.cache_response_namespace)?;
             let cache_default_ttl_seconds = if config.cache_default_ttl_seconds == 0 {
                 DEFAULT_CACHE_TTL_SECONDS
             } else {
@@ -94,11 +96,16 @@ impl NetEngine {
             } else {
                 config.cache_max_namespace_bytes as u64
             };
-            Some(DiskCache::new_with_policy(
-                &config.cache_dir,
-                std::time::Duration::from_secs(cache_default_ttl_seconds),
-                cache_max_namespace_bytes,
-            )?)
+            (
+                Some(DiskCache::new_with_policy(
+                    &config.cache_dir,
+                    std::time::Duration::from_secs(cache_default_ttl_seconds),
+                    cache_max_namespace_bytes,
+                )?),
+                response_cache_namespace,
+            )
+        } else {
+            (None, RESPONSE_CACHE_NAMESPACE.to_owned())
         };
 
         Ok(Self {
@@ -109,6 +116,7 @@ impl NetEngine {
             connection_limiter,
             cancel_tokens: Arc::new(Mutex::new(HashMap::new())),
             disk_cache,
+            response_cache_namespace,
             is_busy: AtomicBool::new(false),
         })
     }

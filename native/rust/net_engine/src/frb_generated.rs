@@ -445,6 +445,7 @@ impl SseDecode for crate::api::NetEngineConfig {
         let mut var_maxInFlightTasks = <u16>::sse_decode(deserializer);
         let mut var_largeBodyThresholdKb = <u32>::sse_decode(deserializer);
         let mut var_cacheDir = <String>::sse_decode(deserializer);
+        let mut var_cacheResponseNamespace = <String>::sse_decode(deserializer);
         let mut var_cacheDefaultTtlSeconds = <u32>::sse_decode(deserializer);
         let mut var_cacheMaxNamespaceBytes = <u32>::sse_decode(deserializer);
         let mut var_userAgent = <String>::sse_decode(deserializer);
@@ -458,6 +459,7 @@ impl SseDecode for crate::api::NetEngineConfig {
             max_in_flight_tasks: var_maxInFlightTasks,
             large_body_threshold_kb: var_largeBodyThresholdKb,
             cache_dir: var_cacheDir,
+            cache_response_namespace: var_cacheResponseNamespace,
             cache_default_ttl_seconds: var_cacheDefaultTtlSeconds,
             cache_max_namespace_bytes: var_cacheMaxNamespaceBytes,
             user_agent: var_userAgent,
@@ -759,6 +761,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::NetEngineConfig {
             self.max_in_flight_tasks.into_into_dart().into_dart(),
             self.large_body_threshold_kb.into_into_dart().into_dart(),
             self.cache_dir.into_into_dart().into_dart(),
+            self.cache_response_namespace.into_into_dart().into_dart(),
             self.cache_default_ttl_seconds.into_into_dart().into_dart(),
             self.cache_max_namespace_bytes.into_into_dart().into_dart(),
             self.user_agent.into_into_dart().into_dart(),
@@ -981,6 +984,7 @@ impl SseEncode for crate::api::NetEngineConfig {
         <u16>::sse_encode(self.max_in_flight_tasks, serializer);
         <u32>::sse_encode(self.large_body_threshold_kb, serializer);
         <String>::sse_encode(self.cache_dir, serializer);
+        <String>::sse_encode(self.cache_response_namespace, serializer);
         <u32>::sse_encode(self.cache_default_ttl_seconds, serializer);
         <u32>::sse_encode(self.cache_max_namespace_bytes, serializer);
         <String>::sse_encode(self.user_agent, serializer);

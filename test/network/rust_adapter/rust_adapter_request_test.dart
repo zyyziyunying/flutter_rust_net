@@ -137,21 +137,43 @@ void main() {
       expect(response.channel, NetChannel.rust);
     });
 
-    test('passes cache policy options to rust init config', () async {
+    test(
+      'passes normalized cache policy options to rust init config',
+      () async {
+        final fakeBridge = FakeRustBridgeApi();
+        final adapter = RustAdapter(bridgeApi: fakeBridge);
+
+        await adapter.initializeEngine(
+          options: const RustEngineInitOptions(
+            cacheResponseNamespace: ' tenant_cache ',
+            cacheDefaultTtlSeconds: 12,
+            cacheMaxNamespaceBytes: 4096,
+          ),
+        );
+
+        final config = fakeBridge.lastInitConfig;
+        expect(config, isNotNull);
+        expect(config!.cacheDefaultTtlSeconds, 12);
+        expect(config.cacheResponseNamespace, 'tenant_cache');
+        expect(config.cacheMaxNamespaceBytes, 4096);
+      },
+    );
+
+    test('ignores response cache namespace when cache is disabled', () async {
       final fakeBridge = FakeRustBridgeApi();
       final adapter = RustAdapter(bridgeApi: fakeBridge);
 
       await adapter.initializeEngine(
         options: const RustEngineInitOptions(
-          cacheDefaultTtlSeconds: 12,
-          cacheMaxNamespaceBytes: 4096,
+          cacheDir: '',
+          cacheResponseNamespace: '../outside',
         ),
       );
 
       final config = fakeBridge.lastInitConfig;
       expect(config, isNotNull);
-      expect(config!.cacheDefaultTtlSeconds, 12);
-      expect(config.cacheMaxNamespaceBytes, 4096);
+      expect(config!.cacheDir, '');
+      expect(config.cacheResponseNamespace, 'responses');
     });
 
     test('maps rust fromCache flag into net response', () async {

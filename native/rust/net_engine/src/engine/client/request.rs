@@ -9,7 +9,7 @@ use tokio_util::sync::CancellationToken;
 
 use super::{NetEngine, ResponseBodyStorage};
 use crate::api::{RequestSpec, ResponseMeta};
-use crate::engine::cache::{CacheBodySource, CacheLookup, DiskCache, RESPONSE_CACHE_NAMESPACE};
+use crate::engine::cache::{CacheBodySource, CacheLookup, DiskCache};
 use crate::engine::error::NetError;
 
 const MATERIALIZED_RESPONSE_DIR_SUFFIX: &str = "_materialized";
@@ -77,6 +77,7 @@ impl NetEngine {
             .map_err(|e: http::method::InvalidMethod| NetError::Parse(e.to_string()))?;
         let _connection_permit = self.acquire_connection_permit(&url).await?;
         let request_url_for_cache = Self::url_with_query(&url, &spec.query);
+        let response_cache_namespace = self.response_cache_namespace.as_str();
 
         let mut builder = self.client.request(method.clone(), &url); // 构建请求
 
@@ -99,7 +100,7 @@ impl NetEngine {
                 );
 
                 if let Some(cached) = cache
-                    .lookup(RESPONSE_CACHE_NAMESPACE, &key)
+                    .lookup(response_cache_namespace, &key)
                     .await
                     .map_err(|error| NetError::Internal(error.to_string()))?
                 {
@@ -140,7 +141,7 @@ impl NetEngine {
             if let Some(cached) = stale_cache_entry {
                 if let Some(cache) = self.disk_cache.as_ref() {
                     if let Err(error) = cache
-                        .revalidate(RESPONSE_CACHE_NAMESPACE, &cached.key, &headers)
+                        .revalidate(response_cache_namespace, &cached.key, &headers)
                         .await
                     {
                         tracing::warn!(
@@ -275,7 +276,7 @@ impl NetEngine {
             return path.clone();
         }
 
-        if self.config.cache_dir.is_empty() {
+        if self.config.cache_dir.trim().is_empty() {
             format!("{}.bin", spec.request_id)
         } else {
             self.default_materialized_response_dir()
@@ -424,7 +425,7 @@ impl NetEngine {
 
         if let Err(error) = cache
             .store(
-                RESPONSE_CACHE_NAMESPACE,
+                &self.response_cache_namespace,
                 key,
                 method,
                 url,

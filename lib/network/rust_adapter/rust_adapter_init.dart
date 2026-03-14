@@ -2,6 +2,7 @@ part of 'package:flutter_rust_net/network/rust_adapter.dart';
 
 class _RustAdapterInitTracker {
   static const String _defaultCacheSubDir = 'harrypet_net_engine_cache';
+  static const String _defaultCacheResponseNamespace = 'responses';
   static final Object _sharedBridgeConfigScope = Object();
   static final Expando<_RustEngineInitState> _trackedInitStates =
       Expando<_RustEngineInitState>('rust_engine_init_states');
@@ -101,6 +102,8 @@ class _RustAdapterInitTracker {
   static rust_api.NetEngineConfig toNetEngineConfig(
     RustEngineInitOptions options,
   ) {
+    final cacheDir = options.cacheDir ?? _defaultCacheDirPath();
+    final cacheEnabled = cacheDir.trim().isNotEmpty;
     return rust_api.NetEngineConfig(
       baseUrl: options.baseUrl,
       connectTimeoutMs: options.connectTimeoutMs,
@@ -110,11 +113,34 @@ class _RustAdapterInitTracker {
       maxConnectionsPerHost: options.maxConnectionsPerHost,
       maxInFlightTasks: options.maxInFlightTasks,
       largeBodyThresholdKb: options.largeBodyThresholdKb,
-      cacheDir: options.cacheDir ?? _defaultCacheDirPath(),
+      cacheDir: cacheDir,
+      cacheResponseNamespace: cacheEnabled
+          ? _normalizeCacheResponseNamespace(options.cacheResponseNamespace)
+          : _defaultCacheResponseNamespace,
       cacheDefaultTtlSeconds: options.cacheDefaultTtlSeconds,
       cacheMaxNamespaceBytes: options.cacheMaxNamespaceBytes,
       userAgent: options.userAgent,
     );
+  }
+
+  static String _normalizeCacheResponseNamespace(String namespace) {
+    final trimmed = namespace.trim();
+    final hasWindowsDrivePrefix = RegExp(r'^[a-zA-Z]:').hasMatch(trimmed);
+    if (trimmed.isEmpty ||
+        trimmed.contains('/') ||
+        trimmed.contains(r'\') ||
+        trimmed == '.' ||
+        trimmed == '..' ||
+        hasWindowsDrivePrefix) {
+      throw NetException.infrastructure(
+        message:
+            'Invalid Rust init config: cacheResponseNamespace must be a '
+            'single non-empty path segment.',
+        channel: NetChannel.rust,
+        fallbackEligible: false,
+      );
+    }
+    return trimmed;
   }
 
   static void _rememberInitConfig(
@@ -258,6 +284,11 @@ class _RustAdapterInitTracker {
       requested.largeBodyThresholdKb,
     );
     addDiff('cacheDir', active.cacheDir, requested.cacheDir);
+    addDiff(
+      'cacheResponseNamespace',
+      active.cacheResponseNamespace,
+      requested.cacheResponseNamespace,
+    );
     addDiff(
       'cacheDefaultTtlSeconds',
       active.cacheDefaultTtlSeconds,

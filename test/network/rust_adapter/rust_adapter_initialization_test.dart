@@ -220,6 +220,106 @@ void main() {
     );
 
     test(
+      'rejects conflicting response cache namespace on shared initialized scope',
+      () async {
+        final fakeBridge = FakeRustBridgeApi();
+        final firstAdapter = RustAdapter(bridgeApi: fakeBridge);
+        final secondAdapter = RustAdapter(bridgeApi: fakeBridge);
+
+        await firstAdapter.initializeEngine(
+          options: const RustEngineInitOptions(
+            cacheResponseNamespace: 'responses_a',
+          ),
+        );
+
+        await expectLater(
+          secondAdapter.initializeEngine(
+            options: const RustEngineInitOptions(
+              cacheResponseNamespace: 'responses_b',
+            ),
+          ),
+          throwsA(
+            isA<NetException>()
+                .having(
+                  (error) => error.code,
+                  'code',
+                  NetErrorCode.infrastructure,
+                )
+                .having(
+                  (error) => error.fallbackEligible,
+                  'fallbackEligible',
+                  isFalse,
+                )
+                .having(
+                  (error) => error.message,
+                  'message',
+                  contains(
+                    'cacheResponseNamespace="responses_a" -> "responses_b"',
+                  ),
+                ),
+          ),
+        );
+        expect(secondAdapter.isInitialized, isFalse);
+        expect(fakeBridge.initCalls, 1);
+      },
+    );
+
+    test(
+      'reuses shared initialized scope when response cache namespace only differs by trim',
+      () async {
+        final fakeBridge = FakeRustBridgeApi();
+        final firstAdapter = RustAdapter(bridgeApi: fakeBridge);
+        final secondAdapter = RustAdapter(bridgeApi: fakeBridge);
+
+        await firstAdapter.initializeEngine(
+          options: const RustEngineInitOptions(
+            cacheResponseNamespace: ' tenant_cache ',
+          ),
+        );
+        await secondAdapter.initializeEngine(
+          options: const RustEngineInitOptions(
+            cacheResponseNamespace: 'tenant_cache',
+          ),
+        );
+
+        expect(firstAdapter.isInitialized, isTrue);
+        expect(secondAdapter.isInitialized, isTrue);
+        expect(fakeBridge.initCalls, 1);
+        expect(
+          fakeBridge.lastInitConfig?.cacheResponseNamespace,
+          'tenant_cache',
+        );
+      },
+    );
+
+    test(
+      'ignores response cache namespace differences when cache is disabled',
+      () async {
+        final fakeBridge = FakeRustBridgeApi();
+        final firstAdapter = RustAdapter(bridgeApi: fakeBridge);
+        final secondAdapter = RustAdapter(bridgeApi: fakeBridge);
+
+        await firstAdapter.initializeEngine(
+          options: const RustEngineInitOptions(
+            cacheDir: '',
+            cacheResponseNamespace: '../outside',
+          ),
+        );
+        await secondAdapter.initializeEngine(
+          options: const RustEngineInitOptions(
+            cacheDir: '',
+            cacheResponseNamespace: 'tenant_cache',
+          ),
+        );
+
+        expect(firstAdapter.isInitialized, isTrue);
+        expect(secondAdapter.isInitialized, isTrue);
+        expect(fakeBridge.initCalls, 1);
+        expect(fakeBridge.lastInitConfig?.cacheResponseNamespace, 'responses');
+      },
+    );
+
+    test(
       'allows matching reinitialization when actual config is unknown',
       () async {
         final fakeBridge = FakeRustBridgeApi(

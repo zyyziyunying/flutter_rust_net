@@ -309,7 +309,7 @@ impl DiskCache {
     }
 
     fn namespace_dir(&self, namespace: &str) -> anyhow::Result<PathBuf> {
-        let namespace = validate_namespace(namespace)?;
+        let namespace = normalize_namespace(namespace)?;
         Ok(self.root_dir.join(namespace))
     }
 
@@ -323,25 +323,21 @@ impl DiskCache {
     }
 }
 
-fn validate_namespace(namespace: &str) -> anyhow::Result<String> {
+pub fn normalize_namespace(namespace: &str) -> anyhow::Result<String> {
     let trimmed = namespace.trim();
     if trimmed.is_empty() {
         return Err(anyhow!("cache namespace is empty"));
     }
 
-    let path = Path::new(trimmed);
-    if path.is_absolute()
-        || path.components().any(|segment| {
-            matches!(
-                segment,
-                Component::ParentDir | Component::RootDir | Component::Prefix(_)
-            )
-        })
-    {
+    if trimmed.contains(['/', '\\']) {
         return Err(anyhow!("invalid cache namespace"));
     }
 
-    Ok(trimmed.to_owned())
+    let mut components = Path::new(trimmed).components();
+    match (components.next(), components.next()) {
+        (Some(Component::Normal(_)), None) => Ok(trimmed.to_owned()),
+        _ => Err(anyhow!("invalid cache namespace")),
+    }
 }
 
 fn now_millis() -> u64 {

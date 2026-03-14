@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::engine::cache::RESPONSE_CACHE_NAMESPACE;
+
 // ── 配置 ──
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -13,6 +15,7 @@ pub struct NetEngineConfig {
     pub max_in_flight_tasks: u16,
     pub large_body_threshold_kb: u32,
     pub cache_dir: String,
+    pub cache_response_namespace: String,
     pub cache_default_ttl_seconds: u32,
     pub cache_max_namespace_bytes: u32,
     pub user_agent: String,
@@ -30,6 +33,7 @@ impl Default for NetEngineConfig {
             max_in_flight_tasks: 32,
             large_body_threshold_kb: 256,
             cache_dir: String::new(),
+            cache_response_namespace: RESPONSE_CACHE_NAMESPACE.into(),
             cache_default_ttl_seconds: 300,
             cache_max_namespace_bytes: 64 * 1024 * 1024,
             user_agent: "HarryPet/1.0".into(),

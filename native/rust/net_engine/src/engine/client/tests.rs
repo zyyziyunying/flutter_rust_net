@@ -394,6 +394,193 @@ async fn clear_cache_keeps_materialized_response_files_outside_cache_root() {
         .expect("remove temp root");
 }
 
+#[tokio::test]
+async fn blank_cache_dir_disables_default_materialized_response_directory() {
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("bind test server");
+    let base_url = format!("http://{}", listener.local_addr().expect("local addr"));
+    let payload = vec![0x42_u8; 64];
+    let server_task = tokio::spawn(async move {
+        let (mut socket, _) = listener.accept().await.expect("accept request");
+
+        let mut request_bytes = Vec::new();
+        let mut buffer = [0_u8; 1024];
+        loop {
+            let read = socket.read(&mut buffer).await.expect("read request");
+            if read == 0 {
+                break;
+            }
+            request_bytes.extend_from_slice(&buffer[..read]);
+            if request_bytes.windows(4).any(|chunk| chunk == b"\r\n\r\n") {
+                break;
+            }
+        }
+
+        let response = format!(
+            concat!(
+                "HTTP/1.1 200 OK\r\n",
+                "Content-Type: application/octet-stream\r\n",
+                "Content-Length: {}\r\n",
+                "Connection: close\r\n\r\n"
+            ),
+            payload.len()
+        );
+        socket
+            .write_all(response.as_bytes())
+            .await
+            .expect("write response headers");
+        socket
+            .write_all(&payload)
+            .await
+            .expect("write response body");
+        socket.shutdown().await.expect("shutdown socket");
+    });
+
+    let mut config = NetEngineConfig::default();
+    config.base_url = base_url;
+    config.cache_dir = "   ".to_owned();
+    let engine = NetEngine::new(config).expect("create net engine");
+
+    let response = engine
+        .request(build_large_get_request("blank-cache-dir", "/download", vec![]))
+        .await
+        .expect("request response");
+
+    assert!(!response.from_cache);
+    assert_eq!(
+        response.body_file_path.as_deref(),
+        Some("blank-cache-dir.bin")
+    );
+    assert!(tokio::fs::metadata("blank-cache-dir.bin").await.is_ok());
+
+    server_task.await.expect("server task");
+    tokio::fs::remove_file("blank-cache-dir.bin")
+        .await
+        .expect("remove materialized response");
+}
+
+#[tokio::test]
+async fn request_cache_uses_configured_response_namespace() {
+    let cache_dir = create_test_cache_dir_path("custom_namespace");
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("bind test server");
+    let base_url = format!("http://{}", listener.local_addr().expect("local addr"));
+    let server_hits = Arc::new(AtomicUsize::new(0));
+    let server_hits_ref = Arc::clone(&server_hits);
+    let server_task = tokio::spawn(async move {
+        loop {
+            let accept_result =
+                tokio::time::timeout(Duration::from_millis(200), listener.accept()).await;
+            let Ok(Ok((mut socket, _))) = accept_result else {
+                break;
+            };
+
+            let mut request_bytes = Vec::new();
+            let mut buffer = [0_u8; 1024];
+            loop {
+                let read = socket.read(&mut buffer).await.expect("read request");
+                if read == 0 {
+                    break;
+                }
+                request_bytes.extend_from_slice(&buffer[..read]);
+                if request_bytes.windows(4).any(|chunk| chunk == b"\r\n\r\n") {
+                    break;
+                }
+            }
+
+            server_hits_ref.fetch_add(1, Ordering::SeqCst);
+            let body = "{\"ok\":true}";
+            let response = format!(
+                concat!(
+                    "HTTP/1.1 200 OK\r\n",
+                    "Content-Type: application/json\r\n",
+                    "Cache-Control: max-age=60\r\n",
+                    "Content-Length: {}\r\n",
+                    "Connection: close\r\n\r\n",
+                    "{}"
+                ),
+                body.len(),
+                body
+            );
+            socket
+                .write_all(response.as_bytes())
+                .await
+                .expect("write response");
+            socket.shutdown().await.expect("shutdown socket");
+        }
+    });
+
+    let engine = create_engine_for_base_url_and_cache_dir_with_namespace(
+        &base_url,
+        &cache_dir,
+        "tenant_responses",
+    );
+    let first = engine
+        .request(build_get_request("custom-ns-1", "/cache", vec![]))
+        .await
+        .expect("first response");
+    let second = engine
+        .request(build_get_request("custom-ns-2", "/cache", vec![]))
+        .await
+        .expect("second response");
+
+    assert!(!first.from_cache);
+    assert!(second.from_cache);
+    assert_eq!(server_hits.load(Ordering::SeqCst), 1);
+    assert!(tokio::fs::metadata(cache_dir.join("tenant_responses"))
+        .await
+        .is_ok());
+    assert!(tokio::fs::metadata(cache_dir.join("responses"))
+        .await
+        .is_err());
+
+    server_task.await.expect("server task");
+    tokio::fs::remove_dir_all(&cache_dir)
+        .await
+        .expect("remove cache root");
+}
+
+#[test]
+fn net_engine_rejects_invalid_configured_response_cache_namespace() {
+    let cache_dir = create_test_cache_dir_path("invalid_response_namespace");
+    for namespace in ["../outside", "./responses", "tenant/a", "tenant\\a"] {
+        let mut config = NetEngineConfig::default();
+        config.cache_dir = cache_dir.to_string_lossy().into_owned();
+        config.cache_response_namespace = namespace.to_owned();
+
+        let result = NetEngine::new(config);
+
+        assert!(result.is_err(), "expected `{namespace}` to be rejected");
+    }
+
+    let _ = std::fs::remove_dir_all(&cache_dir);
+}
+
+#[test]
+fn net_engine_allows_invalid_response_cache_namespace_when_cache_disabled() {
+    for namespace in [
+        "",
+        "   ",
+        "../outside",
+        "./responses",
+        "tenant/a",
+        "tenant\\a",
+    ] {
+        let mut config = NetEngineConfig::default();
+        config.cache_dir = String::new();
+        config.cache_response_namespace = namespace.to_owned();
+
+        let result = NetEngine::new(config);
+
+        assert!(
+            result.is_ok(),
+            "expected `{namespace}` to be ignored when cache is disabled"
+        );
+    }
+}
+
 fn create_engine_for_cache_dir(cache_dir: &Path) -> NetEngine {
     // 用临时目录构建最小可用引擎。
     let mut config = NetEngineConfig::default();
@@ -405,6 +592,18 @@ fn create_engine_for_base_url_and_cache_dir(base_url: &str, cache_dir: &Path) ->
     let mut config = NetEngineConfig::default();
     config.base_url = base_url.to_owned();
     config.cache_dir = cache_dir.to_string_lossy().into_owned();
+    NetEngine::new(config).expect("create net engine")
+}
+
+fn create_engine_for_base_url_and_cache_dir_with_namespace(
+    base_url: &str,
+    cache_dir: &Path,
+    cache_response_namespace: &str,
+) -> NetEngine {
+    let mut config = NetEngineConfig::default();
+    config.base_url = base_url.to_owned();
+    config.cache_dir = cache_dir.to_string_lossy().into_owned();
+    config.cache_response_namespace = cache_response_namespace.to_owned();
     NetEngine::new(config).expect("create net engine")
 }
 

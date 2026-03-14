@@ -24,6 +24,7 @@ class RustEngineInitOptions {
   final int maxInFlightTasks;
   final int largeBodyThresholdKb;
   final String? cacheDir;
+  final String cacheResponseNamespace;
   final int cacheDefaultTtlSeconds;
   final int cacheMaxNamespaceBytes;
   final String userAgent;
@@ -38,6 +39,7 @@ class RustEngineInitOptions {
     this.maxInFlightTasks = 32,
     this.largeBodyThresholdKb = 256,
     this.cacheDir,
+    this.cacheResponseNamespace = 'responses',
     this.cacheDefaultTtlSeconds = 300,
     this.cacheMaxNamespaceBytes = 64 * 1024 * 1024,
     this.userAgent = 'HarryPet/1.0',

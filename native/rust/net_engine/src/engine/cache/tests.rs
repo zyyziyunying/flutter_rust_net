@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use uuid::Uuid;
 
-use super::{CacheBodySource, DiskCache, RESPONSE_CACHE_NAMESPACE};
+use super::{normalize_namespace, CacheBodySource, DiskCache, RESPONSE_CACHE_NAMESPACE};
 
 #[tokio::test]
 async fn stores_and_reads_fresh_cache_entry() {
@@ -283,6 +283,29 @@ async fn clear_namespace_rejects_parent_path() {
     tokio::fs::remove_dir_all(cache_dir)
         .await
         .expect("remove cache dir");
+}
+
+#[test]
+fn normalize_namespace_rejects_path_like_inputs() {
+    for namespace in [
+        ".",
+        "..",
+        "./responses",
+        "tenant/a",
+        "tenant\\a",
+        "responses/",
+        "\\responses",
+    ] {
+        assert!(
+            normalize_namespace(namespace).is_err(),
+            "expected `{namespace}` to be rejected"
+        );
+    }
+
+    assert_eq!(
+        normalize_namespace("  tenant_responses  ").expect("normalize namespace"),
+        "tenant_responses"
+    );
 }
 
 #[tokio::test]
