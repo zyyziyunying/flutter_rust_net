@@ -192,6 +192,20 @@ dart run tool/upload_bench_log.dart --input=build/bench_small.json --base-url=ht
 5. 若服务端字段名不是 `file`，可通过 `--field-name=<name>` 覆盖。
 6. 上传成功以 **HTTP 2xx** 为准；`upload_bench_log.dart` 输出里的 `status / costMs / response=<preview>` 视作本轮客户端回执，建议一并记入测试记录。
 7. 未登录返回 `401` 时，应先排查 token / 登录态，不应直接判定上传服务失效。
+8. 若本轮包含 P2 缓存收益样例，建议在归档记录中至少摘录：`cacheHit`、`cacheMiss`、`repeatedMissCount`、`reqP95`、`throughput`；若使用本地 scenario server，再补 `cacheRevalidate`、`cacheEvict`。
+9. external `baseUrl` 口径下，`cacheRevalidate/cacheEvict` 当前不作为权威字段；若文档需要列出，建议显式写为 `n/a` 并备注“仅本地 scenario server 有权威值”。
+
+P2 缓存收益摘录模板：
+
+```text
+channel=<dio|rust>
+scenario=<jitter_latency|...>
+requests=<N> warmup=<N> requestKeySpace=<N or n/a>
+cacheHit=<N> cacheMiss=<N> repeatedMissCount=<N>
+cacheRevalidate=<N or n/a> cacheEvict=<N or n/a>
+reqP95=<ms> throughput=<req/s>
+note=<external baseUrl / local scenario server / cold-start / warm-cache>
+```
 
 ---
 

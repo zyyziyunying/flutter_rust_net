@@ -194,6 +194,86 @@ async fn lru_prunes_oldest_entries_when_namespace_exceeds_budget() {
 }
 
 #[tokio::test]
+async fn namespace_byte_budget_is_isolated_per_namespace() {
+    let cache_dir = create_test_cache_dir_path("namespace_budget_isolation");
+    let cache = DiskCache::new_for_test(
+        cache_dir.to_string_lossy().as_ref(),
+        Duration::from_secs(300),
+        8,
+    )
+    .expect("create cache");
+
+    cache
+        .store(
+            "ns_a",
+            "k1",
+            "GET",
+            "https://example.com/ns_a/1",
+            200,
+            &[("cache-control".to_owned(), "max-age=120".to_owned())],
+            CacheBodySource::Bytes(b"12345"),
+        )
+        .await
+        .expect("store ns_a k1");
+    tokio::time::sleep(Duration::from_millis(4)).await;
+    cache
+        .store(
+            "ns_a",
+            "k2",
+            "GET",
+            "https://example.com/ns_a/2",
+            200,
+            &[("cache-control".to_owned(), "max-age=120".to_owned())],
+            CacheBodySource::Bytes(b"67890"),
+        )
+        .await
+        .expect("store ns_a k2");
+
+    cache
+        .store(
+            "ns_b",
+            "k3",
+            "GET",
+            "https://example.com/ns_b/1",
+            200,
+            &[("cache-control".to_owned(), "max-age=120".to_owned())],
+            CacheBodySource::Bytes(b"abcde"),
+        )
+        .await
+        .expect("store ns_b k3");
+    tokio::time::sleep(Duration::from_millis(4)).await;
+    cache
+        .store(
+            "ns_b",
+            "k4",
+            "GET",
+            "https://example.com/ns_b/2",
+            200,
+            &[("cache-control".to_owned(), "max-age=120".to_owned())],
+            CacheBodySource::Bytes(b"vwxyz"),
+        )
+        .await
+        .expect("store ns_b k4");
+
+    let ns_a_old = cache.lookup("ns_a", "k1").await.expect("lookup ns_a old");
+    let ns_a_new = cache.lookup("ns_a", "k2").await.expect("lookup ns_a new");
+    let ns_b_old = cache.lookup("ns_b", "k3").await.expect("lookup ns_b old");
+    let ns_b_new = cache.lookup("ns_b", "k4").await.expect("lookup ns_b new");
+
+    assert!(ns_a_old.is_none());
+    assert!(ns_a_new.is_some());
+    assert!(ns_b_old.is_none());
+    assert!(ns_b_new.is_some());
+
+    assert!(tokio::fs::metadata(cache_dir.join("ns_a")).await.is_ok());
+    assert!(tokio::fs::metadata(cache_dir.join("ns_b")).await.is_ok());
+
+    tokio::fs::remove_dir_all(cache_dir)
+        .await
+        .expect("remove cache dir");
+}
+
+#[tokio::test]
 async fn clear_namespace_rejects_parent_path() {
     let cache_dir = create_test_cache_dir_path("invalid_ns");
     let cache = create_cache(&cache_dir, 1024 * 1024);

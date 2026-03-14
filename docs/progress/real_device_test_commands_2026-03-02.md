@@ -1,17 +1,18 @@
 ---
-title: flutter_rust_net 真机测试命令清单（2026-03-13）
+title: flutter_rust_net 真机测试命令清单（2026-03-14）
 ---
 
-# flutter_rust_net 真机测试命令清单（2026-03-13）
+# flutter_rust_net 真机测试命令清单（2026-03-14）
 
 > 适用范围：`flutter_rust_net` 真机回归与 Dio/Rust 对比。  
 > 执行目录默认从仓库根目录 `D:\dev\flutter_code\harrypet_flutter` 开始。
 >
-> 当前口径（2026-03-13）：
+> 当前口径（2026-03-14）：
 > 1. `example/` 里的预设主要用于真机 App 冒烟、Rust 打包链路和上传按钮回归，默认仍走本地 loopback。
 > 2. 已新增固定入口 `tool/p1_non_loopback_bench.dart`，可一键串联公网 benchmark、聚合摘要和 `run_manifest.json`。
 > 3. `tool/network_bench.dart` 仍保留为底层命令入口，适合手工拆分单场景复验。
 > 4. 若 Rust 初始化触发“本地 `net_engine` 动态库陈旧”保护，先执行 `cd flutter_rust_net && dart run tool/rust_build.dart --profile=release` 再复跑。
+> 5. P2 缓存收益归档统一摘录 `cacheHit/cacheMiss/repeatedMissCount`；`cacheRevalidate/cacheEvict` 仅在本地 scenario server 口径下作为权威字段。
 
 ## 0) 一次性预检查（建议先跑）
 
@@ -263,6 +264,20 @@ dart run tool/upload_bench_log.dart --input=<your_output_dir> --ext=json --base-
 4. `POST /upload` 未携带有效登录态时，当前预期返回是 `401`；这应视为鉴权失败，不应误判为服务不可达。
 5. CLI 会输出统一回执摘要：`status=<code>, client=common.DioLogUploader, costMs=<ms>, response=<preview>`；建议把这串摘要原样同步到 `相关文档（按需）` 或本轮记录中。
 6. 若使用 `tool/p1_non_loopback_bench.dart --upload=true`，同目录下的 `run_manifest.json` 会保留本轮 `remotePrefix` / `extraFields`；上传 stdout/stderr 另存到 `logs/upload_json_reports.*.log`。
+7. 如本轮包含 P2 缓存收益样例，建议在归档记录中至少摘录：`cacheHit`、`cacheMiss`、`repeatedMissCount`、`reqP95`、`throughput`；若使用本地 scenario server，再补 `cacheRevalidate`、`cacheEvict`。
+8. external `baseUrl` 口径下，`cacheRevalidate/cacheEvict` 当前不应作为权威字段；建议明确写成 `n/a`，或备注“仅本地 scenario server 有权威值”。
+
+P2 缓存收益摘录模板（可直接贴到 `相关文档（按需）`）：
+
+```text
+channel=<dio|rust>
+scenario=<jitter_latency|...>
+requests=<N> warmup=<N> requestKeySpace=<N or n/a>
+cacheHit=<N> cacheMiss=<N> repeatedMissCount=<N>
+cacheRevalidate=<N or n/a> cacheEvict=<N or n/a>
+reqP95=<ms> throughput=<req/s>
+note=<external baseUrl / local scenario server / cold-start / warm-cache>
+```
 
 ---
 
