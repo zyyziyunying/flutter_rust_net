@@ -6,7 +6,7 @@ title: flutter_rust_net 公网 non-loopback 样例报告（2026-03-13）
 
 > 范围：`flutter_rust_net` 主机 -> 公网 benchmark 服务的固定入口 smoke 样例。
 >
-> 目的：为 P1 的“non-loopback 自动化命令 + 可追溯样例报告 + `/upload` 回执样例”提供仓库内事实样例。
+> 目的：为 P1 的“non-loopback 自动化命令 + 可追溯样例报告 + `/upload` 回执样例”保留一份本地执行产物样例摘要。
 
 ## 1) 本轮执行信息
 

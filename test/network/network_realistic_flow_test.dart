@@ -1,5 +1,9 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_rust_net/network/benchmark/benchmark_scenario_server.dart';
 import 'package:flutter_rust_net/network/benchmark/network_benchmark_harness.dart';
 import 'package:flutter_rust_net/network/net_models.dart';
 
@@ -31,6 +35,7 @@ void main() {
       expect(dio.endToEndLatencyMs.count, 80);
       expect(dio.cacheHitCount, 0);
       expect(dio.cacheMissCount, 80);
+      expect(dio.repeatedMissCount, 0);
       expect(dio.cacheRevalidateCount, 0);
       expect(dio.cacheEvictCount, 0);
     });
@@ -56,8 +61,60 @@ void main() {
         expect(dio.completedRequests, 12);
         expect(dio.cacheHitCount, 0);
         expect(dio.cacheMissCount, 12);
+        expect(dio.repeatedMissCount, 9);
         expect(dio.cacheRevalidateCount, 0);
         expect(dio.cacheEvictCount, 9);
+      },
+    );
+
+    test(
+      'external scenario baseUrl keeps request shape and reports repeated misses separately',
+      () async {
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        final seenBenchChannels = <String>[];
+        addTearDown(() => server.close(force: true));
+        server.listen((request) async {
+          seenBenchChannels.add(
+            request.headers.value(scenarioBenchChannelHeader) ?? '',
+          );
+          final payload = utf8.encode(
+            jsonEncode({
+              'title': 'network-bench',
+              'ok': true,
+              'payload': List.filled(160, 'x').join(),
+            }),
+          );
+          request.response
+            ..statusCode = HttpStatus.ok
+            ..headers.contentType = ContentType.json
+            ..headers.set(HttpHeaders.contentLengthHeader, payload.length)
+            ..add(payload);
+          await request.response.close();
+        });
+
+        final report = await runNetworkBenchmark(
+          BenchmarkConfig(
+            scenario: BenchmarkScenario.smallJson,
+            requests: 12,
+            warmupRequests: 0,
+            concurrency: 1,
+            channels: const {BenchmarkChannel.dio},
+            initializeRust: false,
+            verbose: false,
+            requestKeySpace: 3,
+            scenarioBaseUrl: 'http://127.0.0.1:${server.port}',
+          ),
+        );
+        _logReport(report);
+
+        final dio = report.channelResults.single;
+        expect(dio.completedRequests, 12);
+        expect(dio.cacheHitCount, 0);
+        expect(dio.cacheMissCount, 12);
+        expect(dio.repeatedMissCount, 9);
+        expect(dio.cacheRevalidateCount, isNull);
+        expect(dio.cacheEvictCount, isNull);
+        expect(seenBenchChannels, everyElement(''));
       },
     );
 

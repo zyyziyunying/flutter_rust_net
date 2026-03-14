@@ -191,6 +191,7 @@ Future<ChannelBenchmarkResult> _runChannelBenchmark({
           requestMs: requestMs,
           endToEndMs: totalWatch.elapsedMilliseconds,
           consume: consume,
+          requestKey: '${request.method.toUpperCase()} ${request.url}',
         );
       } catch (error) {
         totalWatch.stop();

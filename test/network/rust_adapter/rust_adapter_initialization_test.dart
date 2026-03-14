@@ -181,6 +181,45 @@ void main() {
     });
 
     test(
+      'rejects conflicting namespace budget on shared initialized scope',
+      () async {
+        final fakeBridge = FakeRustBridgeApi();
+        final firstAdapter = RustAdapter(bridgeApi: fakeBridge);
+        final secondAdapter = RustAdapter(bridgeApi: fakeBridge);
+
+        await firstAdapter.initializeEngine(
+          options: const RustEngineInitOptions(cacheMaxNamespaceBytes: 4096),
+        );
+
+        await expectLater(
+          secondAdapter.initializeEngine(
+            options: const RustEngineInitOptions(cacheMaxNamespaceBytes: 8192),
+          ),
+          throwsA(
+            isA<NetException>()
+                .having(
+                  (error) => error.code,
+                  'code',
+                  NetErrorCode.infrastructure,
+                )
+                .having(
+                  (error) => error.fallbackEligible,
+                  'fallbackEligible',
+                  isFalse,
+                )
+                .having(
+                  (error) => error.message,
+                  'message',
+                  contains('cacheMaxNamespaceBytes=4096 -> 8192'),
+                ),
+          ),
+        );
+        expect(secondAdapter.isInitialized, isFalse);
+        expect(fakeBridge.initCalls, 1);
+      },
+    );
+
+    test(
       'allows matching reinitialization when actual config is unknown',
       () async {
         final fakeBridge = FakeRustBridgeApi(

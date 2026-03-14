@@ -94,8 +94,9 @@ class ChannelBenchmarkResult {
   final Map<String, int> exceptionChannels;
   final int cacheHitCount;
   final int cacheMissCount;
-  final int cacheRevalidateCount;
-  final int cacheEvictCount;
+  final int repeatedMissCount;
+  final int? cacheRevalidateCount;
+  final int? cacheEvictCount;
 
   const ChannelBenchmarkResult({
     required this.channel,
@@ -131,6 +132,7 @@ class ChannelBenchmarkResult {
     required this.exceptionChannels,
     required this.cacheHitCount,
     required this.cacheMissCount,
+    required this.repeatedMissCount,
     required this.cacheRevalidateCount,
     required this.cacheEvictCount,
   });
@@ -147,6 +149,7 @@ class ChannelBenchmarkResult {
       : cacheHitCount / cacheObservedRequests.toDouble();
 
   ChannelBenchmarkResult copyWith({
+    int? repeatedMissCount,
     int? cacheRevalidateCount,
     int? cacheEvictCount,
   }) {
@@ -184,6 +187,7 @@ class ChannelBenchmarkResult {
       exceptionChannels: exceptionChannels,
       cacheHitCount: cacheHitCount,
       cacheMissCount: cacheMissCount,
+      repeatedMissCount: repeatedMissCount ?? this.repeatedMissCount,
       cacheRevalidateCount: cacheRevalidateCount ?? this.cacheRevalidateCount,
       cacheEvictCount: cacheEvictCount ?? this.cacheEvictCount,
     );
@@ -202,8 +206,9 @@ class ChannelBenchmarkResult {
       'file=$fileBodyResponses',
       'cacheHit=$cacheHitCount',
       'cacheMiss=$cacheMissCount',
-      'cacheRevalidate=$cacheRevalidateCount',
-      'cacheEvict=$cacheEvictCount',
+      'repeatedMiss=$repeatedMissCount',
+      'cacheRevalidate=${cacheRevalidateCount ?? 'n/a'}',
+      'cacheEvict=${cacheEvictCount ?? 'n/a'}',
       'reqP95=${requestLatencyMs.p95Ms}ms',
       'e2eP95=${endToEndLatencyMs.p95Ms}ms',
       if (consumeAttempted > 0) 'consumeP95=${consumeLatencyMs.p95Ms}ms',
@@ -251,6 +256,7 @@ class ChannelBenchmarkResult {
         'hitCount': cacheHitCount,
         'missCount': cacheMissCount,
         'hitRate': cacheHitRate,
+        'repeatedMissCount': repeatedMissCount,
         'revalidateCount': cacheRevalidateCount,
         'evictCount': cacheEvictCount,
       },

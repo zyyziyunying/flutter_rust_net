@@ -79,7 +79,7 @@ Flutter UI / Repository / UseCase
 ### 3.6 Rust NetEngine
 - 提供高并发 HTTP 能力与任务调度能力。
 - 对大响应执行“内联返回 / 落盘返回路径”两种策略。
-- 提供 `clear_cache(namespace)`，负责删除缓存目录中的落盘响应文件。
+- 提供 `clear_cache(namespace)`，负责删除缓存目录中的缓存副本。
 - 提供任务模型（下载/上传/进度事件/取消）。
 
 ## 4. 数据边界与解析策略
@@ -90,7 +90,7 @@ Flutter UI / Repository / UseCase
 - 业务解码统一放在 Dart：
   - `raw response -> bytes materialize -> json/model decode`
 - 当响应以 `file path` 返回时，Dart 在 materialize 后执行 best-effort 删除，避免临时文件长期残留。
-- 支持主动清理：可通过 Rust `clear_cache` 对历史落盘文件做批量删除。
+- Rust 默认 materialize 文件与缓存副本使用独立目录边界；`clear_cache` 仅批量删除缓存副本，不触碰待 Dart 消费的响应文件。
 - 该策略的核心价值是：避免 Rust 对象与 Dart 对象之间的大规模双向重建开销。
 
 ## 5. 通道路由策略（2026-02-25 测试基线）
@@ -142,6 +142,6 @@ Flutter UI / Repository / UseCase
 - 当前架构已经是“Rust 主通道 + Dio 回退”的双通道形态（测试模式）。
 - 同步请求与传输任务都已纳入统一入口治理，不再要求业务绕过网关直连 FRB。
 - Rust 已作为默认主通道（`enableRustChannel=true`），可通过总开关快速切回 Dio；Dart 负责业务解码与编排。
-- 大响应落盘文件已具备生命周期闭环（读取后清理 + `clear_cache` 主动清理）。
+- 大响应落盘文件已具备生命周期边界闭环（读取后清理；`clear_cache` 仅主动清理缓存副本）。
 - 后续接入业务应用前，仍需补齐可观测与回退演练，确保切换策略可控。
 

@@ -21,6 +21,7 @@ class ChannelRunAccumulator {
   int consumeBytesTotal = 0;
   int cacheHitCount = 0;
   int cacheMissCount = 0;
+  int repeatedMissCount = 0;
 
   final List<int> _requestLatencyMs = [];
   final List<int> _endToEndLatencyMs = [];
@@ -37,6 +38,7 @@ class ChannelRunAccumulator {
   final Map<String, int> _statusCodes = {};
   final Map<String, int> _exceptionCodes = {};
   final Map<String, int> _exceptionChannels = {};
+  final Set<String> _seenRequestKeys = <String>{};
 
   ChannelRunAccumulator({
     required this.channelName,
@@ -49,6 +51,7 @@ class ChannelRunAccumulator {
     required int requestMs,
     required int endToEndMs,
     required ConsumeMetrics consume,
+    required String requestKey,
   }) {
     completedRequests += 1;
     _requestLatencyMs.add(requestMs);
@@ -60,10 +63,14 @@ class ChannelRunAccumulator {
     } else if (response.bodyBytes != null) {
       inlineBodyResponses += 1;
     }
+    final isRepeatedRequest = !_seenRequestKeys.add(requestKey);
     if (response.fromCache) {
       cacheHitCount += 1;
     } else {
       cacheMissCount += 1;
+      if (isRepeatedRequest) {
+        repeatedMissCount += 1;
+      }
     }
     if (consume.attempted) {
       consumeAttempted += 1;
@@ -119,8 +126,9 @@ class ChannelRunAccumulator {
   }
 
   ChannelBenchmarkResult finish({required int wallElapsedMs}) {
-    final throughput =
-        wallElapsedMs <= 0 ? 0.0 : completedRequests * 1000 / wallElapsedMs;
+    final throughput = wallElapsedMs <= 0
+        ? 0.0
+        : completedRequests * 1000 / wallElapsedMs;
     return ChannelBenchmarkResult(
       channel: channelName,
       warmupRequests: warmupRequests,
@@ -157,8 +165,9 @@ class ChannelRunAccumulator {
       exceptionChannels: _sortedView(_exceptionChannels),
       cacheHitCount: cacheHitCount,
       cacheMissCount: cacheMissCount,
-      cacheRevalidateCount: 0,
-      cacheEvictCount: 0,
+      repeatedMissCount: repeatedMissCount,
+      cacheRevalidateCount: null,
+      cacheEvictCount: null,
     );
   }
 }

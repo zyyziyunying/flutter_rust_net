@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use futures::StreamExt;
@@ -11,6 +11,9 @@ use super::{NetEngine, ResponseBodyStorage};
 use crate::api::{RequestSpec, ResponseMeta};
 use crate::engine::cache::{CacheBodySource, CacheLookup, DiskCache, RESPONSE_CACHE_NAMESPACE};
 use crate::engine::error::NetError;
+
+const MATERIALIZED_RESPONSE_DIR_SUFFIX: &str = "_materialized";
+const DEFAULT_MATERIALIZED_RESPONSE_DIR_NAME: &str = "net_engine_materialized";
 
 impl NetEngine {
     /// 同步式请求（等待完成后返回）
@@ -275,11 +278,21 @@ impl NetEngine {
         if self.config.cache_dir.is_empty() {
             format!("{}.bin", spec.request_id)
         } else {
-            Path::new(&self.config.cache_dir)
+            self.default_materialized_response_dir()
                 .join(format!("{}.bin", spec.request_id))
                 .to_string_lossy()
                 .into_owned()
         }
+    }
+
+    fn default_materialized_response_dir(&self) -> PathBuf {
+        let cache_dir = Path::new(&self.config.cache_dir);
+        if let Some(file_name) = cache_dir.file_name() {
+            let mut sibling_name = file_name.to_os_string();
+            sibling_name.push(MATERIALIZED_RESPONSE_DIR_SUFFIX);
+            return cache_dir.with_file_name(sibling_name);
+        }
+        cache_dir.join(DEFAULT_MATERIALIZED_RESPONSE_DIR_NAME)
     }
 
     fn url_with_query(url: &str, query: &[(String, String)]) -> String {

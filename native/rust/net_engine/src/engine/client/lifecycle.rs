@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use std::sync::atomic::Ordering;
 
 use super::NetEngine;
@@ -36,14 +37,16 @@ impl NetEngine {
             return Ok(0);
         };
 
-        let namespace = namespace.and_then(|raw| {
-            let trimmed = raw.trim().to_owned();
-            if trimmed.is_empty() {
-                None
-            } else {
+        let namespace = match namespace {
+            Some(raw) => {
+                let trimmed = raw.trim().to_owned();
+                if trimmed.is_empty() {
+                    return Err(anyhow!("cache namespace is empty"));
+                }
                 Some(trimmed)
             }
-        });
+            None => None,
+        };
 
         cache.clear(namespace).await
     }

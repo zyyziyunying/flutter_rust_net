@@ -127,6 +127,41 @@ dart run tool/rust_build.dart --profile=release
    - `GET /healthz -> 200`
    - `GET /bench/small-json?id=1 -> 200`
 
+### 2.1.1 公网 jitter 缓存收益补跑（P2）
+
+适用场景：
+
+1. 需要确认真实链路下 Rust 缓存命中收益，而不是只看 loopback。
+2. 需要对比 `cold-start` 与 `warm-cache` 两种口径。
+
+推荐命令：
+
+```powershell
+Set-Location .\flutter_rust_net
+
+$baseUrl = "http://47.110.52.208:7777"
+$runId = Get-Date -Format "yyyyMMdd_HHmm"
+$out = "build/remote_cache_probe_$runId"
+New-Item -ItemType Directory -Path $out -Force | Out-Null
+
+# cold-start：不做 warmup，允许前 12 个 key 自然建缓存
+dart run tool/network_bench.dart --base-url=$baseUrl --scenario=jitter_latency --channels=dio,rust --initialize-rust=true --require-rust=true --requests=96 --warmup=0 --concurrency=8 --jitter-base-ms=12 --jitter-extra-ms=80 --rust-max-in-flight=32 --request-key-space=12 --output="${out}/remote_jitter_cache_cold.json"
+
+# warm-cache：warmup 覆盖全部 12 个 key，观察稳态缓存收益
+dart run tool/network_bench.dart --base-url=$baseUrl --scenario=jitter_latency --channels=dio,rust --initialize-rust=true --require-rust=true --requests=96 --warmup=12 --concurrency=8 --jitter-base-ms=12 --jitter-extra-ms=80 --rust-max-in-flight=32 --request-key-space=12 --output="${out}/remote_jitter_cache_warm.json"
+```
+
+当前本地执行产物摘要（`2026-03-13`, `host_windows + ethernet`）：
+
+1. `cold-start`：Rust `cacheHit=82/96`, `repeatedMissCount=3`（历史 JSON 字段名：`cacheEvict=3`）, `reqP95=85ms`, `throughput=405 req/s`；Dio `cacheHit=0/96`, `repeatedMissCount=84`（历史 JSON 字段名：`cacheEvict=84`）, `reqP95=120ms`, `throughput=186 req/s`
+2. `warm-cache`：Rust `cacheHit=96/96`, `repeatedMissCount=0`（历史 JSON 字段名：`cacheEvict=0`）, `reqP95=7ms`, `throughput=1371 req/s`；Dio `cacheHit=0/96`, `repeatedMissCount=84`（历史 JSON 字段名：`cacheEvict=84`）, `reqP95=43ms`, `throughput=226 req/s`
+
+判读说明：
+
+1. 自 `2026-03-14` 起，external `baseUrl` 下的客户端 repeated miss 统一看 `repeatedMissCount`；`cacheRevalidate/cacheEvict` 仅在本地 scenario server 口径下有权威值。
+2. 这组 `2026-03-13` 历史样例里的 `cacheEvict` 应按当时 external 口径理解为 repeated miss，不再作为当前 `cacheEvict` 语义示例。
+3. 若 `warmup >= request-key-space` 且 Rust 仍大量 miss，优先检查是否命中 stale library、是否切到非 GET、或请求头是否显式禁用了缓存。
+
 ### 2.2 本地 loopback 基线（回归参考）
 
 ```powershell
