@@ -293,6 +293,46 @@ void main() {
     );
 
     test(
+      'rejects trailing-dot response cache namespace before bridge init',
+      () async {
+        for (final namespace in const ['responses.', 'tenant_cache..']) {
+          final fakeBridge = FakeRustBridgeApi();
+          final adapter = RustAdapter(bridgeApi: fakeBridge);
+
+          await expectLater(
+            adapter.initializeEngine(
+              options: RustEngineInitOptions(cacheResponseNamespace: namespace),
+            ),
+            throwsA(
+              isA<NetException>()
+                  .having(
+                    (error) => error.code,
+                    'code',
+                    NetErrorCode.infrastructure,
+                  )
+                  .having(
+                    (error) => error.fallbackEligible,
+                    'fallbackEligible',
+                    isFalse,
+                  )
+                  .having(
+                    (error) => error.message,
+                    'message',
+                    contains('single non-empty path segment'),
+                  ),
+            ),
+            reason: namespace,
+          );
+
+          expect(adapter.isInitialized, isFalse, reason: namespace);
+          expect(fakeBridge.ensureLoadedCalls, 0, reason: namespace);
+          expect(fakeBridge.initCalls, 0, reason: namespace);
+          expect(fakeBridge.lastInitConfig, isNull, reason: namespace);
+        }
+      },
+    );
+
+    test(
       'ignores response cache namespace differences when cache is disabled',
       () async {
         final fakeBridge = FakeRustBridgeApi();
@@ -316,6 +356,50 @@ void main() {
         expect(secondAdapter.isInitialized, isTrue);
         expect(fakeBridge.initCalls, 1);
         expect(fakeBridge.lastInitConfig?.cacheResponseNamespace, 'responses');
+      },
+    );
+
+    test(
+      'reuses shared initialized scope when cacheDir only differs by blank formatting',
+      () async {
+        final fakeBridge = FakeRustBridgeApi();
+        final firstAdapter = RustAdapter(bridgeApi: fakeBridge);
+        final secondAdapter = RustAdapter(bridgeApi: fakeBridge);
+
+        await firstAdapter.initializeEngine(
+          options: const RustEngineInitOptions(cacheDir: ''),
+        );
+        await secondAdapter.initializeEngine(
+          options: const RustEngineInitOptions(cacheDir: '   '),
+        );
+
+        expect(firstAdapter.isInitialized, isTrue);
+        expect(secondAdapter.isInitialized, isTrue);
+        expect(fakeBridge.initCalls, 1);
+        expect(fakeBridge.lastInitConfig?.cacheDir, '');
+      },
+    );
+
+    test(
+      'reuses shared initialized scope when non-empty cacheDir only differs by trim',
+      () async {
+        final fakeBridge = FakeRustBridgeApi();
+        final firstAdapter = RustAdapter(bridgeApi: fakeBridge);
+        final secondAdapter = RustAdapter(bridgeApi: fakeBridge);
+
+        await firstAdapter.initializeEngine(
+          options: const RustEngineInitOptions(
+            cacheDir: r' C:\temp\net_cache ',
+          ),
+        );
+        await secondAdapter.initializeEngine(
+          options: const RustEngineInitOptions(cacheDir: r'C:\temp\net_cache'),
+        );
+
+        expect(firstAdapter.isInitialized, isTrue);
+        expect(secondAdapter.isInitialized, isTrue);
+        expect(fakeBridge.initCalls, 1);
+        expect(fakeBridge.lastInitConfig?.cacheDir, r'C:\temp\net_cache');
       },
     );
 

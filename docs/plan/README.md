@@ -13,6 +13,7 @@
 
 - `network_p1_execution_template_2026-02-25.md`：P1 性能与容量瓶颈执行模板。
 - `golang_remote_benchmark_server_plan_2026-03-02.md`：远端真机压测 Go 服务实现方案。
+- `cache_namespace_budget_governance_plan_2026-03-14.md`：namespace 缓存预算治理方案。
 
 维护约定：
 

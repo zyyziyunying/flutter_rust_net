@@ -102,7 +102,7 @@ class _RustAdapterInitTracker {
   static rust_api.NetEngineConfig toNetEngineConfig(
     RustEngineInitOptions options,
   ) {
-    final cacheDir = options.cacheDir ?? _defaultCacheDirPath();
+    final cacheDir = _normalizeCacheDir(options.cacheDir);
     final cacheEnabled = cacheDir.trim().isNotEmpty;
     return rust_api.NetEngineConfig(
       baseUrl: options.baseUrl,
@@ -123,6 +123,17 @@ class _RustAdapterInitTracker {
     );
   }
 
+  static String _normalizeCacheDir(String? cacheDir) {
+    if (cacheDir == null) {
+      return _defaultCacheDirPath();
+    }
+    final trimmed = cacheDir.trim();
+    if (trimmed.isEmpty) {
+      return '';
+    }
+    return trimmed;
+  }
+
   static String _normalizeCacheResponseNamespace(String namespace) {
     final trimmed = namespace.trim();
     final hasWindowsDrivePrefix = RegExp(r'^[a-zA-Z]:').hasMatch(trimmed);
@@ -131,6 +142,7 @@ class _RustAdapterInitTracker {
         trimmed.contains(r'\') ||
         trimmed == '.' ||
         trimmed == '..' ||
+        trimmed.endsWith('.') ||
         hasWindowsDrivePrefix) {
       throw NetException.infrastructure(
         message:

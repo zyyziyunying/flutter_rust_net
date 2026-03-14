@@ -333,6 +333,12 @@ pub fn normalize_namespace(namespace: &str) -> anyhow::Result<String> {
         return Err(anyhow!("invalid cache namespace"));
     }
 
+    // Reject Windows directory aliases such as `responses.` that collapse to
+    // the same on-disk entry as `responses`.
+    if trimmed.ends_with('.') {
+        return Err(anyhow!("invalid cache namespace"));
+    }
+
     let mut components = Path::new(trimmed).components();
     match (components.next(), components.next()) {
         (Some(Component::Normal(_)), None) => Ok(trimmed.to_owned()),

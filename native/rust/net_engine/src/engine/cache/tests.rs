@@ -293,6 +293,8 @@ fn normalize_namespace_rejects_path_like_inputs() {
         "./responses",
         "tenant/a",
         "tenant\\a",
+        "responses.",
+        "tenant_cache..",
         "responses/",
         "\\responses",
     ] {

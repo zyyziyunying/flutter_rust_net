@@ -145,6 +145,7 @@ void main() {
 
         await adapter.initializeEngine(
           options: const RustEngineInitOptions(
+            cacheDir: r' C:\temp\net_cache ',
             cacheResponseNamespace: ' tenant_cache ',
             cacheDefaultTtlSeconds: 12,
             cacheMaxNamespaceBytes: 4096,
@@ -154,6 +155,7 @@ void main() {
         final config = fakeBridge.lastInitConfig;
         expect(config, isNotNull);
         expect(config!.cacheDefaultTtlSeconds, 12);
+        expect(config.cacheDir, r'C:\temp\net_cache');
         expect(config.cacheResponseNamespace, 'tenant_cache');
         expect(config.cacheMaxNamespaceBytes, 4096);
       },
@@ -165,7 +167,7 @@ void main() {
 
       await adapter.initializeEngine(
         options: const RustEngineInitOptions(
-          cacheDir: '',
+          cacheDir: '   ',
           cacheResponseNamespace: '../outside',
         ),
       );
