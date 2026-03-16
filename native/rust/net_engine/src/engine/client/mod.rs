@@ -67,7 +67,7 @@ struct TransferOutcome {
 }
 
 impl NetEngine {
-    pub fn new(config: NetEngineConfig) -> anyhow::Result<Self> {
+    pub async fn new(config: NetEngineConfig) -> anyhow::Result<Self> {
         // 统一在这里创建 HTTP client，避免分散配置。
         let client = Client::builder()
             .connect_timeout(std::time::Duration::from_millis(
@@ -96,11 +96,15 @@ impl NetEngine {
             } else {
                 config.cache_max_namespace_bytes as u64
             };
+            let cache_root_max_bytes = config
+                .cache_root_max_bytes
+                .and_then(|value| (value > 0).then_some(value as u64));
             (
                 Some(DiskCache::new_with_policy(
                     &config.cache_dir,
                     std::time::Duration::from_secs(cache_default_ttl_seconds),
                     cache_max_namespace_bytes,
+                    cache_root_max_bytes,
                 )?),
                 response_cache_namespace,
             )
@@ -108,7 +112,7 @@ impl NetEngine {
             (None, RESPONSE_CACHE_NAMESPACE.to_owned())
         };
 
-        Ok(Self {
+        let engine = Self {
             config,
             client,
             event_bus: EventBus::new(),
@@ -118,7 +122,13 @@ impl NetEngine {
             disk_cache,
             response_cache_namespace,
             is_busy: AtomicBool::new(false),
-        })
+        };
+
+        if let Some(disk_cache) = &engine.disk_cache {
+            disk_cache.prune_root().await?;
+        }
+
+        Ok(engine)
     }
 
     async fn acquire_connection_permit(&self, url: &str) -> Result<ConnectionPermit, NetError> {

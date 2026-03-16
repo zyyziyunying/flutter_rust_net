@@ -18,6 +18,7 @@ pub struct NetEngineConfig {
     pub cache_response_namespace: String,
     pub cache_default_ttl_seconds: u32,
     pub cache_max_namespace_bytes: u32,
+    pub cache_root_max_bytes: Option<u32>,
     pub user_agent: String,
 }
 
@@ -36,6 +37,7 @@ impl Default for NetEngineConfig {
             cache_response_namespace: RESPONSE_CACHE_NAMESPACE.into(),
             cache_default_ttl_seconds: 300,
             cache_max_namespace_bytes: 64 * 1024 * 1024,
+            cache_root_max_bytes: None,
             user_agent: "HarryPet/1.0".into(),
         }
     }
@@ -149,7 +151,7 @@ pub async fn init_net_engine(config: NetEngineConfig) -> anyhow::Result<()> {
         return Err(anyhow::anyhow!("NetEngine already initialized"));
     }
 
-    *engine_slot = Some(Arc::new(NetEngine::new(config)?));
+    *engine_slot = Some(Arc::new(NetEngine::new(config).await?));
     tracing::info!("NetEngine initialized");
     Ok(())
 }

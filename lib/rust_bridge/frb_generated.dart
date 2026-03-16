@@ -441,8 +441,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   NetEngineConfig dco_decode_net_engine_config(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 13)
-      throw Exception('unexpected arr length: expect 13 but see ${arr.length}');
+    if (arr.length != 14)
+      throw Exception('unexpected arr length: expect 14 but see ${arr.length}');
     return NetEngineConfig(
       baseUrl: dco_decode_String(arr[0]),
       connectTimeoutMs: dco_decode_u_32(arr[1]),
@@ -456,7 +456,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       cacheResponseNamespace: dco_decode_String(arr[9]),
       cacheDefaultTtlSeconds: dco_decode_u_32(arr[10]),
       cacheMaxNamespaceBytes: dco_decode_u_32(arr[11]),
-      userAgent: dco_decode_String(arr[12]),
+      cacheRootMaxBytes: dco_decode_opt_box_autoadd_u_32(arr[12]),
+      userAgent: dco_decode_String(arr[13]),
     );
   }
 
@@ -747,6 +748,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_cacheResponseNamespace = sse_decode_String(deserializer);
     var var_cacheDefaultTtlSeconds = sse_decode_u_32(deserializer);
     var var_cacheMaxNamespaceBytes = sse_decode_u_32(deserializer);
+    var var_cacheRootMaxBytes = sse_decode_opt_box_autoadd_u_32(deserializer);
     var var_userAgent = sse_decode_String(deserializer);
     return NetEngineConfig(
       baseUrl: var_baseUrl,
@@ -761,6 +763,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       cacheResponseNamespace: var_cacheResponseNamespace,
       cacheDefaultTtlSeconds: var_cacheDefaultTtlSeconds,
       cacheMaxNamespaceBytes: var_cacheMaxNamespaceBytes,
+      cacheRootMaxBytes: var_cacheRootMaxBytes,
       userAgent: var_userAgent,
     );
   }
@@ -1117,6 +1120,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.cacheResponseNamespace, serializer);
     sse_encode_u_32(self.cacheDefaultTtlSeconds, serializer);
     sse_encode_u_32(self.cacheMaxNamespaceBytes, serializer);
+    sse_encode_opt_box_autoadd_u_32(self.cacheRootMaxBytes, serializer);
     sse_encode_String(self.userAgent, serializer);
   }
 

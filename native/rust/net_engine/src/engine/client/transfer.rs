@@ -471,7 +471,9 @@ mod tests {
         let (url, server_handle) =
             spawn_download_server_with_delay("200 OK", b"ok", Duration::from_millis(200)).await;
         let target_path = create_temp_file_path("duplicate_download");
-        let engine = NetEngine::new(NetEngineConfig::default()).expect("create net engine");
+        let engine = NetEngine::new(NetEngineConfig::default())
+            .await
+            .expect("create net engine");
         let spec = build_download_spec("duplicate-task", &url, &target_path);
 
         let task_id = engine

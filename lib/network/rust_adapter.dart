@@ -27,6 +27,7 @@ class RustEngineInitOptions {
   final String cacheResponseNamespace;
   final int cacheDefaultTtlSeconds;
   final int cacheMaxNamespaceBytes;
+  final int? cacheRootMaxBytes;
   final String userAgent;
 
   const RustEngineInitOptions({
@@ -42,6 +43,7 @@ class RustEngineInitOptions {
     this.cacheResponseNamespace = 'responses',
     this.cacheDefaultTtlSeconds = 300,
     this.cacheMaxNamespaceBytes = 64 * 1024 * 1024,
+    this.cacheRootMaxBytes,
     this.userAgent = 'HarryPet/1.0',
   });
 }

@@ -14,6 +14,7 @@
 //! in `mod.rs`.
 
 use std::path::{Component, Path, PathBuf};
+use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{anyhow, Context};
@@ -39,6 +40,8 @@ pub struct DiskCache {
     root_dir: PathBuf,
     default_ttl: Duration,
     max_namespace_bytes: u64,
+    max_root_bytes: Option<u64>,
+    root_budget_lock: Option<Arc<tokio::sync::Mutex<()>>>,
 }
 
 #[derive(Clone, Debug)]
@@ -82,6 +85,7 @@ impl DiskCache {
             cache_dir,
             Duration::from_secs(DEFAULT_CACHE_TTL_SECONDS),
             DEFAULT_CACHE_MAX_NAMESPACE_BYTES,
+            None,
         )
     }
 
@@ -89,8 +93,9 @@ impl DiskCache {
         cache_dir: &str,
         default_ttl: Duration,
         max_namespace_bytes: u64,
+        max_root_bytes: Option<u64>,
     ) -> anyhow::Result<Self> {
-        Self::with_limits(cache_dir, default_ttl, max_namespace_bytes)
+        Self::with_limits(cache_dir, default_ttl, max_namespace_bytes, max_root_bytes)
     }
 
     pub fn build_cache_key(
@@ -107,6 +112,7 @@ impl DiskCache {
     }
 
     pub async fn lookup(&self, namespace: &str, key: &str) -> anyhow::Result<Option<CacheLookup>> {
+        let _root_budget_guard = self.lock_root_budget().await;
         let (meta_path, body_path) = self.entry_paths(namespace, key)?;
         let mut meta = match Self::load_meta(&meta_path).await {
             Ok(meta) => meta,
@@ -166,6 +172,7 @@ impl DiskCache {
         body: CacheBodySource<'_>,
     ) -> anyhow::Result<()> {
         let method = method.trim().to_ascii_uppercase();
+        let _root_budget_guard = self.lock_root_budget().await;
         if method != "GET" || status_code != 200 || policy::response_has_no_store(headers) {
             let (meta_path, body_path) = self.entry_paths(namespace, key)?;
             Self::remove_entry_files(&meta_path, &body_path).await?;
@@ -204,7 +211,8 @@ impl DiskCache {
         };
 
         Self::save_meta(&meta_path, &meta).await?;
-        self.prune_namespace(&namespace_dir).await
+        self.prune_namespace(&namespace_dir).await?;
+        self.prune_root_inner().await
     }
 
     pub async fn revalidate(
@@ -213,6 +221,7 @@ impl DiskCache {
         key: &str,
         revalidate_headers: &[(String, String)],
     ) -> anyhow::Result<()> {
+        let _root_budget_guard = self.lock_root_budget().await;
         let namespace_dir = self.namespace_dir(namespace)?;
         let (meta_path, body_path) = self.entry_paths(namespace, key)?;
         let mut meta = match Self::load_meta(&meta_path).await {
@@ -247,10 +256,12 @@ impl DiskCache {
             now_ms.saturating_add(self.resolve_ttl(&merged_headers).as_millis() as u64);
 
         Self::save_meta(&meta_path, &meta).await?;
-        self.prune_namespace(&namespace_dir).await
+        self.prune_namespace(&namespace_dir).await?;
+        self.prune_root_inner().await
     }
 
     pub async fn clear(&self, namespace: Option<String>) -> anyhow::Result<u64> {
+        let _root_budget_guard = self.lock_root_budget().await;
         let target = match namespace {
             Some(namespace) => self.namespace_dir(&namespace)?,
             None => self.root_dir.clone(),
@@ -280,14 +291,16 @@ impl DiskCache {
         cache_dir: &str,
         default_ttl: Duration,
         max_namespace_bytes: u64,
+        max_root_bytes: Option<u64>,
     ) -> anyhow::Result<Self> {
-        Self::with_limits(cache_dir, default_ttl, max_namespace_bytes)
+        Self::with_limits(cache_dir, default_ttl, max_namespace_bytes, max_root_bytes)
     }
 
     fn with_limits(
         cache_dir: &str,
         default_ttl: Duration,
         max_namespace_bytes: u64,
+        max_root_bytes: Option<u64>,
     ) -> anyhow::Result<Self> {
         let cache_dir = cache_dir.trim();
         if cache_dir.is_empty() {
@@ -301,6 +314,8 @@ impl DiskCache {
             root_dir,
             default_ttl,
             max_namespace_bytes,
+            max_root_bytes,
+            root_budget_lock: max_root_bytes.map(|_| Arc::new(tokio::sync::Mutex::new(()))),
         })
     }
 
@@ -319,6 +334,23 @@ impl DiskCache {
         Ok((
             namespace_dir.join(format!("{key}{META_SUFFIX}")),
             namespace_dir.join(format!("{key}{BODY_SUFFIX}")),
+        ))
+    }
+
+    async fn lock_root_budget(&self) -> Option<tokio::sync::OwnedMutexGuard<()>> {
+        match &self.root_budget_lock {
+            Some(lock) => Some(lock.clone().lock_owned().await),
+            None => None,
+        }
+    }
+
+    #[cfg(test)]
+    fn pause_next_temp_write_in_namespace(
+        &self,
+        namespace: &str,
+    ) -> anyhow::Result<storage::TempWritePauseHandle> {
+        Ok(storage::install_temp_write_pause(
+            self.namespace_dir(namespace)?,
         ))
     }
 }

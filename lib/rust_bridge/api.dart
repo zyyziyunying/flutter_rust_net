@@ -46,6 +46,7 @@ class NetEngineConfig {
   final String cacheResponseNamespace;
   final int cacheDefaultTtlSeconds;
   final int cacheMaxNamespaceBytes;
+  final int? cacheRootMaxBytes;
   final String userAgent;
 
   const NetEngineConfig({
@@ -61,6 +62,7 @@ class NetEngineConfig {
     required this.cacheResponseNamespace,
     required this.cacheDefaultTtlSeconds,
     required this.cacheMaxNamespaceBytes,
+    this.cacheRootMaxBytes,
     required this.userAgent,
   });
 
@@ -81,6 +83,7 @@ class NetEngineConfig {
       cacheResponseNamespace.hashCode ^
       cacheDefaultTtlSeconds.hashCode ^
       cacheMaxNamespaceBytes.hashCode ^
+      cacheRootMaxBytes.hashCode ^
       userAgent.hashCode;
 
   @override
@@ -100,6 +103,7 @@ class NetEngineConfig {
           cacheResponseNamespace == other.cacheResponseNamespace &&
           cacheDefaultTtlSeconds == other.cacheDefaultTtlSeconds &&
           cacheMaxNamespaceBytes == other.cacheMaxNamespaceBytes &&
+          cacheRootMaxBytes == other.cacheRootMaxBytes &&
           userAgent == other.userAgent;
 }
 

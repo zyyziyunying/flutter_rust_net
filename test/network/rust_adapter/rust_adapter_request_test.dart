@@ -149,6 +149,7 @@ void main() {
             cacheResponseNamespace: ' tenant_cache ',
             cacheDefaultTtlSeconds: 12,
             cacheMaxNamespaceBytes: 4096,
+            cacheRootMaxBytes: 8192,
           ),
         );
 
@@ -158,6 +159,7 @@ void main() {
         expect(config.cacheDir, r'C:\temp\net_cache');
         expect(config.cacheResponseNamespace, 'tenant_cache');
         expect(config.cacheMaxNamespaceBytes, 4096);
+        expect(config.cacheRootMaxBytes, 8192);
       },
     );
 

@@ -4,11 +4,24 @@
 
 在不打乱当前缓存契约的前提下，明确 `cacheMaxNamespaceBytes` 的现状边界、后续治理优先级，以及何时才值得继续扩展为显式分区策略。
 
+## 实施补记（2026-03-16）
+
+1. 阶段 B 的最小实现已落地：
+   - Dart `RustEngineInitOptions` / Rust `NetEngineConfig` 新增可选 `cacheRootMaxBytes`
+   - `_RustAdapterInitTracker` 已把该字段纳入共享初始化一致性比较
+   - `DiskCache` 已按 cache root 实际文件占用执行 root-level prune：计入 body + metadata，并在扫描时清理 root 内残留文件
+   - `NetEngine` 初始化 cache 时会先执行一次 root prune，已有超限目录不会等到后续写路径才收敛
+   - root budget 关键路径现已串行化，避免 `prune_root()` 与缓存自身 `*.tmp` 写入交错时误删临时文件
+   - 启用 root budget 时，`cache_dir` 的“独占专用目录”要求现已升级为显式契约
+2. 当前剩余重点不再是“要不要做 root budget”，而是：
+   - 在 benchmark / 真机归档里按需补 root budget 口径与占用观测
+   - 继续评估是否真的需要阶段 C 的显式分区策略
+
 ## 当前现状（基于现有代码与回归）
 
-1. Rust `DiskCache` 当前只有一个 `max_namespace_bytes` 配置，作用域是“每个 namespace 独立上限”，不是 cache root 总上限。
+1. Rust `DiskCache` 当前同时维护 `max_namespace_bytes` 与可选 `max_root_bytes`：前者是“每个 namespace 独立上限”，后者仅在启用时才作为 cache root 总上限。
 2. Rust 请求缓存默认 namespace 已外置为初始化配置 `cache_response_namespace`；Dart 对应入口是 `RustEngineInitOptions.cacheResponseNamespace`。
-3. 同一 Rust engine scope 下，Dart 共享初始化会拒绝 `cacheResponseNamespace` 与 `cacheMaxNamespaceBytes` 配置漂移，避免静默沿用旧预算。
+3. 同一 Rust engine scope 下，Dart 共享初始化会拒绝 `cacheResponseNamespace`、`cacheMaxNamespaceBytes` 与 `cacheRootMaxBytes` 配置漂移，避免静默沿用旧预算。
 4. Rust 回归已确认：不同 namespace 会各自执行 LRU 淘汰，不会跨 namespace 互相驱逐。
 5. 这也意味着：若同一 `cache_dir` 下累计存在多个 namespace，cache root 总占用可以高于单个 `cacheMaxNamespaceBytes`。
 
@@ -22,7 +35,7 @@
 
 ### 阶段 A：维持现状并补齐文档口径
 
-当前建议把“每 namespace 独立上限”明确视为已生效的正式契约：
+阶段 A 的基线契约仍然是“每 namespace 独立上限”：
 
 1. 默认行为保持不变：
    - `cacheMaxNamespaceBytes` 继续表示单 namespace 上限。
@@ -32,11 +45,11 @@
    - 不承诺跨 namespace 全局淘汰。
 3. 阶段 A 不新增 bridge 字段，不修改磁盘格式，不重定义 `clear_cache` 语义。
 
-结论：当前阶段先稳定“平面 namespace + 独立 budget”契约，不立即引入显式分区策略。
+结论：即使已补 root budget，基线仍先稳定“平面 namespace + 独立 budget”契约，不立即引入显式分区策略。
 
 ### 阶段 B：若出现磁盘总量治理诉求，优先加 root budget，而不是先加分区表
 
-若后续出现以下任一信号，再进入代码实现阶段：
+本轮已经按最小范围直接进入代码实现阶段；当初建议进入阶段 B 的触发信号仍然成立：
 
 1. 同一 `cache_dir` 下长期保留多个 namespace，导致总磁盘占用不可接受。
 2. 真机归档或 benchmark 复盘中，明确发现“单 namespace 预算健康，但 root 总占用失控”。
@@ -47,6 +60,7 @@
 1. 新增可选 `cacheRootMaxBytes`，表示整个 cache root 的总预算上限。
 2. 保持 `cacheMaxNamespaceBytes` 语义不变，继续作为单 namespace 上限。
 3. root budget 触发时，按跨 namespace 的最近访问时间做全局淘汰；单 namespace budget 触发时，仍在 namespace 内部淘汰。
+4. 一旦启用 root budget，`cache_dir` 必须是当前组件独占的专用目录；不要把共享目录、业务混合目录或其他组件的落盘目录直接作为 cache root。
 
 这样做的原因：
 
@@ -73,23 +87,19 @@
    - 共享初始化配置漂移怎么判定
    - benchmark / 真机归档需要新增哪些预算指标
 
-## 建议的后续实现顺序
+## 建议的后续顺序
 
-若要继续做代码实现，建议按下面顺序推进：
+在当前实现基础上，建议按下面顺序推进：
 
 1. 先补观测口径：
    - benchmark 或真机归档中记录 `cache_dir`、`cacheResponseNamespace`、`cacheMaxNamespaceBytes`
-   - 若进入阶段 B，再补 root 总占用观测
-2. 再做最小代码扩展：
-   - Rust `NetEngineConfig` / Dart `RustEngineInitOptions` 增加可选 `cacheRootMaxBytes`
-   - `_RustAdapterInitTracker` 把该字段纳入共享初始化一致性比较
-   - `DiskCache` 增加 root-level prune 路径
-3. 最后才考虑显式分区策略对象：
+   - root budget 启用时，再补 `cacheRootMaxBytes` 与 root 总占用观测
+2. 最后才考虑显式分区策略对象：
    - 只在阶段 B 不能满足需求时再做
 
 ## 验收标准
 
-### 仅阶段 A（当前建议）
+### 仅阶段 A（未启用 root budget 时的基线）
 
 1. 文档明确写清：`cacheMaxNamespaceBytes` 是“每 namespace 独立上限”，不是 root 总预算。
 2. `p2_status` 的 In Progress / Next 不再把“预算治理方案未成型”作为模糊项。
@@ -100,11 +110,16 @@
 2. 单 namespace 预算仍保持独立生效，不会被 root budget 替代。
 3. Rust / Dart 回归覆盖：
    - root budget 触发的跨 namespace 淘汰
+   - root budget 对 metadata / 残留文件的实际占用计量
+   - 初始化阶段对已有超限目录的收敛
+   - root prune 与缓存内部临时文件写入的并发竞争保护
    - 共享初始化配置漂移拒绝
    - 缓存关闭路径不受影响
+4. 文档明确写清：启用 `cacheRootMaxBytes` 时，`cache_dir` 是独占目录契约，不支持与其他数据共用同一根目录。
 
 ## 当前结论
 
-1. 当前不建议立即实现显式分区策略。
-2. 当前推荐先把“每 namespace 独立上限”作为正式契约固定下来。
-3. 若后续要继续治理磁盘总量，优先新增 `cacheRootMaxBytes`，不要直接跳到复杂分区表。
+1. `cacheRootMaxBytes` 已按“cache root 实际文件总占用”口径收口，可作为 root 总预算治理入口。
+2. `cacheMaxNamespaceBytes` 仍是“每 namespace 独立上限”的正式契约，没有被 root budget 替代。
+3. 启用 root budget 时，`cache_dir` 需视为当前组件独占的专用目录；这是当前实现和文档共同生效的正式契约。
+4. 当前仍不建议直接进入显式分区策略；只有阶段 B 明显不够用时，再考虑复杂分区表。

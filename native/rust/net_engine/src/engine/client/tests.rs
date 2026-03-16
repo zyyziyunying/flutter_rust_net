@@ -11,7 +11,10 @@ use uuid::Uuid;
 use super::transfer::parse_content_range_start;
 use super::{ConnectionLimiter, NetEngine};
 use crate::api::{NetEngineConfig, RequestSpec};
+use crate::engine::cache::{CacheBodySource, DiskCache, RESPONSE_CACHE_NAMESPACE};
 use crate::engine::error::NetError;
+
+//TODO 拆分
 
 #[test]
 fn parses_content_range_start_value() {
@@ -110,7 +113,7 @@ async fn clear_cache_removes_all_files_under_root() {
         .await
         .expect("write nested cache file");
 
-    let engine = create_engine_for_cache_dir(&cache_dir);
+    let engine = create_engine_for_cache_dir(&cache_dir).await;
     let removed = engine.clear_cache(None).await.expect("clear cache");
 
     assert_eq!(removed, 10);
@@ -140,7 +143,7 @@ async fn clear_cache_only_removes_target_namespace() {
         .await
         .expect("write ns_b file");
 
-    let engine = create_engine_for_cache_dir(&cache_dir);
+    let engine = create_engine_for_cache_dir(&cache_dir).await;
     let removed = engine
         .clear_cache(Some("  ns_a  ".to_owned()))
         .await
@@ -169,7 +172,7 @@ async fn clear_cache_rejects_blank_namespace() {
         .await
         .expect("write ns_a file");
 
-    let engine = create_engine_for_cache_dir(&cache_dir);
+    let engine = create_engine_for_cache_dir(&cache_dir).await;
     let result = engine.clear_cache(Some("   ".to_owned())).await;
 
     assert!(result.is_err());
@@ -190,7 +193,7 @@ async fn clear_cache_rejects_parent_namespace() {
         .await
         .expect("create cache root");
 
-    let engine = create_engine_for_cache_dir(&cache_dir);
+    let engine = create_engine_for_cache_dir(&cache_dir).await;
     let result = engine.clear_cache(Some("../outside".to_owned())).await;
 
     assert!(result.is_err());
@@ -258,7 +261,7 @@ async fn request_cache_key_distinguishes_query_parameters() {
         }
     });
 
-    let engine = create_engine_for_base_url_and_cache_dir(&base_url, &cache_dir);
+    let engine = create_engine_for_base_url_and_cache_dir(&base_url, &cache_dir).await;
     let first = engine
         .request(build_get_request("query-1", "/cache", vec![("id", "1")]))
         .await
@@ -351,7 +354,7 @@ async fn clear_cache_keeps_materialized_response_files_outside_cache_root() {
         }
     });
 
-    let engine = create_engine_for_base_url_and_cache_dir(&base_url, &cache_dir);
+    let engine = create_engine_for_base_url_and_cache_dir(&base_url, &cache_dir).await;
     let first = engine
         .request(build_large_get_request("materialized-1", "/cache", vec![]))
         .await
@@ -440,10 +443,14 @@ async fn blank_cache_dir_disables_default_materialized_response_directory() {
     let mut config = NetEngineConfig::default();
     config.base_url = base_url;
     config.cache_dir = "   ".to_owned();
-    let engine = NetEngine::new(config).expect("create net engine");
+    let engine = NetEngine::new(config).await.expect("create net engine");
 
     let response = engine
-        .request(build_large_get_request("blank-cache-dir", "/download", vec![]))
+        .request(build_large_get_request(
+            "blank-cache-dir",
+            "/download",
+            vec![],
+        ))
         .await
         .expect("request response");
 
@@ -516,7 +523,8 @@ async fn request_cache_uses_configured_response_namespace() {
         &base_url,
         &cache_dir,
         "tenant_responses",
-    );
+    )
+    .await;
     let first = engine
         .request(build_get_request("custom-ns-1", "/cache", vec![]))
         .await
@@ -542,15 +550,55 @@ async fn request_cache_uses_configured_response_namespace() {
         .expect("remove cache root");
 }
 
-#[test]
-fn net_engine_rejects_invalid_configured_response_cache_namespace() {
+#[tokio::test]
+async fn net_engine_prunes_existing_root_budget_overage_during_initialization() {
+    let cache_dir = create_test_cache_dir_path("init_root_budget");
+    let seed_cache = DiskCache::new_with_policy(
+        cache_dir.to_string_lossy().as_ref(),
+        Duration::from_secs(300),
+        1024 * 1024,
+        None,
+    )
+    .expect("create seed cache");
+    let key = DiskCache::build_cache_key("GET", "https://example.com/root-budget", &[], None);
+
+    seed_cache
+        .store(
+            RESPONSE_CACHE_NAMESPACE,
+            &key,
+            "GET",
+            "https://example.com/root-budget",
+            200,
+            &[("cache-control".to_owned(), "max-age=120".to_owned())],
+            CacheBodySource::Bytes(b"12345"),
+        )
+        .await
+        .expect("store seed cache");
+
+    let actual_bytes = total_file_bytes(&cache_dir).await;
+    let max_root_bytes = u32::try_from(actual_bytes.saturating_sub(1)).expect("u32 max root");
+    let mut config = NetEngineConfig::default();
+    config.cache_dir = cache_dir.to_string_lossy().into_owned();
+    config.cache_root_max_bytes = Some(max_root_bytes);
+
+    let _engine = NetEngine::new(config).await.expect("create net engine");
+
+    assert!(total_file_bytes(&cache_dir).await <= u64::from(max_root_bytes));
+
+    tokio::fs::remove_dir_all(&cache_dir)
+        .await
+        .expect("remove cache root");
+}
+
+#[tokio::test]
+async fn net_engine_rejects_invalid_configured_response_cache_namespace() {
     let cache_dir = create_test_cache_dir_path("invalid_response_namespace");
     for namespace in ["../outside", "./responses", "tenant/a", "tenant\\a"] {
         let mut config = NetEngineConfig::default();
         config.cache_dir = cache_dir.to_string_lossy().into_owned();
         config.cache_response_namespace = namespace.to_owned();
 
-        let result = NetEngine::new(config);
+        let result = NetEngine::new(config).await;
 
         assert!(result.is_err(), "expected `{namespace}` to be rejected");
     }
@@ -558,8 +606,8 @@ fn net_engine_rejects_invalid_configured_response_cache_namespace() {
     let _ = std::fs::remove_dir_all(&cache_dir);
 }
 
-#[test]
-fn net_engine_allows_invalid_response_cache_namespace_when_cache_disabled() {
+#[tokio::test]
+async fn net_engine_allows_invalid_response_cache_namespace_when_cache_disabled() {
     for namespace in [
         "",
         "   ",
@@ -572,7 +620,7 @@ fn net_engine_allows_invalid_response_cache_namespace_when_cache_disabled() {
         config.cache_dir = String::new();
         config.cache_response_namespace = namespace.to_owned();
 
-        let result = NetEngine::new(config);
+        let result = NetEngine::new(config).await;
 
         assert!(
             result.is_ok(),
@@ -581,21 +629,21 @@ fn net_engine_allows_invalid_response_cache_namespace_when_cache_disabled() {
     }
 }
 
-fn create_engine_for_cache_dir(cache_dir: &Path) -> NetEngine {
+async fn create_engine_for_cache_dir(cache_dir: &Path) -> NetEngine {
     // 用临时目录构建最小可用引擎。
     let mut config = NetEngineConfig::default();
     config.cache_dir = cache_dir.to_string_lossy().into_owned();
-    NetEngine::new(config).expect("create net engine")
+    NetEngine::new(config).await.expect("create net engine")
 }
 
-fn create_engine_for_base_url_and_cache_dir(base_url: &str, cache_dir: &Path) -> NetEngine {
+async fn create_engine_for_base_url_and_cache_dir(base_url: &str, cache_dir: &Path) -> NetEngine {
     let mut config = NetEngineConfig::default();
     config.base_url = base_url.to_owned();
     config.cache_dir = cache_dir.to_string_lossy().into_owned();
-    NetEngine::new(config).expect("create net engine")
+    NetEngine::new(config).await.expect("create net engine")
 }
 
-fn create_engine_for_base_url_and_cache_dir_with_namespace(
+async fn create_engine_for_base_url_and_cache_dir_with_namespace(
     base_url: &str,
     cache_dir: &Path,
     cache_response_namespace: &str,
@@ -604,7 +652,7 @@ fn create_engine_for_base_url_and_cache_dir_with_namespace(
     config.base_url = base_url.to_owned();
     config.cache_dir = cache_dir.to_string_lossy().into_owned();
     config.cache_response_namespace = cache_response_namespace.to_owned();
-    NetEngine::new(config).expect("create net engine")
+    NetEngine::new(config).await.expect("create net engine")
 }
 
 fn build_get_request(request_id: &str, path: &str, query: Vec<(&str, &str)>) -> RequestSpec {
@@ -638,4 +686,35 @@ fn response_body_text(response: &crate::api::ResponseMeta) -> String {
 fn create_test_cache_dir_path(label: &str) -> PathBuf {
     // 随机目录避免测试互相污染。
     std::env::temp_dir().join(format!("net_engine_{label}_{}", Uuid::new_v4()))
+}
+
+async fn total_file_bytes(root: &Path) -> u64 {
+    let mut total = 0_u64;
+    let mut stack = vec![root.to_path_buf()];
+
+    while let Some(current_dir) = stack.pop() {
+        let Ok(mut entries) = tokio::fs::read_dir(&current_dir).await else {
+            continue;
+        };
+
+        while let Ok(Some(entry)) = entries.next_entry().await {
+            let path = entry.path();
+            let Ok(file_type) = entry.file_type().await else {
+                continue;
+            };
+            if file_type.is_dir() {
+                stack.push(path);
+                continue;
+            }
+            if !file_type.is_file() {
+                continue;
+            }
+            let Ok(metadata) = entry.metadata().await else {
+                continue;
+            };
+            total = total.saturating_add(metadata.len());
+        }
+    }
+
+    total
 }

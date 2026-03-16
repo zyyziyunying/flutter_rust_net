@@ -220,6 +220,84 @@ void main() {
     );
 
     test(
+      'rejects conflicting root cache budget on shared initialized scope',
+      () async {
+        final fakeBridge = FakeRustBridgeApi();
+        final firstAdapter = RustAdapter(bridgeApi: fakeBridge);
+        final secondAdapter = RustAdapter(bridgeApi: fakeBridge);
+
+        await firstAdapter.initializeEngine(
+          options: const RustEngineInitOptions(cacheRootMaxBytes: 4096),
+        );
+
+        await expectLater(
+          secondAdapter.initializeEngine(
+            options: const RustEngineInitOptions(cacheRootMaxBytes: 8192),
+          ),
+          throwsA(
+            isA<NetException>()
+                .having(
+                  (error) => error.code,
+                  'code',
+                  NetErrorCode.infrastructure,
+                )
+                .having(
+                  (error) => error.fallbackEligible,
+                  'fallbackEligible',
+                  isFalse,
+                )
+                .having(
+                  (error) => error.message,
+                  'message',
+                  contains('cacheRootMaxBytes=4096 -> 8192'),
+                ),
+          ),
+        );
+        expect(secondAdapter.isInitialized, isFalse);
+        expect(fakeBridge.initCalls, 1);
+      },
+    );
+
+    test(
+      'rejects cacheRootMaxBytes above u32 max before bridge init',
+      () async {
+        final fakeBridge = FakeRustBridgeApi();
+        final adapter = RustAdapter(bridgeApi: fakeBridge);
+
+        await expectLater(
+          adapter.initializeEngine(
+            options: const RustEngineInitOptions(
+              cacheRootMaxBytes: 0x1_0000_0000,
+            ),
+          ),
+          throwsA(
+            isA<NetException>()
+                .having(
+                  (error) => error.code,
+                  'code',
+                  NetErrorCode.infrastructure,
+                )
+                .having(
+                  (error) => error.fallbackEligible,
+                  'fallbackEligible',
+                  isFalse,
+                )
+                .having(
+                  (error) => error.message,
+                  'message',
+                  contains('cacheRootMaxBytes must be less than or equal to'),
+                ),
+          ),
+        );
+
+        expect(adapter.isInitialized, isFalse);
+        expect(fakeBridge.ensureLoadedCalls, 0);
+        expect(fakeBridge.initCalls, 0);
+        expect(fakeBridge.lastInitConfig, isNull);
+      },
+    );
+
+    test(
       'rejects conflicting response cache namespace on shared initialized scope',
       () async {
         final fakeBridge = FakeRustBridgeApi();
@@ -356,6 +434,34 @@ void main() {
         expect(secondAdapter.isInitialized, isTrue);
         expect(fakeBridge.initCalls, 1);
         expect(fakeBridge.lastInitConfig?.cacheResponseNamespace, 'responses');
+      },
+    );
+
+    test(
+      'ignores root cache budget differences when cache is disabled',
+      () async {
+        final fakeBridge = FakeRustBridgeApi();
+        final firstAdapter = RustAdapter(bridgeApi: fakeBridge);
+        final secondAdapter = RustAdapter(bridgeApi: fakeBridge);
+
+        await firstAdapter.initializeEngine(
+          options: const RustEngineInitOptions(
+            cacheDir: '   ',
+            cacheRootMaxBytes: 4096,
+          ),
+        );
+        await secondAdapter.initializeEngine(
+          options: const RustEngineInitOptions(
+            cacheDir: '',
+            cacheRootMaxBytes: 8192,
+          ),
+        );
+
+        expect(firstAdapter.isInitialized, isTrue);
+        expect(secondAdapter.isInitialized, isTrue);
+        expect(fakeBridge.initCalls, 1);
+        expect(fakeBridge.lastInitConfig?.cacheDir, '');
+        expect(fakeBridge.lastInitConfig?.cacheRootMaxBytes, isNull);
       },
     );
 

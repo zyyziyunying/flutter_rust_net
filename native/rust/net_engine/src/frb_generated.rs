@@ -448,6 +448,7 @@ impl SseDecode for crate::api::NetEngineConfig {
         let mut var_cacheResponseNamespace = <String>::sse_decode(deserializer);
         let mut var_cacheDefaultTtlSeconds = <u32>::sse_decode(deserializer);
         let mut var_cacheMaxNamespaceBytes = <u32>::sse_decode(deserializer);
+        let mut var_cacheRootMaxBytes = <Option<u32>>::sse_decode(deserializer);
         let mut var_userAgent = <String>::sse_decode(deserializer);
         return crate::api::NetEngineConfig {
             base_url: var_baseUrl,
@@ -462,6 +463,7 @@ impl SseDecode for crate::api::NetEngineConfig {
             cache_response_namespace: var_cacheResponseNamespace,
             cache_default_ttl_seconds: var_cacheDefaultTtlSeconds,
             cache_max_namespace_bytes: var_cacheMaxNamespaceBytes,
+            cache_root_max_bytes: var_cacheRootMaxBytes,
             user_agent: var_userAgent,
         };
     }
@@ -764,6 +766,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::NetEngineConfig {
             self.cache_response_namespace.into_into_dart().into_dart(),
             self.cache_default_ttl_seconds.into_into_dart().into_dart(),
             self.cache_max_namespace_bytes.into_into_dart().into_dart(),
+            self.cache_root_max_bytes.into_into_dart().into_dart(),
             self.user_agent.into_into_dart().into_dart(),
         ]
         .into_dart()
@@ -987,6 +990,7 @@ impl SseEncode for crate::api::NetEngineConfig {
         <String>::sse_encode(self.cache_response_namespace, serializer);
         <u32>::sse_encode(self.cache_default_ttl_seconds, serializer);
         <u32>::sse_encode(self.cache_max_namespace_bytes, serializer);
+        <Option<u32>>::sse_encode(self.cache_root_max_bytes, serializer);
         <String>::sse_encode(self.user_agent, serializer);
     }
 }

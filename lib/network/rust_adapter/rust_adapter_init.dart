@@ -3,6 +3,7 @@ part of 'package:flutter_rust_net/network/rust_adapter.dart';
 class _RustAdapterInitTracker {
   static const String _defaultCacheSubDir = 'harrypet_net_engine_cache';
   static const String _defaultCacheResponseNamespace = 'responses';
+  static const int _maxUint32 = 0xFFFFFFFF;
   static final Object _sharedBridgeConfigScope = Object();
   static final Expando<_RustEngineInitState> _trackedInitStates =
       Expando<_RustEngineInitState>('rust_engine_init_states');
@@ -119,6 +120,9 @@ class _RustAdapterInitTracker {
           : _defaultCacheResponseNamespace,
       cacheDefaultTtlSeconds: options.cacheDefaultTtlSeconds,
       cacheMaxNamespaceBytes: options.cacheMaxNamespaceBytes,
+      cacheRootMaxBytes: cacheEnabled
+          ? _normalizeCacheRootMaxBytes(options.cacheRootMaxBytes)
+          : null,
       userAgent: options.userAgent,
     );
   }
@@ -153,6 +157,31 @@ class _RustAdapterInitTracker {
       );
     }
     return trimmed;
+  }
+
+  static int? _normalizeCacheRootMaxBytes(int? bytes) {
+    if (bytes == null || bytes == 0) {
+      return null;
+    }
+    if (bytes < 0) {
+      throw NetException.infrastructure(
+        message:
+            'Invalid Rust init config: cacheRootMaxBytes must be greater '
+            'than or equal to 0.',
+        channel: NetChannel.rust,
+        fallbackEligible: false,
+      );
+    }
+    if (bytes > _maxUint32) {
+      throw NetException.infrastructure(
+        message:
+            'Invalid Rust init config: cacheRootMaxBytes must be less '
+            'than or equal to $_maxUint32.',
+        channel: NetChannel.rust,
+        fallbackEligible: false,
+      );
+    }
+    return bytes;
   }
 
   static void _rememberInitConfig(
@@ -262,7 +291,7 @@ class _RustAdapterInitTracker {
     rust_api.NetEngineConfig requested,
   ) {
     final diffs = <String>[];
-    void addDiff(String field, Object current, Object next) {
+    void addDiff(String field, Object? current, Object? next) {
       if (current == next) {
         return;
       }
@@ -311,12 +340,20 @@ class _RustAdapterInitTracker {
       active.cacheMaxNamespaceBytes,
       requested.cacheMaxNamespaceBytes,
     );
+    addDiff(
+      'cacheRootMaxBytes',
+      active.cacheRootMaxBytes,
+      requested.cacheRootMaxBytes,
+    );
     addDiff('userAgent', active.userAgent, requested.userAgent);
 
     return diffs.join(', ');
   }
 
-  static String _formatInitValue(Object value) {
+  static String _formatInitValue(Object? value) {
+    if (value == null) {
+      return 'null';
+    }
     if (value is String) {
       return '"$value"';
     }

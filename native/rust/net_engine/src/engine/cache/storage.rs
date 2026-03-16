@@ -8,23 +8,100 @@ use uuid::Uuid;
 
 use super::{CacheBodySource, CacheEntryMeta, DiskCache};
 
+#[cfg(test)]
+#[derive(Clone, Debug)]
+pub(super) struct TempWritePauseHandle {
+    ready: std::sync::Arc<tokio::sync::Notify>,
+    resume: std::sync::Arc<tokio::sync::Notify>,
+}
+
+#[cfg(test)]
+#[derive(Debug)]
+struct TempWritePauseState {
+    parent_dir: std::path::PathBuf,
+    ready: std::sync::Arc<tokio::sync::Notify>,
+    resume: std::sync::Arc<tokio::sync::Notify>,
+}
+
+#[cfg(test)]
+fn temp_write_pause_slot() -> &'static std::sync::Mutex<Option<TempWritePauseState>> {
+    static SLOT: std::sync::OnceLock<std::sync::Mutex<Option<TempWritePauseState>>> =
+        std::sync::OnceLock::new();
+    SLOT.get_or_init(|| std::sync::Mutex::new(None))
+}
+
+#[cfg(test)]
+pub(super) fn install_temp_write_pause(parent_dir: std::path::PathBuf) -> TempWritePauseHandle {
+    let handle = TempWritePauseHandle {
+        ready: std::sync::Arc::new(tokio::sync::Notify::new()),
+        resume: std::sync::Arc::new(tokio::sync::Notify::new()),
+    };
+    let state = TempWritePauseState {
+        parent_dir,
+        ready: handle.ready.clone(),
+        resume: handle.resume.clone(),
+    };
+    let mut slot = temp_write_pause_slot()
+        .lock()
+        .expect("lock temp write pause slot");
+    *slot = Some(state);
+    handle
+}
+
+#[cfg(test)]
+impl TempWritePauseHandle {
+    pub(super) async fn wait_until_ready(&self) {
+        self.ready.notified().await;
+    }
+
+    pub(super) fn resume(&self) {
+        self.resume.notify_waiters();
+    }
+}
+
+#[cfg(test)]
+async fn maybe_pause_temp_write(path: &Path) {
+    let state = {
+        let mut slot = temp_write_pause_slot()
+            .lock()
+            .expect("lock temp write pause slot");
+        if slot
+            .as_ref()
+            .map(|state| path.starts_with(&state.parent_dir))
+            .unwrap_or(false)
+        {
+            slot.take()
+        } else {
+            None
+        }
+    };
+
+    if let Some(state) = state {
+        state.ready.notify_waiters();
+        state.resume.notified().await;
+    }
+}
+
 impl DiskCache {
     pub(super) async fn persist_body(
         path: &Path,
         body: CacheBodySource<'_>,
     ) -> anyhow::Result<u64> {
-        match body {
+        let bytes = match body {
             CacheBodySource::Bytes(bytes) => {
                 let mut file = tokio::fs::File::create(path).await?;
                 file.write_all(bytes).await?;
                 file.flush().await?;
-                Ok(bytes.len() as u64)
+                bytes.len() as u64
             }
             CacheBodySource::FilePath(source_path) => {
                 let copied = tokio::fs::copy(source_path, path).await?;
-                Ok(copied)
+                copied
             }
-        }
+        };
+        #[cfg(test)]
+        maybe_pause_temp_write(path).await;
+        Ok(bytes)
     }
 
     pub(super) async fn replace_file(from_path: &Path, target_path: &Path) -> anyhow::Result<()> {
@@ -54,6 +131,8 @@ impl DiskCache {
             Uuid::new_v4()
         ));
         tokio::fs::write(&tmp_path, payload).await?;
+        #[cfg(test)]
+        maybe_pause_temp_write(&tmp_path).await;
         Self::replace_file(&tmp_path, path).await
     }
 
