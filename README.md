@@ -30,6 +30,14 @@ dart run tool/rust_codegen.dart
 dart run tool/rust_build.dart --profile=release
 ```
 
+If you hit `Detected stale net_engine native library`, the checked-in/generated Rust sources are newer than the local dynamic library. Rebuild before running Rust benchmarks or real-bridge tests:
+
+```bash
+dart run tool/rust_build.dart --profile=release
+```
+
+This usually happens after editing `native/rust/net_engine`, rerunning FRB codegen, or switching to a branch with Rust-side changes.
+
 ## Standalone example (recommended for local device validation)
 
 - Example app: `flutter_rust_net/example/`
