@@ -164,7 +164,7 @@ dart run tool/network_bench.dart --base-url=$baseUrl --scenario=jitter_latency -
 2. 这组 `2026-03-13` 历史样例里的 `cacheEvict` 应按当时 external 口径理解为 repeated miss，不再作为当前 `cacheEvict` 语义示例。
 3. 若 `warmup >= request-key-space` 且 Rust 仍大量 miss，优先检查是否命中 stale library、是否切到非 GET、或请求头是否显式禁用了缓存。
 
-### 2.1.2 公网 jitter + root budget 归档（下一步）
+### 2.1.2 公网 jitter + root budget 归档（已补 2026-03-17 样例）
 
 适用场景：
 
@@ -188,6 +188,13 @@ dart run tool/network_bench.dart --base-url=$baseUrl --scenario=jitter_latency -
 # warm-cache：复用同一 cache root，观察 warm 命中与 rootBytes 是否稳定
 dart run tool/network_bench.dart --base-url=$baseUrl --scenario=jitter_latency --channels=dio,rust --initialize-rust=true --require-rust=true --requests=96 --warmup=12 --concurrency=8 --jitter-base-ms=12 --jitter-extra-ms=80 --rust-max-in-flight=32 --request-key-space=12 --rust-cache-dir="$cacheDir" --rust-cache-namespace=responses --rust-cache-max-namespace-bytes=16777216 --rust-cache-root-max-bytes=25165824 --output="${out}/remote_jitter_root_budget_warm.json"
 ```
+
+当前本地执行产物摘要（`2026-03-17`, `host_windows + ethernet`, `build/remote_cache_root_budget_20260317_143738/`）：
+
+1. `cold-start`：Rust `cacheHit=84/96`, `cacheMiss=12`, `repeatedMissCount=0`, `reqP95=92ms`, `throughput=297 req/s`, `rootBytes=7660`；Dio `cacheHit=0/96`, `repeatedMissCount=84`, `reqP95=129ms`, `throughput=186 req/s`
+2. `warm-cache`：Rust `cacheHit=96/96`, `cacheMiss=0`, `repeatedMissCount=0`, `reqP95=21ms`, `throughput=462 req/s`, `rootBytes=7660`；Dio `cacheHit=0/96`, `repeatedMissCount=84`, `reqP95=43ms`, `throughput=221 req/s`
+3. 两份 JSON 的 `config` 都已稳定记录 `rustCacheDir`、`rustCacheResponseNamespace`、`rustCacheMaxNamespaceBytes`、`rustCacheRootMaxBytes`；`rustCacheObservation.rootBytes=7660` 与实际 cache root 递归文件大小一致。
+4. 详细样例记录见 `docs/dio_rust_test/network_public_remote_root_budget_probe_2026-03-17.md`。
 
 归档检查点：
 
