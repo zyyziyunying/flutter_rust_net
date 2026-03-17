@@ -220,6 +220,32 @@ void main() {
     );
 
     test(
+      'reuses shared initialized scope when namespace budget only differs by zero fallback semantics',
+      () async {
+        final fakeBridge = FakeRustBridgeApi();
+        final firstAdapter = RustAdapter(bridgeApi: fakeBridge);
+        final secondAdapter = RustAdapter(bridgeApi: fakeBridge);
+
+        await firstAdapter.initializeEngine(
+          options: const RustEngineInitOptions(cacheMaxNamespaceBytes: 0),
+        );
+        await secondAdapter.initializeEngine(
+          options: const RustEngineInitOptions(
+            cacheMaxNamespaceBytes: 64 * 1024 * 1024,
+          ),
+        );
+
+        expect(firstAdapter.isInitialized, isTrue);
+        expect(secondAdapter.isInitialized, isTrue);
+        expect(fakeBridge.initCalls, 1);
+        expect(
+          fakeBridge.lastInitConfig?.cacheMaxNamespaceBytes,
+          64 * 1024 * 1024,
+        );
+      },
+    );
+
+    test(
       'rejects conflicting root cache budget on shared initialized scope',
       () async {
         final fakeBridge = FakeRustBridgeApi();
@@ -462,6 +488,37 @@ void main() {
         expect(fakeBridge.initCalls, 1);
         expect(fakeBridge.lastInitConfig?.cacheDir, '');
         expect(fakeBridge.lastInitConfig?.cacheRootMaxBytes, isNull);
+      },
+    );
+
+    test(
+      'ignores namespace budget differences when cache is disabled',
+      () async {
+        final fakeBridge = FakeRustBridgeApi();
+        final firstAdapter = RustAdapter(bridgeApi: fakeBridge);
+        final secondAdapter = RustAdapter(bridgeApi: fakeBridge);
+
+        await firstAdapter.initializeEngine(
+          options: const RustEngineInitOptions(
+            cacheDir: '',
+            cacheMaxNamespaceBytes: 0x1_0000_0000,
+          ),
+        );
+        await secondAdapter.initializeEngine(
+          options: const RustEngineInitOptions(
+            cacheDir: '   ',
+            cacheMaxNamespaceBytes: 8192,
+          ),
+        );
+
+        expect(firstAdapter.isInitialized, isTrue);
+        expect(secondAdapter.isInitialized, isTrue);
+        expect(fakeBridge.initCalls, 1);
+        expect(fakeBridge.lastInitConfig?.cacheDir, '');
+        expect(
+          fakeBridge.lastInitConfig?.cacheMaxNamespaceBytes,
+          64 * 1024 * 1024,
+        );
       },
     );
 

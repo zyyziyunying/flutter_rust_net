@@ -9,6 +9,7 @@ class BenchmarkReport {
   final BenchmarkConfig config;
   final String baseUrl;
   final bool rustInitialized;
+  final RustCacheObservation? rustCacheObservation;
   final Map<String, String> skippedChannels;
   final List<ChannelBenchmarkResult> channelResults;
 
@@ -18,6 +19,7 @@ class BenchmarkReport {
     required this.config,
     required this.baseUrl,
     required this.rustInitialized,
+    required this.rustCacheObservation,
     required this.skippedChannels,
     required this.channelResults,
   });
@@ -31,6 +33,7 @@ class BenchmarkReport {
       'wallClockMs': wallClockDuration.inMilliseconds,
       'baseUrl': baseUrl,
       'rustInitialized': rustInitialized,
+      'rustCacheObservation': rustCacheObservation?.toJson(),
       'config': config.toJson(),
       'skippedChannels': skippedChannels,
       'channelResults': channelResults.map((item) => item.toJson()).toList(),
@@ -48,6 +51,16 @@ class BenchmarkReport {
           'rustInitialized=$rustInitialized '
           'enableFallback=${config.enableFallback}',
     ];
+    final cacheObservation = rustCacheObservation;
+    if (cacheObservation != null) {
+      lines.add(
+        '[network-bench][rust-cache] dir=${cacheObservation.cacheDir} '
+        'namespace=${config.rustCacheResponseNamespace} '
+        'maxNamespaceBytes=${config.rustCacheMaxNamespaceBytes} '
+        'rootMaxBytes=${config.rustCacheRootMaxBytes ?? 'n/a'} '
+        'rootBytes=${cacheObservation.rootBytes}',
+      );
+    }
     if (skippedChannels.isNotEmpty) {
       lines.add('[network-bench] skipped=${jsonEncode(skippedChannels)}');
     }
@@ -57,6 +70,17 @@ class BenchmarkReport {
       );
     }
     return lines.join('\n');
+  }
+}
+
+class RustCacheObservation {
+  final String cacheDir;
+  final int rootBytes;
+
+  const RustCacheObservation({required this.cacheDir, required this.rootBytes});
+
+  Map<String, dynamic> toJson() {
+    return {'cacheDir': cacheDir, 'rootBytes': rootBytes};
   }
 }
 

@@ -24,6 +24,7 @@ void main() {
       _logReport(report);
 
       expect(report.channelResults, hasLength(1));
+      expect(report.rustCacheObservation, isNull);
       final dio = report.channelResults.single;
       expect(dio.channel, BenchmarkChannel.dio.cliName);
       expect(dio.totalRequests, 80);

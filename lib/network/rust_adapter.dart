@@ -14,6 +14,17 @@ part 'rust_adapter/rust_adapter_init.dart';
 
 typedef RustRequestHandler = Future<NetResponse> Function(NetRequest request);
 
+String resolveRustCacheDirPath(String? cacheDir, {String? defaultCacheDir}) {
+  if (cacheDir == null) {
+    return defaultCacheDir ?? _RustAdapterInitTracker.defaultCacheDirPath();
+  }
+  final trimmed = cacheDir.trim();
+  if (trimmed.isEmpty) {
+    return '';
+  }
+  return trimmed;
+}
+
 class RustEngineInitOptions {
   final String baseUrl;
   final int connectTimeoutMs;
@@ -48,11 +59,38 @@ class RustEngineInitOptions {
   });
 }
 
+RustEngineInitOptions normalizeRustEngineInitOptions(
+  RustEngineInitOptions options, {
+  String? defaultCacheDir,
+}) {
+  final config = _RustAdapterInitTracker.toNetEngineConfig(
+    options,
+    defaultCacheDir: defaultCacheDir,
+  );
+  return RustEngineInitOptions(
+    baseUrl: config.baseUrl,
+    connectTimeoutMs: config.connectTimeoutMs,
+    readTimeoutMs: config.readTimeoutMs,
+    writeTimeoutMs: config.writeTimeoutMs,
+    maxConnections: config.maxConnections,
+    maxConnectionsPerHost: config.maxConnectionsPerHost,
+    maxInFlightTasks: config.maxInFlightTasks,
+    largeBodyThresholdKb: config.largeBodyThresholdKb,
+    cacheDir: config.cacheDir,
+    cacheResponseNamespace: config.cacheResponseNamespace,
+    cacheDefaultTtlSeconds: config.cacheDefaultTtlSeconds,
+    cacheMaxNamespaceBytes: config.cacheMaxNamespaceBytes,
+    cacheRootMaxBytes: config.cacheRootMaxBytes,
+    userAgent: config.userAgent,
+  );
+}
+
 class RustAdapter implements NetAdapter {
   final RustRequestHandler? _requestHandler;
   final RustBridgeApi _bridgeApi;
   bool _initialized;
   int? _boundGeneration;
+  bool _ownsGeneration = false;
 
   RustAdapter({
     bool initialized = false,
@@ -85,6 +123,17 @@ class RustAdapter implements NetAdapter {
 
   bool get isInitialized => isReady;
 
+  bool get ownsEngineScope {
+    if (_requestHandler != null) {
+      return false;
+    }
+    return _ownsGeneration &&
+        _RustAdapterInitTracker.isActiveGeneration(
+          _bridgeApi,
+          generation: _boundGeneration,
+        );
+  }
+
   void markInitialized([bool value = true]) {
     if (_requestHandler == null) {
       throw StateError(
@@ -100,16 +149,22 @@ class RustAdapter implements NetAdapter {
   }) async {
     if (_requestHandler != null) {
       _initialized = true;
+      _ownsGeneration = false;
       return;
     }
 
-    final generation = await _RustAdapterInitTracker.initialize(
+    final previousGeneration = _boundGeneration;
+    final previouslyOwned = ownsEngineScope;
+    final result = await _RustAdapterInitTracker.initialize(
       bridgeApi: _bridgeApi,
       alreadyInitialized: isReady,
       options: options,
     );
     _initialized = true;
-    _boundGeneration = generation;
+    _boundGeneration = result.generation;
+    _ownsGeneration =
+        result.ownsGeneration ||
+        (previouslyOwned && previousGeneration == result.generation);
   }
 
   /// Supported shutdown entry that keeps Dart-side lifecycle tracking in sync.
@@ -131,6 +186,7 @@ class RustAdapter implements NetAdapter {
     );
     _initialized = false;
     _boundGeneration = null;
+    _ownsGeneration = false;
   }
 
   @override

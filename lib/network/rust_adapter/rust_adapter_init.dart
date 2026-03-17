@@ -3,6 +3,7 @@ part of 'package:flutter_rust_net/network/rust_adapter.dart';
 class _RustAdapterInitTracker {
   static const String _defaultCacheSubDir = 'harrypet_net_engine_cache';
   static const String _defaultCacheResponseNamespace = 'responses';
+  static const int _defaultCacheMaxNamespaceBytes = 64 * 1024 * 1024;
   static const int _maxUint32 = 0xFFFFFFFF;
   static final Object _sharedBridgeConfigScope = Object();
   static final Expando<_RustEngineInitState> _trackedInitStates =
@@ -19,22 +20,28 @@ class _RustAdapterInitTracker {
     return initState.initialized && initState.generation == generation;
   }
 
-  static Future<int> initialize({
+  static Future<_RustAdapterInitResult> initialize({
     required RustBridgeApi bridgeApi,
     required bool alreadyInitialized,
     required RustEngineInitOptions options,
   }) {
     final config = toNetEngineConfig(options);
     final initState = _initStateFor(bridgeApi);
-    return _serializeLifecycle<int>(initState, () async {
+    return _serializeLifecycle<_RustAdapterInitResult>(initState, () async {
       if (alreadyInitialized && initState.initialized) {
         _ensureInitConfigMatches(bridgeApi, requested: config);
-        return initState.generation;
+        return _RustAdapterInitResult(
+          generation: initState.generation,
+          ownsGeneration: false,
+        );
       }
 
       if (initState.initialized) {
         _ensureInitConfigMatches(bridgeApi, requested: config);
-        return initState.generation;
+        return _RustAdapterInitResult(
+          generation: initState.generation,
+          ownsGeneration: false,
+        );
       }
 
       initState.pendingConfig = config;
@@ -43,7 +50,10 @@ class _RustAdapterInitTracker {
         await bridgeApi.initNetEngine(config: config);
         _rememberInitConfig(bridgeApi, config);
         initState.initialized = true;
-        return initState.generation;
+        return _RustAdapterInitResult(
+          generation: initState.generation,
+          ownsGeneration: true,
+        );
       } catch (error, stackTrace) {
         final text = '$error';
         if (text.contains('already initialized')) {
@@ -53,7 +63,10 @@ class _RustAdapterInitTracker {
             cause: error,
           );
           initState.initialized = true;
-          return initState.generation;
+          return _RustAdapterInitResult(
+            generation: initState.generation,
+            ownsGeneration: false,
+          );
         }
         final initError = _RustAdapterErrors.wrapInitError(error, text);
         Error.throwWithStackTrace(initError, stackTrace);
@@ -101,9 +114,13 @@ class _RustAdapterInitTracker {
   }
 
   static rust_api.NetEngineConfig toNetEngineConfig(
-    RustEngineInitOptions options,
-  ) {
-    final cacheDir = _normalizeCacheDir(options.cacheDir);
+    RustEngineInitOptions options, {
+    String? defaultCacheDir,
+  }) {
+    final cacheDir = _normalizeCacheDir(
+      options.cacheDir,
+      defaultCacheDir: defaultCacheDir,
+    );
     final cacheEnabled = cacheDir.trim().isNotEmpty;
     return rust_api.NetEngineConfig(
       baseUrl: options.baseUrl,
@@ -119,7 +136,9 @@ class _RustAdapterInitTracker {
           ? _normalizeCacheResponseNamespace(options.cacheResponseNamespace)
           : _defaultCacheResponseNamespace,
       cacheDefaultTtlSeconds: options.cacheDefaultTtlSeconds,
-      cacheMaxNamespaceBytes: options.cacheMaxNamespaceBytes,
+      cacheMaxNamespaceBytes: cacheEnabled
+          ? _normalizeCacheMaxNamespaceBytes(options.cacheMaxNamespaceBytes)
+          : _defaultCacheMaxNamespaceBytes,
       cacheRootMaxBytes: cacheEnabled
           ? _normalizeCacheRootMaxBytes(options.cacheRootMaxBytes)
           : null,
@@ -127,15 +146,11 @@ class _RustAdapterInitTracker {
     );
   }
 
-  static String _normalizeCacheDir(String? cacheDir) {
-    if (cacheDir == null) {
-      return _defaultCacheDirPath();
-    }
-    final trimmed = cacheDir.trim();
-    if (trimmed.isEmpty) {
-      return '';
-    }
-    return trimmed;
+  static String _normalizeCacheDir(
+    String? cacheDir, {
+    String? defaultCacheDir,
+  }) {
+    return resolveRustCacheDirPath(cacheDir, defaultCacheDir: defaultCacheDir);
   }
 
   static String _normalizeCacheResponseNamespace(String namespace) {
@@ -157,6 +172,13 @@ class _RustAdapterInitTracker {
       );
     }
     return trimmed;
+  }
+
+  static int _normalizeCacheMaxNamespaceBytes(int bytes) {
+    if (bytes == 0) {
+      return _defaultCacheMaxNamespaceBytes;
+    }
+    return bytes;
   }
 
   static int? _normalizeCacheRootMaxBytes(int? bytes) {
@@ -404,7 +426,7 @@ class _RustAdapterInitTracker {
     }
   }
 
-  static String _defaultCacheDirPath() {
+  static String defaultCacheDirPath() {
     final tempPath = Directory.systemTemp.path;
     final separator = Platform.pathSeparator;
     if (tempPath.endsWith(separator)) {
@@ -422,4 +444,14 @@ class _RustEngineInitState {
   rust_api.NetEngineConfig? pendingConfig;
   Future<void> lifecycleInFlight = Future<void>.value();
   Future<void>? shutdownInFlight;
+}
+
+class _RustAdapterInitResult {
+  final int generation;
+  final bool ownsGeneration;
+
+  const _RustAdapterInitResult({
+    required this.generation,
+    required this.ownsGeneration,
+  });
 }

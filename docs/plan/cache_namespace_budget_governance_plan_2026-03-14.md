@@ -14,7 +14,7 @@
    - root budget 关键路径现已串行化，避免 `prune_root()` 与缓存自身 `*.tmp` 写入交错时误删临时文件
    - 启用 root budget 时，`cache_dir` 的“独占专用目录”要求现已升级为显式契约
 2. 当前剩余重点不再是“要不要做 root budget”，而是：
-   - 在 benchmark / 真机归档里按需补 root budget 口径与占用观测
+   - 在 benchmark / 真机归档里实际使用已接好的 root budget 口径与占用观测
    - 继续评估是否真的需要阶段 C 的显式分区策略
 
 ## 当前现状（基于现有代码与回归）
@@ -91,9 +91,9 @@
 
 在当前实现基础上，建议按下面顺序推进：
 
-1. 先补观测口径：
-   - benchmark 或真机归档中记录 `cache_dir`、`cacheResponseNamespace`、`cacheMaxNamespaceBytes`
-   - root budget 启用时，再补 `cacheRootMaxBytes` 与 root 总占用观测
+1. 先跑观测归档：
+   - benchmark 已支持记录 `cache_dir`、`cacheResponseNamespace`、`cacheMaxNamespaceBytes`
+   - root budget 启用时，归档里同步记录 `cacheRootMaxBytes` 与 root 总占用观测
 2. 最后才考虑显式分区策略对象：
    - 只在阶段 B 不能满足需求时再做
 

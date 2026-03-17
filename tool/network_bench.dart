@@ -76,6 +76,17 @@ BenchmarkConfig _buildConfig(Map<String, String> kvArgs) {
       milliseconds: _parseInt(kvArgs['receive-timeout-ms'], fallback: 15000),
     ),
     rustMaxInFlightTasks: _parseInt(kvArgs['rust-max-in-flight'], fallback: 32),
+    rustCacheDir: kvArgs.containsKey('rust-cache-dir')
+        ? kvArgs['rust-cache-dir']
+        : null,
+    rustCacheResponseNamespace: kvArgs['rust-cache-namespace'] ?? 'responses',
+    rustCacheMaxNamespaceBytes: _parseInt(
+      kvArgs['rust-cache-max-namespace-bytes'],
+      fallback: 64 * 1024 * 1024,
+    ),
+    rustCacheRootMaxBytes: _parseOptionalInt(
+      kvArgs['rust-cache-root-max-bytes'],
+    ),
     requestKeySpace: _parseInt(kvArgs['request-key-space'], fallback: 0),
     scenarioBaseUrl: kvArgs['base-url'] ?? '',
   );
@@ -109,6 +120,17 @@ Map<String, String> _parseArgs(List<String> args) {
 int _parseInt(String? raw, {required int fallback}) {
   if (raw == null || raw.isEmpty) {
     return fallback;
+  }
+  final value = int.tryParse(raw);
+  if (value == null) {
+    throw ArgumentError('invalid int: $raw');
+  }
+  return value;
+}
+
+int? _parseOptionalInt(String? raw) {
+  if (raw == null || raw.isEmpty) {
+    return null;
   }
   final value = int.tryParse(raw);
   if (value == null) {
@@ -168,6 +190,10 @@ Client knobs:
   --connect-timeout-ms=5000
   --receive-timeout-ms=15000
   --rust-max-in-flight=32
+  --rust-cache-dir=<path>          empty value disables Rust disk cache
+  --rust-cache-namespace=responses
+  --rust-cache-max-namespace-bytes=67108864
+  --rust-cache-root-max-bytes=<int>
   --request-key-space=0            0=disable reuse; >0 reuses request ids for cache probing
 
 Examples:

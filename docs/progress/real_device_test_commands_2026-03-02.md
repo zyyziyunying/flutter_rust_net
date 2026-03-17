@@ -13,6 +13,7 @@ title: flutter_rust_net 真机测试命令清单（2026-03-14）
 > 3. `tool/network_bench.dart` 仍保留为底层命令入口，适合手工拆分单场景复验。
 > 4. 若 Rust 初始化触发“本地 `net_engine` 动态库陈旧”保护，先执行 `cd flutter_rust_net && dart run tool/rust_build.dart --profile=release` 再复跑。
 > 5. P2 缓存收益归档统一摘录 `cacheHit/cacheMiss/repeatedMissCount`；`cacheRevalidate/cacheEvict` 仅在本地 scenario server 口径下作为权威字段。
+> 6. 自 `2026-03-17` 起，若 benchmark 在实际初始化 Rust 时省略 `--rust-cache-dir`，报告里的 `config.rustCacheDir` 会写入自动生成的“本次 run 独占”临时目录；该目录在 benchmark 结束后会由 runner best-effort 清理。若需要 cold / warm 显式复用同一 cache root，必须手工传入同一个 `--rust-cache-dir`。
 
 ## 0) 一次性预检查（建议先跑）
 
@@ -162,6 +163,37 @@ dart run tool/network_bench.dart --base-url=$baseUrl --scenario=jitter_latency -
 1. 自 `2026-03-14` 起，external `baseUrl` 下的客户端 repeated miss 统一看 `repeatedMissCount`；`cacheRevalidate/cacheEvict` 仅在本地 scenario server 口径下有权威值。
 2. 这组 `2026-03-13` 历史样例里的 `cacheEvict` 应按当时 external 口径理解为 repeated miss，不再作为当前 `cacheEvict` 语义示例。
 3. 若 `warmup >= request-key-space` 且 Rust 仍大量 miss，优先检查是否命中 stale library、是否切到非 GET、或请求头是否显式禁用了缓存。
+
+### 2.1.2 公网 jitter + root budget 归档（下一步）
+
+适用场景：
+
+1. 需要验证 `cacheRootMaxBytes` 在 external 链路下的实际观测口径，而不是只看预算值。
+2. 需要把 `rustCacheObservation.rootBytes` 一并归档，判断 cache root 是否按预期收敛。
+
+推荐命令：
+
+```powershell
+Set-Location .\flutter_rust_net
+
+$baseUrl = "http://47.110.52.208:7777"
+$runId = Get-Date -Format "yyyyMMdd_HHmm"
+$out = "build/remote_cache_root_budget_$runId"
+$cacheDir = Join-Path $out "rust_cache_root_budget"
+New-Item -ItemType Directory -Path $out -Force | Out-Null
+
+# cold-start：首次创建 cache root，观察 rootBytes 起量
+dart run tool/network_bench.dart --base-url=$baseUrl --scenario=jitter_latency --channels=dio,rust --initialize-rust=true --require-rust=true --requests=96 --warmup=0 --concurrency=8 --jitter-base-ms=12 --jitter-extra-ms=80 --rust-max-in-flight=32 --request-key-space=12 --rust-cache-dir="$cacheDir" --rust-cache-namespace=responses --rust-cache-max-namespace-bytes=16777216 --rust-cache-root-max-bytes=25165824 --output="${out}/remote_jitter_root_budget_cold.json"
+
+# warm-cache：复用同一 cache root，观察 warm 命中与 rootBytes 是否稳定
+dart run tool/network_bench.dart --base-url=$baseUrl --scenario=jitter_latency --channels=dio,rust --initialize-rust=true --require-rust=true --requests=96 --warmup=12 --concurrency=8 --jitter-base-ms=12 --jitter-extra-ms=80 --rust-max-in-flight=32 --request-key-space=12 --rust-cache-dir="$cacheDir" --rust-cache-namespace=responses --rust-cache-max-namespace-bytes=16777216 --rust-cache-root-max-bytes=25165824 --output="${out}/remote_jitter_root_budget_warm.json"
+```
+
+归档检查点：
+
+1. 输出 JSON `config` 中应包含实际生效的 `rustCacheDir`、`rustCacheResponseNamespace`、`rustCacheMaxNamespaceBytes`、`rustCacheRootMaxBytes`；若未传 `--rust-cache-dir` 且 Rust 实际初始化，`rustCacheDir` 会是 benchmark 自动生成的本次 run 独占目录，但该目录在 benchmark 返回后可能已经被 runner 清理。
+2. 输出 JSON 顶层应包含 `rustCacheObservation.rootBytes`，并能对应当前 cache root 的实际文件占用。
+3. 若 `warm` 样例的 `rustCacheObservation.rootBytes` 长期高于 `rustCacheRootMaxBytes`，优先复核 cache root 是否为独占目录，再检查是否真的存在多 namespace 共存。
 
 ### 2.2 本地 loopback 基线（回归参考）
 

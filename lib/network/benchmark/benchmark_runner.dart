@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math';
 
 import 'package:dio/dio.dart';
@@ -8,34 +9,31 @@ import '../net_models.dart';
 import '../network_gateway.dart';
 import '../routing_policy.dart';
 import '../rust_adapter.dart';
+import '../rust_bridge_api.dart';
 import 'benchmark_accumulator.dart';
 import 'benchmark_response_consumer.dart';
 import 'benchmark_scenario_server.dart';
 import 'benchmark_types.dart';
 
+int _benchmarkCacheRunSequence = 0;
+
 Future<BenchmarkReport> runNetworkBenchmark(
   BenchmarkConfig config, {
   BenchLogger? log,
+  RustBridgeApi? rustBridgeApi,
 }) async {
   config.validate();
   final logger = log ?? (_) {};
   final startedAt = DateTime.now();
   ScenarioServer? scenarioServer;
-  final resolvedScenarioBaseUrl = resolveScenarioBaseUrl(
-    config.scenarioBaseUrl,
-  );
-  late final String benchmarkBaseUrl;
-  if (resolvedScenarioBaseUrl != null) {
-    benchmarkBaseUrl = resolvedScenarioBaseUrl;
-    logger(
-      '[network-bench] using external scenario server at $benchmarkBaseUrl',
-    );
-  } else {
-    scenarioServer = await ScenarioServer.start(config, logger: logger);
-    benchmarkBaseUrl = scenarioServer.baseUrl;
-  }
   final skippedChannels = <String, String>{};
   var rustInitialized = false;
+  var benchmarkOwnsRustEngine = false;
+  var runtimeConfig = config;
+  String? ownedAutoRustCacheDir;
+  BenchmarkReport? report;
+  Object? pendingError;
+  StackTrace? pendingStackTrace;
 
   final dioAdapter = DioAdapter(
     client: Dio(
@@ -46,20 +44,46 @@ Future<BenchmarkReport> runNetworkBenchmark(
       ),
     ),
   );
-  final rustAdapter = RustAdapter();
+  final rustAdapter = RustAdapter(bridgeApi: rustBridgeApi);
 
   try {
+    final resolvedScenarioBaseUrl = resolveScenarioBaseUrl(
+      config.scenarioBaseUrl,
+    );
+    late final String benchmarkBaseUrl;
+    if (resolvedScenarioBaseUrl != null) {
+      benchmarkBaseUrl = resolvedScenarioBaseUrl;
+      logger(
+        '[network-bench] using external scenario server at $benchmarkBaseUrl',
+      );
+    } else {
+      scenarioServer = await ScenarioServer.start(config, logger: logger);
+      benchmarkBaseUrl = scenarioServer.baseUrl;
+    }
+
     if (config.channels.contains(BenchmarkChannel.rust) &&
         config.initializeRust) {
       logger('[network-bench] initializing rust engine...');
       try {
+        final defaultRustCacheDir = config.rustCacheDir == null
+            ? _defaultBenchmarkRustCacheDir(startedAt)
+            : null;
+        runtimeConfig = config.resolveRuntimeConfig(
+          defaultRustCacheDir: defaultRustCacheDir,
+        );
+        ownedAutoRustCacheDir =
+            config.rustCacheDir == null && runtimeConfig.rustCacheEnabled
+            ? runtimeConfig.resolvedRustCacheDir
+            : null;
         await rustAdapter.initializeEngine(
-          options: RustEngineInitOptions(
-            maxInFlightTasks: config.rustMaxInFlightTasks,
-          ),
+          options: runtimeConfig.toRustEngineInitOptions(),
         );
         rustInitialized = true;
-        logger('[network-bench] rust engine initialized');
+        benchmarkOwnsRustEngine = rustAdapter.ownsEngineScope;
+        logger(
+          '[network-bench] rust engine initialized'
+          '${benchmarkOwnsRustEngine ? ' (owned)' : ' (reused scope)'}',
+        );
       } catch (error) {
         final reason = 'rust init failed: $error';
         if (config.requireRust) {
@@ -96,7 +120,7 @@ Future<BenchmarkReport> runNetworkBenchmark(
         'scenario=${config.scenario.cliName}',
       );
       final result = await _runChannelBenchmark(
-        config: config,
+        config: runtimeConfig,
         gateway: gateway,
         channel: channel,
         baseUrl: benchmarkBaseUrl,
@@ -120,19 +144,123 @@ Future<BenchmarkReport> runNetworkBenchmark(
     }
 
     final finishedAt = DateTime.now();
-    return BenchmarkReport(
+    final rustCacheObservation = rustInitialized
+        ? await _observeRustCache(runtimeConfig)
+        : null;
+    report = BenchmarkReport(
       startedAt: startedAt,
       finishedAt: finishedAt,
-      config: config,
+      config: runtimeConfig,
       baseUrl: benchmarkBaseUrl,
       rustInitialized: rustInitialized,
+      rustCacheObservation: rustCacheObservation,
       skippedChannels: Map.unmodifiable(skippedChannels),
       channelResults: List.unmodifiable(results),
     );
+  } catch (error, stackTrace) {
+    pendingError = error;
+    pendingStackTrace = stackTrace;
   } finally {
-    if (scenarioServer != null) {
-      await scenarioServer.close();
+    Object? cleanupError;
+    StackTrace? cleanupStackTrace;
+
+    if (benchmarkOwnsRustEngine && rustAdapter.isReady) {
+      try {
+        logger('[network-bench] shutting down owned rust engine...');
+        await rustAdapter.shutdownEngine();
+        logger('[network-bench] owned rust engine shut down');
+      } catch (error, stackTrace) {
+        cleanupError = error;
+        cleanupStackTrace = stackTrace;
+        if (pendingError != null) {
+          logger('[network-bench] owned rust engine shutdown failed: $error');
+        }
+      }
     }
+
+    if (ownedAutoRustCacheDir != null &&
+        (!benchmarkOwnsRustEngine || cleanupError == null)) {
+      await _deleteDirectoryBestEffort(
+        Directory(ownedAutoRustCacheDir),
+        logger: logger,
+      );
+    }
+
+    if (scenarioServer != null) {
+      try {
+        await scenarioServer.close();
+      } catch (error, stackTrace) {
+        if (cleanupError == null) {
+          cleanupError = error;
+          cleanupStackTrace = stackTrace;
+        } else if (pendingError != null) {
+          logger('[network-bench] scenario server close failed: $error');
+        }
+      }
+    }
+
+    if (pendingError == null && cleanupError != null) {
+      Error.throwWithStackTrace(cleanupError, cleanupStackTrace!);
+    }
+  }
+
+  if (pendingError != null) {
+    Error.throwWithStackTrace(pendingError, pendingStackTrace!);
+  }
+  return report!;
+}
+
+String _defaultBenchmarkRustCacheDir(DateTime startedAt) {
+  final runId =
+      '${startedAt.toUtc().microsecondsSinceEpoch}_${_benchmarkCacheRunSequence++}';
+  final sharedDefaultRoot = resolveRustCacheDirPath(null);
+  final separator = Platform.pathSeparator;
+  if (sharedDefaultRoot.endsWith(separator)) {
+    return '${sharedDefaultRoot}benchmark_$runId';
+  }
+  return '$sharedDefaultRoot${Platform.pathSeparator}benchmark_$runId';
+}
+
+Future<RustCacheObservation?> _observeRustCache(BenchmarkConfig config) async {
+  if (!config.rustCacheEnabled) {
+    return null;
+  }
+  final cacheDir = config.resolvedRustCacheDir;
+  final rootBytes = await _directoryFileBytes(Directory(cacheDir));
+  return RustCacheObservation(cacheDir: cacheDir, rootBytes: rootBytes);
+}
+
+Future<int> _directoryFileBytes(Directory root) async {
+  if (!await root.exists()) {
+    return 0;
+  }
+
+  var total = 0;
+  await for (final entity in root.list(recursive: true, followLinks: false)) {
+    if (entity is! File) {
+      continue;
+    }
+    final metadata = await entity.stat();
+    total += metadata.size;
+  }
+  return total;
+}
+
+Future<void> _deleteDirectoryBestEffort(
+  Directory directory, {
+  required BenchLogger logger,
+}) async {
+  try {
+    if (!await directory.exists()) {
+      return;
+    }
+    await directory.delete(recursive: true);
+    logger('[network-bench] deleted owned rust cache dir ${directory.path}');
+  } catch (error) {
+    logger(
+      '[network-bench] failed to delete owned rust cache dir '
+      '${directory.path}: $error',
+    );
   }
 }
 
