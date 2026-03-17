@@ -33,7 +33,7 @@ status: closed
 
 1. 示例页当前推荐顺序是先跑 `Dio vs Rust (small_json)`，再跑 `Dio vs Rust (jitter c16 mif32)`；按现状，第二个 Rust preset 会直接撞上配置冲突，而不是正常起跑。
 2. benchmark 新文档把“省略 `--rust-cache-dir` 时自动分配本次 run 独占目录”描述成当前可直接依赖的默认行为，但没有同步写明“同进程重复运行必须 shutdown 或显式复用同一目录”。
-3. `docs/problems/benchmark_root_budget_observation_review_issues_2026-03-16.md` 当前把总状态标成 `Ready / 阻塞项 0`，已经无法覆盖这个新回归。
+3. 在本次 follow-up 复核当时，`docs/problems/archive/benchmark_root_budget_observation_review_issues_2026-03-16.md` 的总状态仍写成 `Ready / 阻塞项 0`，无法覆盖这个新回归。
 
 ### 已确认的最小复现
 
@@ -66,7 +66,7 @@ second_error:[rust] infrastructure: Rust engine already initialized with a diffe
 - `lib/network/rust_adapter/rust_adapter_init.dart`
 - `example/lib/pages/benchmark_page.dart`
 - `docs/progress/real_device_test_commands_2026-03-02.md`
-- `docs/problems/benchmark_root_budget_observation_review_issues_2026-03-16.md`
+- `docs/problems/archive/benchmark_root_budget_observation_review_issues_2026-03-16.md`
 
 ### 建议修复
 
@@ -108,7 +108,7 @@ second_error:[rust] infrastructure: Rust engine already initialized with a diffe
 - `lib/network/rust_adapter/rust_adapter_init.dart`
 - `docs/progress/p2_status_2026-03-02.md`
 - `docs/progress/real_device_test_commands_2026-03-02.md`
-- `docs/problems/benchmark_root_budget_observation_review_issues_2026-03-16.md`
+- `docs/problems/archive/benchmark_root_budget_observation_review_issues_2026-03-16.md`
 
 ### 建议修复
 
@@ -116,7 +116,7 @@ second_error:[rust] infrastructure: Rust engine already initialized with a diffe
 
 1. 对“benchmark 自动生成的 cacheDir”增加 ownership 语义，在 runner 结束后按策略清理。
 2. 若短期内不做自动清理，文档必须显式写明：默认 auto cache root 只保证 run 隔离，不保证生命周期回收；长期使用应显式指定并自行治理 `--rust-cache-dir`。
-3. `docs/problems/benchmark_root_budget_observation_review_issues_2026-03-16.md` 的总结需要补充这一 residual risk，不能继续只保留 `Ready` 结论。
+3. 在本次 follow-up 复核当时，`docs/problems/archive/benchmark_root_budget_observation_review_issues_2026-03-16.md` 的总结需要补充这一 residual risk，不能只保留 `Ready` 结论。
 
 ### 当前状态
 

@@ -7,7 +7,7 @@
 - `plan/`：仍在执行或待执行的方案、执行模板、联调计划。
 - `dio_rust_test/`：测试方案说明、runbook、策略建议、基准结果、验证结论。
 - `analyse/`：基于现有实现与测试结论整理出的分析文档、业务适用性建议。
-- `problems/`：阻塞问题、提交门槛、持续跟踪中的问题单。
+- `problems/`：阻塞问题、提交门槛、持续跟踪中的问题单；`problems/archive/` 存放已闭环的历史问题单。
 - `questions/`：审查问题记录、待收敛 follow-up、临时问题单。
 - `archived/`：已完成或已失效但需要保留追溯价值的历史文档。
 
@@ -30,5 +30,5 @@
 1. 新增“方案/模板/待执行计划”时，优先放入 `docs/plan/`。
 2. `Done / In Progress / Next` 只在 `docs/progress/` 维护，避免计划文档和进度文档互相覆盖。
 3. 测试结果、策略结论、runbook 统一放在 `docs/dio_rust_test/`。
-4. 文档结论已闭环或被新文档替代后，移入 `docs/archived/`，并在原引用处改到新路径。
+4. 已闭环的问题单移入 `docs/problems/archive/`；其他已失效或被新文档替代的历史文档移入 `docs/archived/`，并在原引用处改到新路径。
 5. 变更后同步检查 `FLUTTER_RUST_NET_OVERVIEW_ZH.md` 与 `FLUTTER_RUST_NET_PRIORITY_ROADMAP_ZH.md` 的跳转链接是否一致。
