@@ -143,6 +143,58 @@ void main() {
       },
     );
 
+    test(
+      'routes non-idempotent force rust request directly to dio when rhttp is unavailable before dispatch',
+      () async {
+        var dioCalls = 0;
+        NetRequest? dioRequest;
+
+        final dio = FakeNetAdapter((request, {fromFallback = false}) async {
+          dioCalls += 1;
+          dioRequest = request;
+          return okResponse(
+            channel: NetChannel.dio,
+            fromFallback: fromFallback,
+          );
+        });
+        final rust = RhttpAdapter(
+          clientFactory: (settings) async {
+            throw StateError('native client unavailable');
+          },
+        );
+
+        final gateway = NetworkGateway(
+          routingPolicy: const RoutingPolicy(),
+          featureFlag: const NetFeatureFlag(
+            enableRustChannel: true,
+            enableFallback: true,
+          ),
+          dioAdapter: dio,
+          rustAdapter: rust,
+        );
+
+        final response = await gateway.request(
+          const NetRequest(
+            method: 'POST',
+            url: 'payments/charge',
+            baseUrl: 'https://api.example.com/v2',
+            body: {'amount': 100},
+            forceChannel: NetChannel.rust,
+          ),
+        );
+
+        expect(dioCalls, 1);
+        expect(dioRequest, isNotNull);
+        expect(dioRequest!.method, 'POST');
+        expect(dioRequest!.url, 'https://api.example.com/v2/payments/charge');
+        expect(response.channel, NetChannel.dio);
+        expect(response.fromFallback, isFalse);
+        expect(response.routeReason, 'force_channel -> rust_not_ready_dio');
+        expect(response.fallbackReason, isNull);
+        expect(response.fallbackError, isNull);
+      },
+    );
+
     test('uses dio directly when policy chooses dio', () async {
       var dioCalls = 0;
       var rustCalls = 0;

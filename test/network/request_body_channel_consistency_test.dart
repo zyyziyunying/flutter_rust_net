@@ -65,6 +65,29 @@ void main() {
       expect(dioCapture.request.contentType, isNull);
       expect(rhttpCapture.request.contentType, isNull);
     });
+
+    test(
+      'explicit content-type header stays aligned between dio and rhttp',
+      () async {
+        final headers = const {
+          'x-trace-id': 'trace-1',
+          'content-type': 'application/vnd.api+json',
+        };
+        final dioCapture = await _exerciseAdapter(
+          DioAdapter(),
+          headers: headers,
+          body: const <String, Object?>{'ok': true},
+        );
+        final rhttpCapture = await _exerciseRhttpAdapter(
+          headers: headers,
+          body: const <String, Object?>{'ok': true},
+        );
+
+        expect(dioCapture.request.bodyBytes, rhttpCapture.request.bodyBytes);
+        expect(dioCapture.request.contentType, 'application/vnd.api+json');
+        expect(rhttpCapture.request.contentType, 'application/vnd.api+json');
+      },
+    );
   });
 
   group('request body channel consistency with real rhttp', () {
@@ -120,11 +143,33 @@ void main() {
       expect(dioCapture.request.contentType, isNull);
       expect(rhttpCapture.request.contentType, isNull);
     }, skip: realRhttpSkip);
+
+    test('explicit content-type header stays aligned on wire', () async {
+      final headers = const {
+        'x-trace-id': 'trace-1',
+        'content-type': 'application/vnd.api+json',
+      };
+      final dioCapture = await _exerciseAdapter(
+        DioAdapter(),
+        headers: headers,
+        body: const <String, Object?>{'ok': true},
+      );
+      final rhttpCapture = await _exerciseAdapter(
+        RhttpAdapter(),
+        headers: headers,
+        body: const <String, Object?>{'ok': true},
+      );
+
+      expect(dioCapture.request.bodyBytes, rhttpCapture.request.bodyBytes);
+      expect(dioCapture.request.contentType, 'application/vnd.api+json');
+      expect(rhttpCapture.request.contentType, 'application/vnd.api+json');
+    }, skip: realRhttpSkip);
   });
 }
 
 Future<_AdapterCapture> _exerciseAdapter(
   NetAdapter adapter, {
+  Map<String, String> headers = const {'x-trace-id': 'trace-1'},
   Object? body,
   List<int>? bodyBytes,
 }) async {
@@ -149,7 +194,7 @@ Future<_AdapterCapture> _exerciseAdapter(
       NetRequest(
         method: 'PUT',
         url: 'http://${server.address.address}:${server.port}/echo',
-        headers: const {'x-trace-id': 'trace-1'},
+        headers: headers,
         body: body,
         bodyBytes: bodyBytes,
       ),
@@ -164,6 +209,7 @@ Future<_AdapterCapture> _exerciseAdapter(
 }
 
 Future<_AdapterCapture> _exerciseRhttpAdapter({
+  Map<String, String> headers = const {'x-trace-id': 'trace-1'},
   Object? body,
   List<int>? bodyBytes,
 }) async {
@@ -183,7 +229,7 @@ Future<_AdapterCapture> _exerciseRhttpAdapter({
     NetRequest(
       method: 'PUT',
       url: 'https://example.com/echo',
-      headers: const {'x-trace-id': 'trace-1'},
+      headers: headers,
       body: body,
       bodyBytes: bodyBytes,
     ),
