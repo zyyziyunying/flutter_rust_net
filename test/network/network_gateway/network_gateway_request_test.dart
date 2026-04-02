@@ -1,13 +1,148 @@
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_rust_net/network/net_feature_flag.dart';
 import 'package:flutter_rust_net/network/net_models.dart';
 import 'package:flutter_rust_net/network/network_gateway.dart';
+import 'package:flutter_rust_net/network/rhttp_adapter.dart';
 import 'package:flutter_rust_net/network/routing_policy.dart';
+import 'package:rhttp/rhttp.dart' as rhttp;
 
 import 'network_gateway_test_helpers.dart';
 
 void main() {
   group('NetworkGateway.request', () {
+    test(
+      'routes request through rhttp adapter and keeps rust compatibility metadata',
+      () async {
+        var dioCalls = 0;
+        RhttpAdapterRequest? capturedRequest;
+
+        final dio = FakeNetAdapter((request, {fromFallback = false}) async {
+          dioCalls += 1;
+          return okResponse(
+            channel: NetChannel.dio,
+            fromFallback: fromFallback,
+          );
+        });
+        final rust = RhttpAdapter(
+          requestHandler: (request) async {
+            capturedRequest = request;
+            return RhttpAdapterResponse(
+              statusCode: 200,
+              headers: const [('content-type', 'application/json')],
+              bodyBytes: Uint8List.fromList(const [123, 125]),
+            );
+          },
+        );
+
+        final gateway = NetworkGateway(
+          routingPolicy: const RoutingPolicy(),
+          featureFlag: const NetFeatureFlag(enableRustChannel: true),
+          dioAdapter: dio,
+          rustAdapter: rust,
+        );
+
+        final response = await gateway.request(
+          const NetRequest(
+            method: 'GET',
+            url: 'users/me',
+            baseUrl: 'https://api.example.com/v2',
+          ),
+        );
+
+        expect(dioCalls, 0);
+        expect(capturedRequest, isNotNull);
+        expect(capturedRequest!.url, 'https://api.example.com/v2/users/me');
+        expect(response.channel, NetChannel.rust);
+        expect(response.fromFallback, isFalse);
+        expect(response.routeReason, 'rust_enabled');
+        expect(response.requestId, isNotNull);
+      },
+    );
+
+    test('falls back to dio when rhttp adapter throws timeout', () async {
+      var dioCalls = 0;
+
+      final dio = FakeNetAdapter((request, {fromFallback = false}) async {
+        dioCalls += 1;
+        return okResponse(channel: NetChannel.dio, fromFallback: fromFallback);
+      });
+      final rust = RhttpAdapter(
+        requestHandler: (request) async {
+          throw rhttp.RhttpTimeoutException(_toRhttpRequest(request));
+        },
+      );
+
+      final gateway = NetworkGateway(
+        routingPolicy: const RoutingPolicy(),
+        featureFlag: const NetFeatureFlag(
+          enableRustChannel: true,
+          enableFallback: true,
+        ),
+        dioAdapter: dio,
+        rustAdapter: rust,
+      );
+
+      final response = await gateway.request(
+        const NetRequest(method: 'GET', url: 'https://example.com/a'),
+      );
+
+      expect(dioCalls, 1);
+      expect(response.channel, NetChannel.dio);
+      expect(response.fromFallback, isTrue);
+      expect(response.fallbackReason, NetErrorCode.timeout.name);
+      expect(response.routeReason, 'rust_enabled -> fallback_dio');
+      expect(response.fallbackError?.channel, NetChannel.rust);
+      expect(response.fallbackError?.code, NetErrorCode.timeout);
+    });
+
+    test(
+      'routes to dio directly when rhttp client is unavailable before first request',
+      () async {
+        var dioCalls = 0;
+
+        final dio = FakeNetAdapter((request, {fromFallback = false}) async {
+          dioCalls += 1;
+          return okResponse(
+            channel: NetChannel.dio,
+            fromFallback: fromFallback,
+          );
+        });
+        final rust = RhttpAdapter(
+          clientFactory: (settings) async {
+            throw StateError('native client unavailable');
+          },
+        );
+
+        final gateway = NetworkGateway(
+          routingPolicy: const RoutingPolicy(),
+          featureFlag: const NetFeatureFlag(
+            enableRustChannel: true,
+            enableFallback: true,
+          ),
+          dioAdapter: dio,
+          rustAdapter: rust,
+        );
+
+        final response = await gateway.request(
+          const NetRequest(
+            method: 'GET',
+            url: 'https://example.com/a',
+            forceChannel: NetChannel.rust,
+          ),
+        );
+
+        expect(rust.isReady, isFalse);
+        expect(dioCalls, 1);
+        expect(response.channel, NetChannel.dio);
+        expect(response.fromFallback, isFalse);
+        expect(response.routeReason, 'force_channel -> rust_not_ready_dio');
+        expect(response.fallbackReason, isNull);
+        expect(response.fallbackError, isNull);
+      },
+    );
+
     test('uses dio directly when policy chooses dio', () async {
       var dioCalls = 0;
       var rustCalls = 0;
@@ -415,4 +550,18 @@ void main() {
       },
     );
   });
+}
+
+rhttp.HttpRequest _toRhttpRequest(RhttpAdapterRequest request) {
+  return rhttp.HttpRequest(
+    method: rhttp.HttpMethod(request.method),
+    url: request.url,
+    headers: request.headers.isEmpty
+        ? null
+        : rhttp.HttpHeaders.rawMap(request.headers),
+    body: request.bodyBytes == null
+        ? null
+        : rhttp.HttpBody.bytes(request.bodyBytes!),
+    expectBody: rhttp.HttpExpectBody.bytes,
+  );
 }

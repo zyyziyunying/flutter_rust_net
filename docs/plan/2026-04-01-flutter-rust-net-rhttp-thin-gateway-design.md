@@ -1,7 +1,7 @@
 # flutter_rust_net `rhttp + Dio` Thin Gateway Design
 
 > Date: 2026-04-01
-> Status: Draft approved for design direction
+> Status: Draft revised after code-backed review
 
 ## 1. Background
 
@@ -33,11 +33,12 @@ The selected direction is **Option B: thin gateway V1**.
 
 ### Core decision
 
-- Keep `NetRequest`, `NetResponse`, `NetException`, `NetworkGateway`, and `BytesFirstNetworkClient`.
-- Replace the current request-path `RustAdapter` implementation with a new `RhttpAdapter` that implements `NetAdapter`.
-- Keep `DioAdapter` as the control and fallback path.
-- Limit phase 1 to the regular `request()` path.
-- Keep transfer tasks on Dio in phase 1 and do not attempt a same-round transfer migration.
+- Keep `NetRequest`, `NetResponse`, `NetException`, `NetworkGateway`, and `BytesFirstNetworkClient` as the business-facing request contract.
+- Introduce a dedicated `RhttpAdapter` for the `request()` path.
+- Keep `DioAdapter` as the fallback path and the only transfer implementation in phase 1.
+- Limit phase 1 to the regular `request()` path, but treat the current request/transfer adapter coupling as a required structural change, not a documentation footnote.
+- Do not simply swap the current `rustAdapter` slot from `RustAdapter` to request-only `RhttpAdapter` while `NetworkGateway` and `NetAdapter` still route transfer work through that slot.
+- Remove `RustAdapter`-shaped request compatibility from the phase 1 promise unless an explicit shim is separately scoped and implemented.
 
 ### Product framing after the change
 
@@ -74,6 +75,15 @@ Business
   -> DioAdapter | RhttpAdapter
 ```
 
+### Transfer path in phase 1
+
+```text
+Business
+  -> BytesFirstNetworkClient
+  -> NetworkGateway
+  -> DioAdapter only
+```
+
 ### Roles
 
 - `BytesFirstNetworkClient`
@@ -81,13 +91,28 @@ Business
   - continues to own `baseUrl` defaults and bytes-first decoding helpers
 - `NetworkGateway`
   - stays intentionally thin
-  - only decides route, applies fallback rules, and records route metadata
+  - keeps request routing/fallback logic
+  - keeps transfer APIs exposed for compatibility, but phase 1 transfer execution is Dio-only
 - `DioAdapter`
   - remains the fallback and compatibility path
   - remains the transfer-task implementation in phase 1
 - `RhttpAdapter`
   - becomes the primary Rust-backed request adapter
   - owns request execution and response/error mapping into existing net models
+
+### Structural note
+
+Current code couples request and transfer responsibilities in the same places:
+
+- `NetAdapter` exposes `request()` plus `startTransferTask()` / `pollTransferEvents()` / `cancelTransferTask()`
+- `NetworkGateway.rustAdapter` is used by both request routing and transfer orchestration
+
+Phase 1 therefore needs one of these explicit structure changes:
+
+1. split request transport and transfer transport ownership in `NetworkGateway`, or
+2. hard-wire transfer APIs to Dio and stop consulting the `rustAdapter` slot for transfer operations
+
+Without that change, a request-only `RhttpAdapter` would be inserted into an API slot that current transfer code still assumes can start, poll, and cancel tasks.
 
 ### What gets removed from the request path
 
@@ -113,12 +138,27 @@ Business
 ### Compatibility choices
 
 - Keep `NetChannel.dio` and `NetChannel.rust` in V1.
-  - `NetChannel.rust` now means "the primary Rust-backed/native request channel", implemented by `rhttp`.
+  - `NetChannel.rust` now means "the primary native-backed request channel", implemented by `rhttp` on the request path.
   - This avoids a large business-side rename during the migration.
 - Keep `forceChannel`.
 - Keep `enableRustChannel` in V1 as a compatibility flag name.
   - Semantically it now means "enable the `rhttp` primary channel".
   - A later cleanup can rename it to something less misleading, such as `enablePrimaryChannel` or `enableNativeChannel`.
+
+### Phase 1 compatibility matrix
+
+| Surface | Phase 1 classification | Notes |
+| --- | --- | --- |
+| `standardWithRust` | breaking / should remove from compatibility promise | Current signature and behavior are `RustAdapter`-shaped; keeping it without a real shim is not source-compatible. |
+| `rustAdapter` getter | breaking / should remove from compatibility promise | Current getter returns `RustAdapter?`; a request-only `RhttpAdapter` cannot satisfy that shape. |
+| `RustAdapter` | breaking / should remove from compatibility promise | Not part of the thin-gateway request contract after the request path moves to `rhttp`. |
+| `RustEngineInitOptions` | breaking / should remove from compatibility promise | Request-path initialization options are specific to the old self-managed engine. |
+| `NetChannel.rust` | preserved | Compatibility name for the request primary channel only. |
+| `enableRustChannel` | preserved | Compatibility flag name for request routing only. |
+| `expectLargeResponse` | preserved as no-op | Keep field shape, but do not promise request-path file materialization in V1. |
+| `bodyFilePath` | preserved as always-null | Request responses stay bytes-first in V1 unless a real file materialization path is added later. |
+| `fromCache` | preserved as always-false | V1 does not preserve request-path cache semantics on the new primary path. |
+| transfer `forceChannel: NetChannel.rust` | breaking / should remove from compatibility promise | V1 should fail explicitly as unsupported instead of silently rerouting. |
 
 ### APIs to de-emphasize or retire
 
@@ -132,10 +172,22 @@ Business
 ### Convenience constructors
 
 - Keep `BytesFirstNetworkClient.standard()` as the safe default that stays on Dio.
-- Keep `BytesFirstNetworkClient.standardWithRust()` in V1 as a compatibility convenience, but make it build a client with `RhttpAdapter`, not the old self-managed Rust engine.
-- Document clearly that explicit engine initialization is no longer required for the request path.
+- Do not claim `BytesFirstNetworkClient.standardWithRust()` is preserved by default.
+- Only keep `standardWithRust()` if phase 1 explicitly budgets a `RustAdapter`-shaped shim. Otherwise remove it from the compatibility promise and introduce a clearer request-path constructor later.
+- Document clearly that "no explicit initialization" applies only to the new request transport, not automatically to every retained public surface in the package.
 
 ## 7. Routing and Fallback Rules
+
+### Request body contract
+
+`RhttpAdapter` must preserve the existing bytes-first contract instead of adopting `rhttp` convenience body helpers.
+
+Required rules:
+
+- reuse `encodeRequestBody()` as the only request-body normalization entry point
+- preserve the same semantics for `body`, `bodyBytes`, UTF-8 text, and JSON-encodable payloads
+- do not auto-add or rewrite `content-type`
+- keep fallback parity by sending the already-encoded bytes through both primary and Dio paths
 
 ### Routing
 
@@ -167,13 +219,20 @@ This keeps the existing migration guardrail value and avoids changing business r
 
 ### Readiness model
 
-The current `rustAdapter.isReady` gate exists mainly because the old path depends on manual engine initialization and shared lifecycle state.
+The current package surface still relies on readiness and lifecycle in several places:
+
+- `BytesFirstNetworkClient.standard()` rejects `enableRustChannel == true` when the injected `RustAdapter` is not ready
+- `BytesFirstNetworkClient.standardWithRust()` initializes before returning
+- the example request lab manually calls `initializeEngine()` / `shutdownEngine()`
+- benchmark flows still own Rust init/shutdown
+- smoke/realistic tests still assert the readiness-gated route behavior
 
 For V1:
 
-- `RhttpAdapter.isReady` should be effectively always `true` after construction.
-- the request path no longer relies on explicit engine initialization
-- the gateway readiness fallback branch becomes structurally simpler
+- `RhttpAdapter.isReady` may be effectively always `true` for the request path
+- the request path may stop requiring explicit initialization
+- but that statement must stay scoped to the new request transport
+- do not claim the whole package surface no longer needs readiness/lifecycle until legacy `RustAdapter`-shaped flows are either removed or explicitly shimmed
 
 ## 8. Transfer Task Guardrail for V1
 
@@ -183,6 +242,7 @@ Phase 1 does **not** migrate transfer orchestration.
 
 - `startTransferTask()`, `pollTransferEvents()`, and `cancelTransferTask()` remain Dio-backed in V1.
 - `NetworkGateway` continues to expose those methods so business call sites do not need to change.
+- `NetworkGateway` must stop routing transfer work through the request primary adapter.
 
 ### Guardrail behavior
 
@@ -199,6 +259,8 @@ If a caller asks for the Rust-backed transfer path, the gateway should not prete
 
 - `RhttpAdapter` request success mapping
 - `RhttpAdapter` error mapping into existing `NetErrorCode`
+- request body parity by reusing `encodeRequestBody()`
+- no automatic header / `content-type` drift between primary and Dio paths
 - `NetworkGateway` route-to-`rhttp` behavior
 - `NetworkGateway` fallback from `rhttp` to Dio
 - idempotency and `Idempotency-Key` fallback safety
@@ -207,6 +269,10 @@ If a caller asks for the Rust-backed transfer path, the gateway should not prete
   - body encoding
   - bytes-first decode helpers
   - `forceChannel`
+- request metadata behavior in V1:
+  - `expectLargeResponse` is a no-op
+  - `bodyFilePath` stays `null`
+  - `fromCache` stays `false`
 
 ### Transfer coverage for V1
 
@@ -248,6 +314,9 @@ Expected primary touch points:
 - `flutter_rust_net/lib/network/dio_adapter.dart`
 - new: `flutter_rust_net/lib/network/rhttp_adapter.dart`
 - request-path tests under `flutter_rust_net/test/network/`
+- transfer-task tests under `flutter_rust_net/test/network/`
+- `flutter_rust_net/example/lib/pages/request_lab_page.dart`
+- `flutter_rust_net/lib/network/benchmark/benchmark_runner.dart`
 - package docs and example text
 
 Expected removals or deprecations:
@@ -276,6 +345,7 @@ Mitigation:
 
 - make the split explicit in docs
 - fail explicitly on forced Rust transfer requests
+- change the gateway structure so transfer no longer flows through the request primary adapter slot
 - keep phase 1 narrow instead of hiding mixed semantics
 
 ### Risk: benchmark continuity
@@ -304,9 +374,11 @@ Mitigation:
 
 - add `rhttp` dependency
 - add `RhttpAdapter`
-- switch gateway request routing from old `RustAdapter` to `RhttpAdapter`
+- switch only request routing to `RhttpAdapter`
+- keep transfer behavior Dio-only with explicit unsupported handling for forced Rust transfer calls
+- remove `RustAdapter`-shaped request compatibility from the promise unless a separate shim is intentionally implemented
 - preserve thin gateway and fallback logic
-- keep transfer tasks Dio-only
+- keep request-body semantics locked to `encodeRequestBody()`
 
 ### Phase 2: cleanup
 

@@ -3,12 +3,14 @@ import 'dart:collection';
 import 'net_adapter.dart';
 import 'net_feature_flag.dart';
 import 'net_models.dart';
+import 'rhttp_adapter.dart';
 import 'routing_policy.dart';
 import 'url_resolution.dart';
 
 class NetworkGateway {
   static const int _maxTrackedTransferTasks = 256;
   static const String _rustNotReadyRouteSuffix = 'rust_not_ready_dio';
+  static const String _transferDioOnlyRouteSuffix = 'transfer_dio_only';
   static const Set<String> _idempotentMethods = {
     'GET',
     'HEAD',
@@ -58,7 +60,7 @@ class NetworkGateway {
     final decision = routingPolicy.decide(effectiveRequest, featureFlag);
 
     if (decision.channel == NetChannel.rust) {
-      if (!rustAdapter.isReady) {
+      if (!await _isRustRequestReady()) {
         final response = await dioAdapter.request(effectiveRequest);
         return response.withMeta(
           routeReason: '${decision.reason} -> $_rustNotReadyRouteSuffix',
@@ -69,6 +71,17 @@ class NetworkGateway {
 
     final response = await dioAdapter.request(effectiveRequest);
     return response.withMeta(routeReason: decision.reason);
+  }
+
+  Future<bool> _isRustRequestReady() async {
+    if (rustAdapter.isReady) {
+      return true;
+    }
+    final adapter = rustAdapter;
+    if (adapter is RhttpAdapter) {
+      return adapter.ensureRequestReady();
+    }
+    return adapter.isReady;
   }
 
   Future<NetTransferTaskStartResult> startTransferTask(
@@ -88,16 +101,19 @@ class NetworkGateway {
     );
 
     if (decision.channel == NetChannel.rust) {
-      if (!rustAdapter.isReady) {
-        return _startTransferOnChannel(
-          request: effectiveRequest,
-          channel: NetChannel.dio,
-          routeReason: '${decision.reason} -> $_rustNotReadyRouteSuffix',
+      if (effectiveRequest.forceChannel == NetChannel.rust) {
+        throw NetException.infrastructure(
+          message:
+              'Transfer operations do not support NetChannel.rust in V1; '
+              'use Dio-backed transfer APIs instead.',
+          channel: NetChannel.rust,
+          fallbackEligible: false,
         );
       }
-      return _startTransferFromRust(
-        effectiveRequest,
-        routeReason: decision.reason,
+      return _startTransferOnChannel(
+        request: effectiveRequest,
+        channel: NetChannel.dio,
+        routeReason: '${decision.reason} -> $_transferDioOnlyRouteSuffix',
       );
     }
 
@@ -113,51 +129,24 @@ class NetworkGateway {
       return const [];
     }
 
-    final rustEvents = await _safePollTransferEvents(rustAdapter, limit: limit);
-    final remaining = limit - rustEvents.length;
-    final dioEvents = remaining > 0
-        ? await _safePollTransferEvents(dioAdapter, limit: remaining)
-        : const <NetTransferEvent>[];
-
-    final merged = [...rustEvents, ...dioEvents];
-    for (final event in merged) {
+    final dioEvents = await _safePollTransferEvents(dioAdapter, limit: limit);
+    for (final event in dioEvents) {
       if (_terminalTransferEventKinds.contains(event.kind)) {
         _transferTaskChannels.remove(event.id);
       } else {
         _trackTransferTaskChannel(event.id, event.channel);
       }
     }
-    return merged;
+    return dioEvents;
   }
 
   Future<bool> cancelTransferTask(String taskId) async {
-    final tracked = _transferTaskChannels[taskId];
-    if (tracked == NetChannel.rust) {
-      final canceled = await rustAdapter.cancelTransferTask(taskId);
-      if (canceled) {
-        _transferTaskChannels.remove(taskId);
-        return true;
-      }
-      _transferTaskChannels.remove(taskId);
-      return _safeCancelTransferTask(dioAdapter, taskId);
-    }
-    if (tracked == NetChannel.dio) {
-      final canceled = await dioAdapter.cancelTransferTask(taskId);
-      if (canceled) {
-        _transferTaskChannels.remove(taskId);
-        return true;
-      }
-      _transferTaskChannels.remove(taskId);
-      return _safeCancelTransferTask(rustAdapter, taskId);
-    }
-
     final dioCanceled = await _safeCancelTransferTask(dioAdapter, taskId);
-    final rustCanceled = await _safeCancelTransferTask(rustAdapter, taskId);
-    final canceled = dioCanceled || rustCanceled;
-    if (canceled) {
+    if (dioCanceled) {
       _transferTaskChannels.remove(taskId);
+      return true;
     }
-    return canceled;
+    return false;
   }
 
   Future<NetResponse> _requestFromRust(
@@ -193,40 +182,6 @@ class NetworkGateway {
     }
   }
 
-  Future<NetTransferTaskStartResult> _startTransferFromRust(
-    NetTransferTaskRequest request, {
-    required String routeReason,
-  }) async {
-    try {
-      return await _startTransferOnChannel(
-        request: request,
-        channel: NetChannel.rust,
-        routeReason: routeReason,
-      );
-    } catch (error) {
-      final netError = error is NetException
-          ? error
-          : NetException.infrastructure(
-              message: 'Rust transfer start failed: $error',
-              channel: NetChannel.rust,
-              cause: error,
-            );
-
-      if (!_shouldTransferFallback(netError, request)) {
-        throw netError;
-      }
-
-      return await _startTransferOnChannel(
-        request: request,
-        channel: NetChannel.dio,
-        routeReason: '$routeReason -> fallback_dio',
-        fromFallback: true,
-        fallbackReason: netError.code.name,
-        fallbackError: netError,
-      );
-    }
-  }
-
   Future<NetTransferTaskStartResult> _startTransferOnChannel({
     required NetTransferTaskRequest request,
     required NetChannel channel,
@@ -256,17 +211,6 @@ class NetworkGateway {
         _isRequestFallbackSafe(request);
   }
 
-  bool _shouldTransferFallback(
-    NetException error,
-    NetTransferTaskRequest request,
-  ) {
-    return featureFlag.enableFallback &&
-        error.channel == NetChannel.rust &&
-        _fallbackEligibleCodes.contains(error.code) &&
-        error.fallbackEligible &&
-        _isTransferFallbackSafe(request);
-  }
-
   bool _isRequestFallbackSafe(NetRequest request) {
     final method = request.method.trim().toUpperCase();
     if (_idempotentMethods.contains(method)) {
@@ -281,21 +225,6 @@ class NetworkGateway {
     }
 
     return false;
-  }
-
-  bool _isTransferFallbackSafe(NetTransferTaskRequest request) {
-    if (request.kind == NetTransferKind.download) {
-      return !request.isResumeDownload;
-    }
-
-    return _isRequestFallbackSafe(
-      NetRequest(
-        method: request.method,
-        url: request.url,
-        baseUrl: request.baseUrl,
-        headers: request.headers,
-      ),
-    );
   }
 
   NetRequest _toTransferProbeRequest(NetTransferTaskRequest request) {

@@ -8,7 +8,7 @@ import 'package:flutter_rust_net/network/routing_policy.dart';
 void main() {
   group('NetworkGateway transfer state bounds', () {
     test(
-      'falls back to the other adapter when tracked channel is stale',
+      'cancels tracked dio transfer without probing rust in v1',
       () async {
         var dioCancelCalls = 0;
         var rustCancelCalls = 0;
@@ -17,14 +17,14 @@ void main() {
           startTransferDelegate: (request) async => request.taskId,
           cancelTransferDelegate: (taskId) async {
             dioCancelCalls += 1;
-            return taskId == 'stale-rust-task';
+            return true;
           },
         );
         final rust = _FakeTransferAdapter(
           startTransferDelegate: (request) async => request.taskId,
           cancelTransferDelegate: (taskId) async {
             rustCancelCalls += 1;
-            return false;
+            return true;
           },
         );
 
@@ -37,40 +37,89 @@ void main() {
 
         await gateway.startTransferTask(
           const NetTransferTaskRequest(
-            taskId: 'stale-rust-task',
+            taskId: 'dio-only-task-1',
             kind: NetTransferKind.download,
             url: 'https://example.com/file.bin',
             localPath: '/tmp/file.bin',
           ),
         );
 
-        final canceled = await gateway.cancelTransferTask('stale-rust-task');
+        final canceled = await gateway.cancelTransferTask('dio-only-task-1');
 
         expect(canceled, isTrue);
-        expect(rustCancelCalls, 1);
         expect(dioCancelCalls, 1);
+        expect(rustCancelCalls, 0);
       },
     );
 
     test(
-      'refreshes active tracked transfer order before overflow eviction',
+      'polls only dio transfer events in v1',
       () async {
-        var dioCancelCalls = 0;
-        var rustCancelCalls = 0;
+        var dioPollCalls = 0;
         var rustPollCalls = 0;
 
         final dio = _FakeTransferAdapter(
           startTransferDelegate: (request) async => request.taskId,
-          cancelTransferDelegate: (taskId) async {
-            dioCancelCalls += 1;
-            return false;
+          pollTransferDelegate: ({limit = 64}) async {
+            dioPollCalls += 1;
+            return const [
+              NetTransferEvent(
+                id: 'dio-task-1',
+                kind: NetTransferEventKind.progress,
+                transferred: 64,
+                total: 128,
+                channel: NetChannel.dio,
+              ),
+            ];
           },
+          cancelTransferDelegate: (taskId) async => false,
         );
         final rust = _FakeTransferAdapter(
           startTransferDelegate: (request) async => request.taskId,
           pollTransferDelegate: ({limit = 64}) async {
             rustPollCalls += 1;
-            if (rustPollCalls > 1) {
+            return const [
+              NetTransferEvent(
+                id: 'rust-task-1',
+                kind: NetTransferEventKind.progress,
+                transferred: 32,
+                total: 128,
+                channel: NetChannel.rust,
+              ),
+            ];
+          },
+          cancelTransferDelegate: (taskId) async => false,
+        );
+
+        final gateway = NetworkGateway(
+          routingPolicy: const RoutingPolicy(),
+          featureFlag: const NetFeatureFlag(enableRustChannel: true),
+          dioAdapter: dio,
+          rustAdapter: rust,
+        );
+
+        final events = await gateway.pollTransferEvents(limit: 8);
+
+        expect(events, hasLength(1));
+        expect(events.single.id, 'dio-task-1');
+        expect(events.single.channel, NetChannel.dio);
+        expect(dioPollCalls, 1);
+        expect(rustPollCalls, 0);
+      },
+    );
+
+    test(
+      'refreshes active tracked transfer order before overflow eviction using dio events',
+      () async {
+        var dioCancelCalls = 0;
+        var rustCancelCalls = 0;
+        var dioPollCalls = 0;
+
+        final dio = _FakeTransferAdapter(
+          startTransferDelegate: (request) async => request.taskId,
+          pollTransferDelegate: ({limit = 64}) async {
+            dioPollCalls += 1;
+            if (dioPollCalls > 1) {
               return const [];
             }
             return const [
@@ -79,13 +128,20 @@ void main() {
                 kind: NetTransferEventKind.progress,
                 transferred: 64,
                 total: 128,
-                channel: NetChannel.rust,
+                channel: NetChannel.dio,
               ),
             ];
           },
           cancelTransferDelegate: (taskId) async {
-            rustCancelCalls += 1;
+            dioCancelCalls += 1;
             return taskId == 'task-0';
+          },
+        );
+        final rust = _FakeTransferAdapter(
+          startTransferDelegate: (request) async => request.taskId,
+          cancelTransferDelegate: (taskId) async {
+            rustCancelCalls += 1;
+            return false;
           },
         );
 
@@ -124,13 +180,13 @@ void main() {
         final canceled = await gateway.cancelTransferTask('task-0');
 
         expect(canceled, isTrue);
-        expect(rustCancelCalls, 1);
-        expect(dioCancelCalls, 0);
+        expect(dioCancelCalls, 1);
+        expect(rustCancelCalls, 0);
       },
     );
 
     test(
-      'evicts oldest tracked transfers and probes adapters on cancel',
+      'evicts oldest tracked transfers and only probes dio on cancel',
       () async {
         var dioCancelCalls = 0;
         var rustCancelCalls = 0;
@@ -139,14 +195,14 @@ void main() {
           startTransferDelegate: (request) async => request.taskId,
           cancelTransferDelegate: (taskId) async {
             dioCancelCalls += 1;
-            return false;
+            return taskId == 'task-0';
           },
         );
         final rust = _FakeTransferAdapter(
           startTransferDelegate: (request) async => request.taskId,
           cancelTransferDelegate: (taskId) async {
             rustCancelCalls += 1;
-            return taskId == 'task-0';
+            return false;
           },
         );
 
@@ -172,7 +228,7 @@ void main() {
 
         expect(canceled, isTrue);
         expect(dioCancelCalls, 1);
-        expect(rustCancelCalls, 1);
+        expect(rustCancelCalls, 0);
       },
     );
   });

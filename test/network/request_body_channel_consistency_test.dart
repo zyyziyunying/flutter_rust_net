@@ -5,77 +5,126 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_rust_net/network/dio_adapter.dart';
-import 'package:flutter_rust_net/network/net_feature_flag.dart';
+import 'package:flutter_rust_net/network/net_adapter.dart';
 import 'package:flutter_rust_net/network/net_models.dart';
-import 'package:flutter_rust_net/network/network_gateway.dart';
-import 'package:flutter_rust_net/network/routing_policy.dart';
-import 'package:flutter_rust_net/network/rust_adapter.dart';
-import 'package:flutter_rust_net/network/rust_bridge_api.dart';
-import 'package:flutter_rust_net/rust_bridge/api.dart' as rust_api;
+import 'package:flutter_rust_net/network/rhttp_adapter.dart';
 
 void main() {
+  final realRhttpSkip = _realRhttpSkipReason();
+
   group('request body channel consistency', () {
     test(
-      'map body without content-type stays aligned when rust falls back to dio',
+      'map body without content-type stays aligned between dio and rhttp',
       () async {
-        final capture = await _exerciseFallback(
+        final dioCapture = await _exerciseAdapter(
+          DioAdapter(),
+          body: const <String, Object?>{'ok': true, 'count': 1},
+        );
+        final rhttpCapture = await _exerciseRhttpAdapter(
           body: const <String, Object?>{'ok': true, 'count': 1},
         );
 
-        expect(capture.response.channel, NetChannel.dio);
-        expect(capture.response.fromFallback, isTrue);
-        expect(capture.response.routeReason, 'force_channel -> fallback_dio');
-        expect(capture.rustSpec.bodyBytes, isNotNull);
+        expect(dioCapture.response.channel, NetChannel.dio);
+        expect(rhttpCapture.response.channel, NetChannel.rust);
+        expect(dioCapture.request.bodyBytes, rhttpCapture.request.bodyBytes);
         expect(
-          capture.dioRequest.bodyBytes,
-          capture.rustSpec.bodyBytes!.toList(growable: false),
-        );
-        expect(
-          utf8.decode(capture.dioRequest.bodyBytes),
+          utf8.decode(rhttpCapture.request.bodyBytes),
           '{"ok":true,"count":1}',
         );
-        expect(capture.dioRequest.contentType, isNull);
-        expect(_headerValue(capture.rustSpec.headers, 'content-type'), isNull);
+        expect(dioCapture.request.contentType, isNull);
+        expect(rhttpCapture.request.contentType, isNull);
       },
     );
 
-    test(
-      'json int array body stays aligned when rust falls back to dio',
-      () async {
-        final capture = await _exerciseFallback(body: <int>[1, 2, 256, -1]);
+    test('json int array body stays aligned between dio and rhttp', () async {
+      final dioCapture = await _exerciseAdapter(
+        DioAdapter(),
+        body: <int>[1, 2, 256, -1],
+      );
+      final rhttpCapture = await _exerciseRhttpAdapter(
+        body: <int>[1, 2, 256, -1],
+      );
 
-        expect(capture.rustSpec.bodyBytes, isNotNull);
-        expect(
-          capture.dioRequest.bodyBytes,
-          capture.rustSpec.bodyBytes!.toList(growable: false),
-        );
-        expect(utf8.decode(capture.dioRequest.bodyBytes), '[1,2,256,-1]');
-        expect(capture.dioRequest.contentType, isNull);
-        expect(_headerValue(capture.rustSpec.headers, 'content-type'), isNull);
-      },
-    );
+      expect(dioCapture.request.bodyBytes, rhttpCapture.request.bodyBytes);
+      expect(utf8.decode(rhttpCapture.request.bodyBytes), '[1,2,256,-1]');
+      expect(dioCapture.request.contentType, isNull);
+      expect(rhttpCapture.request.contentType, isNull);
+    });
 
-    test(
-      'raw byte payload stays aligned when rust falls back to dio',
-      () async {
-        final capture = await _exerciseFallback(
-          bodyBytes: const <int>[65, 66, 67, 0, 255],
-        );
+    test('raw byte payload stays aligned between dio and rhttp', () async {
+      final dioCapture = await _exerciseAdapter(
+        DioAdapter(),
+        bodyBytes: const <int>[65, 66, 67, 0, 255],
+      );
+      final rhttpCapture = await _exerciseRhttpAdapter(
+        bodyBytes: const <int>[65, 66, 67, 0, 255],
+      );
 
-        expect(capture.rustSpec.bodyBytes, isNotNull);
-        expect(
-          capture.dioRequest.bodyBytes,
-          capture.rustSpec.bodyBytes!.toList(growable: false),
-        );
-        expect(capture.dioRequest.bodyBytes, [65, 66, 67, 0, 255]);
-        expect(capture.dioRequest.contentType, isNull);
-        expect(_headerValue(capture.rustSpec.headers, 'content-type'), isNull);
-      },
-    );
+      expect(dioCapture.request.bodyBytes, rhttpCapture.request.bodyBytes);
+      expect(rhttpCapture.request.bodyBytes, [65, 66, 67, 0, 255]);
+      expect(dioCapture.request.contentType, isNull);
+      expect(rhttpCapture.request.contentType, isNull);
+    });
+  });
+
+  group('request body channel consistency with real rhttp', () {
+    test('map body without content-type stays aligned on wire', () async {
+      final dioCapture = await _exerciseAdapter(
+        DioAdapter(),
+        body: const <String, Object?>{'ok': true, 'count': 1},
+      );
+      final rhttpCapture = await _exerciseAdapter(
+        RhttpAdapter(),
+        body: const <String, Object?>{'ok': true, 'count': 1},
+      );
+
+      expect(dioCapture.response.channel, NetChannel.dio);
+      expect(rhttpCapture.response.channel, NetChannel.rust);
+      expect(dioCapture.request.bodyBytes, rhttpCapture.request.bodyBytes);
+      expect(
+        utf8.decode(rhttpCapture.request.bodyBytes),
+        '{"ok":true,"count":1}',
+      );
+      expect(dioCapture.request.contentType, isNull);
+      expect(rhttpCapture.request.contentType, isNull);
+    }, skip: realRhttpSkip);
+
+    test('json int array body stays aligned on wire', () async {
+      final dioCapture = await _exerciseAdapter(
+        DioAdapter(),
+        body: <int>[1, 2, 256, -1],
+      );
+      final rhttpCapture = await _exerciseAdapter(
+        RhttpAdapter(),
+        body: <int>[1, 2, 256, -1],
+      );
+
+      expect(dioCapture.request.bodyBytes, rhttpCapture.request.bodyBytes);
+      expect(utf8.decode(rhttpCapture.request.bodyBytes), '[1,2,256,-1]');
+      expect(dioCapture.request.contentType, isNull);
+      expect(rhttpCapture.request.contentType, isNull);
+    }, skip: realRhttpSkip);
+
+    test('raw byte payload stays aligned on wire', () async {
+      final dioCapture = await _exerciseAdapter(
+        DioAdapter(),
+        bodyBytes: const <int>[65, 66, 67, 0, 255],
+      );
+      final rhttpCapture = await _exerciseAdapter(
+        RhttpAdapter(),
+        bodyBytes: const <int>[65, 66, 67, 0, 255],
+      );
+
+      expect(dioCapture.request.bodyBytes, rhttpCapture.request.bodyBytes);
+      expect(rhttpCapture.request.bodyBytes, [65, 66, 67, 0, 255]);
+      expect(dioCapture.request.contentType, isNull);
+      expect(rhttpCapture.request.contentType, isNull);
+    }, skip: realRhttpSkip);
   });
 }
 
-Future<_FallbackCapture> _exerciseFallback({
+Future<_AdapterCapture> _exerciseAdapter(
+  NetAdapter adapter, {
   Object? body,
   List<int>? bodyBytes,
 }) async {
@@ -96,45 +145,57 @@ Future<_FallbackCapture> _exerciseFallback({
   });
 
   try {
-    final bridge = _CapturingRustBridgeApi();
-    final rustAdapter = RustAdapter(bridgeApi: bridge);
-    await rustAdapter.initializeEngine();
-
-    final gateway = NetworkGateway(
-      routingPolicy: const RoutingPolicy(),
-      featureFlag: const NetFeatureFlag(
-        enableRustChannel: true,
-        enableFallback: true,
-      ),
-      dioAdapter: DioAdapter(),
-      rustAdapter: rustAdapter,
-    );
-
-    final response = await gateway.request(
+    final response = await adapter.request(
       NetRequest(
         method: 'PUT',
         url: 'http://${server.address.address}:${server.port}/echo',
         headers: const {'x-trace-id': 'trace-1'},
         body: body,
         bodyBytes: bodyBytes,
-        forceChannel: NetChannel.rust,
       ),
     );
-    final dioRequest = await requestCompleter.future.timeout(
+    final recorded = await requestCompleter.future.timeout(
       const Duration(seconds: 3),
     );
-    final rustSpec = bridge.lastRequestSpec;
-    expect(rustSpec, isNotNull);
-    expect(_headerValue(rustSpec!.headers, 'x-trace-id'), 'trace-1');
-
-    return _FallbackCapture(
-      response: response,
-      rustSpec: rustSpec,
-      dioRequest: dioRequest,
-    );
+    return _AdapterCapture(response: response, request: recorded);
   } finally {
     await server.close(force: true);
   }
+}
+
+Future<_AdapterCapture> _exerciseRhttpAdapter({
+  Object? body,
+  List<int>? bodyBytes,
+}) async {
+  late RhttpAdapterRequest capturedRequest;
+  final adapter = RhttpAdapter(
+    requestHandler: (request) async {
+      capturedRequest = request;
+      return RhttpAdapterResponse(
+        statusCode: HttpStatus.ok,
+        headers: const [('content-type', 'application/json')],
+        bodyBytes: Uint8List.fromList(const [123, 125]),
+      );
+    },
+  );
+
+  final response = await adapter.request(
+    NetRequest(
+      method: 'PUT',
+      url: 'https://example.com/echo',
+      headers: const {'x-trace-id': 'trace-1'},
+      body: body,
+      bodyBytes: bodyBytes,
+    ),
+  );
+
+  return _AdapterCapture(
+    response: response,
+    request: _RecordedRequest(
+      bodyBytes: capturedRequest.bodyBytes?.toList(growable: false) ?? const [],
+      contentType: capturedRequest.headers[HttpHeaders.contentTypeHeader],
+    ),
+  );
 }
 
 Future<List<int>> _readAll(HttpRequest request) async {
@@ -145,26 +206,11 @@ Future<List<int>> _readAll(HttpRequest request) async {
   return builder.takeBytes();
 }
 
-String? _headerValue(List<(String, String)> headers, String name) {
-  final lowerName = name.toLowerCase();
-  for (final header in headers) {
-    if (header.$1.toLowerCase() == lowerName) {
-      return header.$2;
-    }
-  }
-  return null;
-}
-
-class _FallbackCapture {
+class _AdapterCapture {
   final NetResponse response;
-  final rust_api.RequestSpec rustSpec;
-  final _RecordedRequest dioRequest;
+  final _RecordedRequest request;
 
-  const _FallbackCapture({
-    required this.response,
-    required this.rustSpec,
-    required this.dioRequest,
-  });
+  const _AdapterCapture({required this.response, required this.request});
 }
 
 class _RecordedRequest {
@@ -174,54 +220,15 @@ class _RecordedRequest {
   const _RecordedRequest({required this.bodyBytes, required this.contentType});
 }
 
-class _CapturingRustBridgeApi implements RustBridgeApi {
-  rust_api.RequestSpec? lastRequestSpec;
-
-  @override
-  Future<void> ensureBridgeLoaded() async {}
-
-  @override
-  Future<void> initNetEngine({
-    required rust_api.NetEngineConfig config,
-  }) async {}
-
-  @override
-  Future<void> shutdownNetEngine() async {}
-
-  @override
-  Future<rust_api.ResponseMeta> request({
-    required rust_api.RequestSpec spec,
-  }) async {
-    lastRequestSpec = spec;
-    return rust_api.ResponseMeta(
-      requestId: spec.requestId,
-      statusCode: 0,
-      headers: const [],
-      bodyInline: null,
-      bodyFilePath: null,
-      fromCache: false,
-      costMs: 1,
-      error: 'timeout: simulated rust timeout',
-    );
+String? _realRhttpSkipReason() {
+  final nativeLibDir =
+      Platform.environment['FRB_DART_LOAD_EXTERNAL_LIBRARY_NATIVE_LIB_DIR'];
+  if (nativeLibDir == null || nativeLibDir.isEmpty) {
+    return 'Set FRB_DART_LOAD_EXTERNAL_LIBRARY_NATIVE_LIB_DIR to a directory containing librhttp.dylib to run real-rhttp tests.';
   }
-
-  @override
-  Future<String> startTransferTask({required rust_api.TransferTaskSpec spec}) {
-    throw UnimplementedError();
+  final nativeLib = File('$nativeLibDir/librhttp.dylib');
+  if (!nativeLib.existsSync()) {
+    return 'Missing librhttp.dylib under FRB_DART_LOAD_EXTERNAL_LIBRARY_NATIVE_LIB_DIR=$nativeLibDir';
   }
-
-  @override
-  Future<List<rust_api.NetEvent>> pollEvents({required int limit}) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<bool> cancel({required String id}) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<int> clearCache({String? namespace}) {
-    throw UnimplementedError();
-  }
+  return null;
 }
