@@ -231,8 +231,10 @@ The current package surface still relies on readiness and lifecycle in several p
 
 For V1:
 
-- `RhttpAdapter.isReady` may be effectively always `true` for the request path
-- the request happy path stops requiring explicit initialization
+- `RhttpAdapter` keeps request-path initialization internal, but request-path availability is still real runtime state rather than an always-true readiness flag
+- `NetworkGateway.request()` should preflight `RhttpAdapter` request availability before routing into the primary path
+- first-use native init / client-create failures should be treated as "rust not ready" at routing time instead of only surfacing after dispatch
+- the request happy path stops requiring explicit initialization from business callers
 - retained legacy `RustAdapter` flows still own their own lifecycle when explicitly used
 - do not claim the whole package surface no longer needs readiness/lifecycle until legacy `RustAdapter`-shaped flows are either removed or fully retired
 

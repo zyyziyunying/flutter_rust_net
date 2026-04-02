@@ -33,7 +33,9 @@ dart run tool/network_bench.dart --scenario=large_json --channels=dio,rust --ini
 
 ## 4. FFI 路径有效性证据
 
-- `rustInitialized=true`（Rust 引擎已初始化）
+- 旧版 benchmark 输出字段 `rustInitialized=true`
+  （仅表示当时 legacy Rust 引擎已初始化，不对应 thin-gateway V1 中
+  `rustChannelPreflighted` 的现行语义）
 - `responseChannels.rust=120`（Rust 分组请求实际由 Rust 响应）
 - `fallbackCount=0`（未回退到 Dio）
 
@@ -46,8 +48,9 @@ dart run tool/network_bench.dart --scenario=large_json --channels=dio,rust --ini
 
 当前项目这套 benchmark 测到的是：
 
-1. Rust 网络请求（FRB/FFI 调用）
-2. 返回 `bodyBytes/bodyFilePath` 给 Dart
+1. legacy Rust 网络请求（FRB/FFI 调用）
+2. 返回 `bodyBytes` 给 Dart；在当时的 legacy 大响应路径下也可能
+   materialize 出 `bodyFilePath`
 3. Dart 侧执行 `jsonDecode` / model build
 
 也就是说，它不是“Rust 把 JSON 解析成对象再跨 FFI 回 Dart 对象”的测试模型。  
@@ -58,4 +61,3 @@ dart run tool/network_bench.dart --scenario=large_json --channels=dio,rust --ini
 1. 在当前仓库实现下，`large_json` 场景里 Rust 通道整体指标优于 Dio（req/e2e p95 更低、吞吐更高）。
 2. Rust 通道在 consume 侧更重（尤其 `materializeBody`），说明其额外开销主要在“数据落盘/回读或跨边界搬运”路径，而非纯网络请求延迟。
 3. 若要严格验证文章主张，建议新增“Rust 端解析 JSON 并返回 Dart dynamic/模型”的独立基准，再与 Dart `jsonDecode`/`compute` 对照。
-

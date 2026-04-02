@@ -30,8 +30,8 @@
 - 双通道路由：`RoutingPolicy + NetFeatureFlag` 支持总开关与强制通道。
 - 受控 fallback：仅主请求通道（兼容名仍为 Rust 通道）触发，且受错误类型与幂等性保护。
 - 统一传输任务入口：下载/上传启动、事件轮询、任务取消；V1 底层实现为 Dio-only。
-- bytes-first 边界：跨 FFI 返回 `bytes` 或 `file path`，业务解码留在 Dart。
-- 大响应生命周期：支持 Rust 侧 `clear_cache` + Dart 侧 materialize 后 best-effort 清理。
+- bytes-first 边界：V1 request path 统一返回 `bytes`，业务解码留在 Dart；不承诺 request-path `file path` 输出。
+- 大响应兼容字段：`expectLargeResponse` 在 thin-gateway V1 中仅保留字段形状，当前不改变 request-path 行为。
 
 ## 3) 实现架构（分层思路）
 1. **Dart API 层**：业务仅依赖 `BytesFirstNetworkClient/NetworkGateway`。
@@ -66,7 +66,7 @@
 
 ### 5.3 当前竞争力与短板（结论）
 - **优势**：双通道治理（路由+fallback）在 Flutter 侧比较少见，且已形成可测试闭环。  
-- **优势**：针对大响应与传输任务有明确 bytes/file 边界，便于压测与演进。  
+- **优势**：请求与传输能力边界清晰，便于压测、回退治理与后续演进。  
 - **数据侧观察（本仓库基准）**：`small_json` 场景 Rust p95 明显优于 Dio（11~13ms vs 42~48ms）；`jitter` 场景已完成 L1/L2 调参与复验并通过聚合门槛，但实网（弱网/远端）稳定性仍需补测。  
 - **短板**：声明式 API 生成、拦截器生态、证书/代理/DNS 策略能力尚不如成熟库完整。  
 - **短板**：虽已切到 `rhttp` 主请求通道（兼容开关名仍为 `enableRustChannel=true`），但尚未在业务 App 接入场景完成长期与跨网络链路稳定性验证。
