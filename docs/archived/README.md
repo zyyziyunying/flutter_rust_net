@@ -16,6 +16,7 @@
 当前文档：
 
 - `p1_status_history_2026-03-12.md`：从旧版 P1 进度文档迁出的详细历史记录，不再作为当前事实源。
+- `2026-04-01-rhttp-thin-gateway-design-review.md`：thin-gateway 设计评审原始问题记录；当前状态以 `../problems/2026-04-02-rhttp-thin-gateway-design-review-status-check.md` 为准。
 - `flutter_rust_net_risk_review_findings_2026-03-09.md`：风险审查记录与后续闭环情况。
 - `flutter_rust_net_lifecycle_scope_fix_plan_2026-03-12.md`：Rust 生命周期与共享作用域修复计划归档。
 - `flutter_rust_network_layer_design_review_findings_2026-02-24.md`：网络层架构评审问题记录，问题已于 2026-02-25 全部闭环。

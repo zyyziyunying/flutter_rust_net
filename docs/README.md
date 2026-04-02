@@ -16,14 +16,17 @@
 - `progress/p1_status_2026-02-25.md`：P1 当前状态（精简版状态页）。
 - `progress/rust_lifecycle_scope_status_2026-03-12.md`：Rust 生命周期与共享作用域修复状态。
 - `analyse/rust_network_business_fit_analysis_2026-03-13.md`：Rust 通道业务适用性分析与接口分流建议。
+- `problems/2026-04-02-rhttp-thin-gateway-design-review-status-check.md`：thin-gateway 设计评审当前状态核对，作为当前状态事实源。
 - `problems/rust_net_engine_blockers_2026-03-13.md`：当前 git 更改区 Rust net_engine 接入的阻塞问题追踪。
 - `plan/network_p1_execution_template_2026-02-25.md`：P1 执行模板。
 - `plan/golang_remote_benchmark_server_plan_2026-03-02.md`：远端真机压测 Go 服务方案。
 - `plan/cache_namespace_budget_governance_plan_2026-03-14.md`：namespace 缓存预算治理方案与后续扩展建议。
 - `questions/git_staged_review_findings_2026-03-12.md`：当前 staged review follow-up 与待收敛问题。
 - `archived/p1_status_history_2026-03-12.md`：从旧版 P1 进度文档迁出的详细历史记录。
+- `archived/2026-04-01-rhttp-thin-gateway-design-review.md`：thin-gateway 设计评审原始问题记录，已由后续状态核对文档替代。
 - `archived/flutter_rust_net_lifecycle_scope_fix_plan_2026-03-12.md`：已归档的 Rust 生命周期与共享作用域修复计划。
 - `archived/flutter_rust_network_layer_design_review_findings_2026-02-24.md`：已闭环的设计评审与修复建议。
+- `problems/archive/2026-04-02-task-4-5-thin-gateway-v1-code-review.md`：Task 4/5 thin-gateway V1 code review 问题单，已闭环归档。
 
 维护建议：
 

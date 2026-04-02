@@ -1,7 +1,7 @@
 # Rhttp Thin Gateway Design Review Status Check
 
 > Date: 2026-04-02
-> Checked against: `docs/problems/2026-04-01-rhttp-thin-gateway-design-review.md`
+> Checked against: `docs/archived/2026-04-01-rhttp-thin-gateway-design-review.md`
 > Scope: current worktree status check only
 
 ## Verdict
@@ -126,7 +126,7 @@ Evidence:
 
 - `lib/flutter_rust_net.dart`
 - `README.md`
-- `docs/problems/2026-04-02-task-4-5-thin-gateway-v1-code-review.md`
+- `docs/problems/archive/2026-04-02-task-4-5-thin-gateway-v1-code-review.md`
 
 Status:
 
