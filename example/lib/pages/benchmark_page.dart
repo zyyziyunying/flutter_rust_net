@@ -399,7 +399,8 @@ class _BenchmarkPageState extends State<BenchmarkPage> {
         ExampleSectionCard(
           title: 'Benchmark Runner',
           subtitle:
-              'Runs local loopback benchmark scenarios and compares Dio with Rust routing.',
+              'Runs local loopback benchmark scenarios and compares Dio with '
+              'the primary Rust request channel (rhttp).',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -436,9 +437,10 @@ class _BenchmarkPageState extends State<BenchmarkPage> {
               const SizedBox(height: 8),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Require Rust init (fail fast)'),
+                title: const Text('Require Rust request channel (fail fast)'),
                 subtitle: const Text(
-                  'When enabled, benchmark stops immediately if Rust channel init fails.',
+                  'When enabled, benchmark stops immediately if the primary '
+                  'Rust request channel cannot be prepared.',
                 ),
                 value: _requireRust,
                 onChanged: _running

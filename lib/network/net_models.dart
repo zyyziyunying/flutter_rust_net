@@ -54,8 +54,8 @@ enum NetErrorCode {
 /// Unified request model for gateway-driven network calls.
 ///
 /// Channel routing currently only considers [forceChannel] plus the gateway's
-/// feature flag state. [expectLargeResponse] is a Rust transport hint and does
-/// not affect routing.
+/// feature flag state. [expectLargeResponse] is retained as a V1 compatibility
+/// flag and does not affect routing.
 class NetRequest {
   final String method;
   final String url;
@@ -69,10 +69,11 @@ class NetRequest {
   /// Raw request payload bytes. Use [body] for text or JSON payloads.
   final List<int>? bodyBytes;
 
-  /// Rust transport hint only.
+  /// Compatibility flag only.
   ///
-  /// When this request executes on the Rust channel, the Rust engine prefers
-  /// file-backed response storage for large bodies. It does not affect routing.
+  /// Thin-gateway V1 keeps the request shape but does not change request-path
+  /// behavior: request responses stay bytes-first, [NetResponse.bodyFilePath]
+  /// remains `null`, and [NetResponse.fromCache] remains `false`.
   final bool expectLargeResponse;
 
   /// Explicit per-request routing override.

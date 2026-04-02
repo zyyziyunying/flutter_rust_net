@@ -4,17 +4,17 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_rust_net/network/benchmark/network_benchmark_harness.dart';
-import 'package:flutter_rust_net/network/rust_adapter.dart';
+import 'package:flutter_rust_net/network/rhttp_adapter.dart';
 import 'package:flutter_rust_net/rust_bridge/api.dart' as rust_api;
 
 import 'rust_adapter/fake_rust_bridge_api.dart';
 
 void main() {
-  group('benchmark runner rust ownership', () {
+  group('benchmark runner thin-gateway rust channel', () {
     test(
-      'auto cache benchmark shuts down owned rust engine between runs',
+      'preflights the rust request channel without using rust bridge lifecycle',
       () async {
-        final fakeBridge = _buildBenchmarkBridge();
+        final requestAdapter = _buildBenchmarkRequestAdapter();
         const config = BenchmarkConfig(
           scenario: BenchmarkScenario.smallJson,
           requests: 4,
@@ -29,86 +29,113 @@ void main() {
 
         final first = await runNetworkBenchmark(
           config,
-          rustBridgeApi: fakeBridge,
+          rustAdapter: requestAdapter,
         );
         final second = await runNetworkBenchmark(
           config,
-          rustBridgeApi: fakeBridge,
+          rustAdapter: requestAdapter,
         );
 
-        expect(fakeBridge.initCalls, 2);
-        expect(fakeBridge.shutdownCalls, 2);
-        expect(first.rustInitialized, isTrue);
-        expect(second.rustInitialized, isTrue);
+        expect(first.rustChannelPreflighted, isTrue);
+        expect(second.rustChannelPreflighted, isTrue);
         expect(first.channelResults.single.exceptions, 0);
         expect(second.channelResults.single.exceptions, 0);
         expect(first.channelResults.single.completedRequests, 4);
         expect(second.channelResults.single.completedRequests, 4);
-        expect(
-          first.config.resolvedRustCacheDir,
-          isNot(equals(second.config.resolvedRustCacheDir)),
-        );
-        expect(first.rustCacheObservation?.rootBytes, greaterThan(0));
-        expect(second.rustCacheObservation?.rootBytes, greaterThan(0));
-        expect(
-          Directory(first.config.resolvedRustCacheDir).existsSync(),
-          isFalse,
-        );
-        expect(
-          Directory(second.config.resolvedRustCacheDir).existsSync(),
-          isFalse,
-        );
+        expect(first.rustCacheObservation, isNull);
+        expect(second.rustCacheObservation, isNull);
+        expect(first.channelResults.single.responseChannels['rust'], 4);
+        expect(second.channelResults.single.responseChannels['rust'], 4);
+        expect(first.toJson()['rustChannelPreflighted'], isTrue);
+        expect(first.toJson().containsKey('rustInitialized'), isFalse);
+        expect(first.toPrettyText(), contains('rustChannelPreflighted=true'));
+        expect(first.toPrettyText(), isNot(contains('rustInitialized=')));
       },
     );
 
     test(
-      'benchmark reuses external rust scope without shutting it down',
+      'rust benchmark request path does not require explicit initialization',
       () async {
-        final fakeBridge = _buildBenchmarkBridge();
-        final tempRoot = await Directory.systemTemp.createTemp(
-          'flutter_rust_net_benchmark_runner_',
-        );
-        final cacheDir =
-            '${tempRoot.path}${Platform.pathSeparator}externally_owned_cache';
-        final externalAdapter = RustAdapter(bridgeApi: fakeBridge);
-        addTearDown(() async {
-          if (externalAdapter.isReady) {
-            await externalAdapter.shutdownEngine();
-          }
-          if (tempRoot.existsSync()) {
-            await tempRoot.delete(recursive: true);
-          }
-        });
-
-        await externalAdapter.initializeEngine(
-          options: RustEngineInitOptions(cacheDir: cacheDir),
-        );
+        final requestAdapter = _buildBenchmarkRequestAdapter();
 
         final report = await runNetworkBenchmark(
-          BenchmarkConfig(
+          const BenchmarkConfig(
             scenario: BenchmarkScenario.smallJson,
             requests: 4,
             warmupRequests: 0,
             concurrency: 1,
-            channels: const {BenchmarkChannel.rust},
-            initializeRust: true,
-            requireRust: true,
+            channels: {BenchmarkChannel.rust},
+            initializeRust: false,
+            requireRust: false,
             enableFallback: false,
             verbose: false,
-            rustCacheDir: cacheDir,
           ),
-          rustBridgeApi: fakeBridge,
+          rustAdapter: requestAdapter,
         );
 
-        expect(report.rustInitialized, isTrue);
+        expect(report.rustChannelPreflighted, isFalse);
         expect(report.channelResults.single.exceptions, 0);
-        expect(fakeBridge.initCalls, 1);
-        expect(fakeBridge.shutdownCalls, 0);
-        expect(externalAdapter.isReady, isTrue);
-        expect(Directory(cacheDir).existsSync(), isTrue);
+        expect(report.channelResults.single.completedRequests, 4);
+        expect(report.channelResults.single.responseChannels['rust'], 4);
+        expect(report.rustCacheObservation, isNull);
+        expect(report.toJson()['rustChannelPreflighted'], isFalse);
+        expect(report.toJson().containsKey('rustInitialized'), isFalse);
+        expect(report.toPrettyText(), contains('rustChannelPreflighted=false'));
       },
     );
+
+    test('rejects rustBridgeApi-only benchmark wiring in thin-gateway V1', () {
+      final fakeBridge = _buildBenchmarkBridge();
+
+      expect(
+        () => runNetworkBenchmark(
+          const BenchmarkConfig(
+            scenario: BenchmarkScenario.smallJson,
+            requests: 1,
+            warmupRequests: 0,
+            concurrency: 1,
+            channels: {BenchmarkChannel.rust},
+            initializeRust: false,
+            requireRust: false,
+            enableFallback: false,
+            verbose: false,
+          ),
+          rustBridgeApi: fakeBridge,
+        ),
+        throwsA(
+          isA<ArgumentError>().having(
+            (error) => error.message,
+            'message',
+            contains('inject rustAdapter explicitly'),
+          ),
+        ),
+      );
+      expect(fakeBridge.initCalls, 0);
+      expect(fakeBridge.shutdownCalls, 0);
+    });
   });
+}
+
+RhttpAdapter _buildBenchmarkRequestAdapter() {
+  return RhttpAdapter(
+    requestHandler: (request) async {
+      final uri = Uri.parse(request.url);
+      final body = Uint8List.fromList(
+        utf8.encode(
+          jsonEncode({
+            'ok': true,
+            'path': uri.path,
+            'requestId': uri.queryParameters['id'],
+          }),
+        ),
+      );
+      return RhttpAdapterResponse(
+        statusCode: HttpStatus.ok,
+        headers: const [('content-type', 'application/json')],
+        bodyBytes: body,
+      );
+    },
+  );
 }
 
 FakeRustBridgeApi _buildBenchmarkBridge() {

@@ -149,10 +149,10 @@ Without that change, a request-only `RhttpAdapter` would be inserted into an API
 
 | Surface | Phase 1 classification | Notes |
 | --- | --- | --- |
-| `standardWithRust` | breaking / should remove from compatibility promise | Current signature and behavior are `RustAdapter`-shaped; keeping it without a real shim is not source-compatible. |
-| `rustAdapter` getter | breaking / should remove from compatibility promise | Current getter returns `RustAdapter?`; a request-only `RhttpAdapter` cannot satisfy that shape. |
+| `standardWithRust` | temporary deprecated shim | Keep the name, but make it a thin-gateway V1 shim: enable the `rhttp` primary request channel and stop auto-initializing legacy `RustAdapter` instances. |
+| `rustAdapter` getter | temporary deprecated legacy-only getter | Keep it only to expose explicitly injected legacy `RustAdapter` instances; default `RhttpAdapter` wiring returns `null`. |
 | `RustAdapter` | breaking / should remove from compatibility promise | Not part of the thin-gateway request contract after the request path moves to `rhttp`. |
-| `RustEngineInitOptions` | breaking / should remove from compatibility promise | Request-path initialization options are specific to the old self-managed engine. |
+| `RustEngineInitOptions` | deprecated compatibility-only | Keep only on legacy/shim surfaces during transition; request happy path must not depend on it. |
 | `NetChannel.rust` | preserved | Compatibility name for the request primary channel only. |
 | `enableRustChannel` | preserved | Compatibility flag name for request routing only. |
 | `expectLargeResponse` | preserved as no-op | Keep field shape, but do not promise request-path file materialization in V1. |
@@ -172,9 +172,11 @@ Without that change, a request-only `RhttpAdapter` would be inserted into an API
 ### Convenience constructors
 
 - Keep `BytesFirstNetworkClient.standard()` as the safe default that stays on Dio.
-- Do not claim `BytesFirstNetworkClient.standardWithRust()` is preserved by default.
-- Only keep `standardWithRust()` if phase 1 explicitly budgets a `RustAdapter`-shaped shim. Otherwise remove it from the compatibility promise and introduce a clearer request-path constructor later.
-- Document clearly that "no explicit initialization" applies only to the new request transport, not automatically to every retained public surface in the package.
+- Keep `BytesFirstNetworkClient.standardWithRust()` only as a deprecated V1 shim.
+  - default behavior: enable `enableRustChannel=true` and use `RhttpAdapter`
+  - do not auto-initialize legacy `RustAdapter`
+  - fail explicitly if a caller passes a non-ready legacy `RustAdapter`
+- Document clearly that "no explicit initialization" applies to the new request transport only, not to every retained legacy surface in the package.
 
 ## 7. Routing and Fallback Rules
 
@@ -221,18 +223,18 @@ This keeps the existing migration guardrail value and avoids changing business r
 
 The current package surface still relies on readiness and lifecycle in several places:
 
-- `BytesFirstNetworkClient.standard()` rejects `enableRustChannel == true` when the injected `RustAdapter` is not ready
-- `BytesFirstNetworkClient.standardWithRust()` initializes before returning
-- the example request lab manually calls `initializeEngine()` / `shutdownEngine()`
-- benchmark flows still own Rust init/shutdown
+- `BytesFirstNetworkClient.standard()` only rejects `enableRustChannel == true` when the caller explicitly injects a legacy non-ready `RustAdapter`
+- `BytesFirstNetworkClient.standardWithRust()` is kept only as a deprecated shim and no longer initializes legacy adapters
+- the example request lab should stop calling `initializeEngine()` / `shutdownEngine()` for normal requests
+- benchmark flows should stop owning Rust engine init/shutdown for the request path
 - smoke/realistic tests still assert the readiness-gated route behavior
 
 For V1:
 
 - `RhttpAdapter.isReady` may be effectively always `true` for the request path
-- the request path may stop requiring explicit initialization
-- but that statement must stay scoped to the new request transport
-- do not claim the whole package surface no longer needs readiness/lifecycle until legacy `RustAdapter`-shaped flows are either removed or explicitly shimmed
+- the request happy path stops requiring explicit initialization
+- retained legacy `RustAdapter` flows still own their own lifecycle when explicitly used
+- do not claim the whole package surface no longer needs readiness/lifecycle until legacy `RustAdapter`-shaped flows are either removed or fully retired
 
 ## 8. Transfer Task Guardrail for V1
 
@@ -376,7 +378,7 @@ Mitigation:
 - add `RhttpAdapter`
 - switch only request routing to `RhttpAdapter`
 - keep transfer behavior Dio-only with explicit unsupported handling for forced Rust transfer calls
-- remove `RustAdapter`-shaped request compatibility from the promise unless a separate shim is intentionally implemented
+- keep only a narrow deprecated shim for `standardWithRust()` / `rustAdapter` legacy request compatibility
 - preserve thin gateway and fallback logic
 - keep request-body semantics locked to `encodeRequestBody()`
 

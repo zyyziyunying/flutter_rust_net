@@ -26,4 +26,25 @@ void main() {
     expect(NetHeaderName.contentType.wireName, 'content-type');
     expect(NetHeaderName.idempotencyKey.wireName, 'idempotency-key');
   });
+
+  test('exports retained legacy compat symbols from root barrel', () {
+    const initOptions = RustEngineInitOptions(
+      cacheDir: '/tmp/flutter_rust_net_compat',
+    );
+    final adapter = RustAdapter(
+      initialized: true,
+      requestHandler: (request) async => NetResponse(
+        statusCode: 200,
+        headers: const <String, String>{},
+        bodyBytes: const <int>[],
+        bridgeBytes: 0,
+        channel: NetChannel.rust,
+        fromFallback: false,
+        costMs: 1,
+      ),
+    );
+
+    expect(initOptions.cacheDir, '/tmp/flutter_rust_net_compat');
+    expect(adapter.isReady, isTrue);
+  });
 }

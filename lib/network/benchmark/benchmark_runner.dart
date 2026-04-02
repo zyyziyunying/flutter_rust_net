@@ -1,36 +1,42 @@
-import 'dart:io';
 import 'dart:math';
 
 import 'package:dio/dio.dart';
 
 import '../dio_adapter.dart';
+import '../net_adapter.dart';
 import '../net_feature_flag.dart';
 import '../net_models.dart';
 import '../network_gateway.dart';
+import '../rhttp_adapter.dart';
 import '../routing_policy.dart';
-import '../rust_adapter.dart';
 import '../rust_bridge_api.dart';
 import 'benchmark_accumulator.dart';
 import 'benchmark_response_consumer.dart';
 import 'benchmark_scenario_server.dart';
 import 'benchmark_types.dart';
 
-int _benchmarkCacheRunSequence = 0;
-
 Future<BenchmarkReport> runNetworkBenchmark(
   BenchmarkConfig config, {
   BenchLogger? log,
   RustBridgeApi? rustBridgeApi,
+  NetAdapter? rustAdapter,
 }) async {
   config.validate();
   final logger = log ?? (_) {};
+  if (rustBridgeApi != null && rustAdapter == null) {
+    throw ArgumentError.value(
+      rustBridgeApi,
+      'rustBridgeApi',
+      'Thin-gateway V1 benchmark runner no longer treats rustBridgeApi as an '
+          'implicit request adapter. Omit rustBridgeApi or inject '
+          'rustAdapter explicitly.',
+    );
+  }
   final startedAt = DateTime.now();
   ScenarioServer? scenarioServer;
   final skippedChannels = <String, String>{};
-  var rustInitialized = false;
-  var benchmarkOwnsRustEngine = false;
+  var rustChannelPreflighted = false;
   var runtimeConfig = config;
-  String? ownedAutoRustCacheDir;
   BenchmarkReport? report;
   Object? pendingError;
   StackTrace? pendingStackTrace;
@@ -44,9 +50,16 @@ Future<BenchmarkReport> runNetworkBenchmark(
       ),
     ),
   );
-  final rustAdapter = RustAdapter(bridgeApi: rustBridgeApi);
+  final primaryRequestAdapter = rustAdapter ?? RhttpAdapter();
 
   try {
+    if (rustBridgeApi != null) {
+      logger(
+        '[network-bench] rustBridgeApi is retained only for legacy '
+        'compatibility; the injected rustAdapter controls the thin-gateway '
+        'V1 request benchmark path.',
+      );
+    }
     final resolvedScenarioBaseUrl = resolveScenarioBaseUrl(
       config.scenarioBaseUrl,
     );
@@ -61,31 +74,26 @@ Future<BenchmarkReport> runNetworkBenchmark(
       benchmarkBaseUrl = scenarioServer.baseUrl;
     }
 
+    if (config.rustCacheEnabled) {
+      logger(
+        '[network-bench] rust cache settings are ignored for the V1 '
+        'rhttp request path.',
+      );
+    }
+
     if (config.channels.contains(BenchmarkChannel.rust) &&
-        config.initializeRust) {
-      logger('[network-bench] initializing rust engine...');
+        (config.initializeRust || config.requireRust)) {
+      logger('[network-bench] preparing rust request channel...');
       try {
-        final defaultRustCacheDir = config.rustCacheDir == null
-            ? _defaultBenchmarkRustCacheDir(startedAt)
-            : null;
-        runtimeConfig = config.resolveRuntimeConfig(
-          defaultRustCacheDir: defaultRustCacheDir,
+        rustChannelPreflighted = await _preparePrimaryRequestAdapter(
+          primaryRequestAdapter,
         );
-        ownedAutoRustCacheDir =
-            config.rustCacheDir == null && runtimeConfig.rustCacheEnabled
-            ? runtimeConfig.resolvedRustCacheDir
-            : null;
-        await rustAdapter.initializeEngine(
-          options: runtimeConfig.toRustEngineInitOptions(),
-        );
-        rustInitialized = true;
-        benchmarkOwnsRustEngine = rustAdapter.ownsEngineScope;
-        logger(
-          '[network-bench] rust engine initialized'
-          '${benchmarkOwnsRustEngine ? ' (owned)' : ' (reused scope)'}',
-        );
+        if (!rustChannelPreflighted) {
+          throw StateError('rhttp request channel is not ready');
+        }
+        logger('[network-bench] rust request channel ready');
       } catch (error) {
-        final reason = 'rust init failed: $error';
+        final reason = 'rust request channel setup failed: $error';
         if (config.requireRust) {
           rethrow;
         }
@@ -101,7 +109,7 @@ Future<BenchmarkReport> runNetworkBenchmark(
         enableFallback: config.enableFallback,
       ),
       dioAdapter: dioAdapter,
-      rustAdapter: rustAdapter,
+      rustAdapter: primaryRequestAdapter,
     );
 
     final orderedChannels = [...config.channels]
@@ -144,16 +152,13 @@ Future<BenchmarkReport> runNetworkBenchmark(
     }
 
     final finishedAt = DateTime.now();
-    final rustCacheObservation = rustInitialized
-        ? await _observeRustCache(runtimeConfig)
-        : null;
     report = BenchmarkReport(
       startedAt: startedAt,
       finishedAt: finishedAt,
       config: runtimeConfig,
       baseUrl: benchmarkBaseUrl,
-      rustInitialized: rustInitialized,
-      rustCacheObservation: rustCacheObservation,
+      rustChannelPreflighted: rustChannelPreflighted,
+      rustCacheObservation: null,
       skippedChannels: Map.unmodifiable(skippedChannels),
       channelResults: List.unmodifiable(results),
     );
@@ -164,38 +169,12 @@ Future<BenchmarkReport> runNetworkBenchmark(
     Object? cleanupError;
     StackTrace? cleanupStackTrace;
 
-    if (benchmarkOwnsRustEngine && rustAdapter.isReady) {
-      try {
-        logger('[network-bench] shutting down owned rust engine...');
-        await rustAdapter.shutdownEngine();
-        logger('[network-bench] owned rust engine shut down');
-      } catch (error, stackTrace) {
-        cleanupError = error;
-        cleanupStackTrace = stackTrace;
-        if (pendingError != null) {
-          logger('[network-bench] owned rust engine shutdown failed: $error');
-        }
-      }
-    }
-
-    if (ownedAutoRustCacheDir != null &&
-        (!benchmarkOwnsRustEngine || cleanupError == null)) {
-      await _deleteDirectoryBestEffort(
-        Directory(ownedAutoRustCacheDir),
-        logger: logger,
-      );
-    }
-
     if (scenarioServer != null) {
       try {
         await scenarioServer.close();
       } catch (error, stackTrace) {
-        if (cleanupError == null) {
-          cleanupError = error;
-          cleanupStackTrace = stackTrace;
-        } else if (pendingError != null) {
-          logger('[network-bench] scenario server close failed: $error');
-        }
+        cleanupError = error;
+        cleanupStackTrace = stackTrace;
       }
     }
 
@@ -210,58 +189,11 @@ Future<BenchmarkReport> runNetworkBenchmark(
   return report!;
 }
 
-String _defaultBenchmarkRustCacheDir(DateTime startedAt) {
-  final runId =
-      '${startedAt.toUtc().microsecondsSinceEpoch}_${_benchmarkCacheRunSequence++}';
-  final sharedDefaultRoot = resolveRustCacheDirPath(null);
-  final separator = Platform.pathSeparator;
-  if (sharedDefaultRoot.endsWith(separator)) {
-    return '${sharedDefaultRoot}benchmark_$runId';
+Future<bool> _preparePrimaryRequestAdapter(NetAdapter adapter) async {
+  if (adapter is RhttpAdapter) {
+    return adapter.ensureRequestReady();
   }
-  return '$sharedDefaultRoot${Platform.pathSeparator}benchmark_$runId';
-}
-
-Future<RustCacheObservation?> _observeRustCache(BenchmarkConfig config) async {
-  if (!config.rustCacheEnabled) {
-    return null;
-  }
-  final cacheDir = config.resolvedRustCacheDir;
-  final rootBytes = await _directoryFileBytes(Directory(cacheDir));
-  return RustCacheObservation(cacheDir: cacheDir, rootBytes: rootBytes);
-}
-
-Future<int> _directoryFileBytes(Directory root) async {
-  if (!await root.exists()) {
-    return 0;
-  }
-
-  var total = 0;
-  await for (final entity in root.list(recursive: true, followLinks: false)) {
-    if (entity is! File) {
-      continue;
-    }
-    final metadata = await entity.stat();
-    total += metadata.size;
-  }
-  return total;
-}
-
-Future<void> _deleteDirectoryBestEffort(
-  Directory directory, {
-  required BenchLogger logger,
-}) async {
-  try {
-    if (!await directory.exists()) {
-      return;
-    }
-    await directory.delete(recursive: true);
-    logger('[network-bench] deleted owned rust cache dir ${directory.path}');
-  } catch (error) {
-    logger(
-      '[network-bench] failed to delete owned rust cache dir '
-      '${directory.path}: $error',
-    );
-  }
+  return adapter.isReady;
 }
 
 Future<ChannelBenchmarkResult> _runChannelBenchmark({

@@ -8,6 +8,7 @@ import 'package:flutter_rust_net/network/net_adapter.dart';
 import 'package:flutter_rust_net/network/net_feature_flag.dart';
 import 'package:flutter_rust_net/network/net_models.dart';
 import 'package:flutter_rust_net/network/network_gateway.dart';
+import 'package:flutter_rust_net/network/rhttp_adapter.dart';
 import 'package:flutter_rust_net/network/routing_policy.dart';
 import 'package:flutter_rust_net/network/rust_adapter.dart';
 
@@ -19,22 +20,27 @@ void main() {
       );
 
       expect(client.dioAdapter, isNotNull);
-      expect(client.rustAdapter, isNotNull);
+      expect(client.gateway.rustAdapter, isA<RhttpAdapter>());
+      expect(client.rustAdapter, isNull);
       expect(client.gateway.featureFlag.enableRustChannel, isFalse);
       expect(client.baseUrl, 'https://api.example.com');
     });
 
-    test('standard factory rejects rust enablement without ready adapter', () {
-      expect(
-        () => BytesFirstNetworkClient.standard(
+    test(
+      'standard factory uses rhttp primary adapter when rust routing is enabled',
+      () {
+        final client = BytesFirstNetworkClient.standard(
           featureFlag: const NetFeatureFlag(enableRustChannel: true),
-        ),
-        throwsA(isA<StateError>()),
-      );
-    });
+        );
+
+        expect(client.gateway.featureFlag.enableRustChannel, isTrue);
+        expect(client.gateway.rustAdapter, isA<RhttpAdapter>());
+        expect(client.rustAdapter, isNull);
+      },
+    );
 
     test(
-      'standard factory accepts ready rust adapter when explicitly enabled',
+      'standard factory accepts ready legacy rust adapter when explicitly enabled',
       () {
         final rustAdapter = RustAdapter(
           initialized: true,
@@ -60,7 +66,18 @@ void main() {
     );
 
     test(
-      'standardWithRust initializes rust adapter before returning',
+      'standardWithRust enables the rhttp primary channel without legacy init',
+      () async {
+        final client = await BytesFirstNetworkClient.standardWithRust();
+
+        expect(client.gateway.featureFlag.enableRustChannel, isTrue);
+        expect(client.gateway.rustAdapter, isA<RhttpAdapter>());
+        expect(client.rustAdapter, isNull);
+      },
+    );
+
+    test(
+      'standardWithRust does not initialize legacy rust adapters in V1',
       () async {
         final rustAdapter = RustAdapter(
           requestHandler: (request) async => NetResponse(
@@ -76,13 +93,50 @@ void main() {
 
         expect(rustAdapter.isReady, isFalse);
 
-        final client = await BytesFirstNetworkClient.standardWithRust(
-          rustAdapter: rustAdapter,
+        await expectLater(
+          () => BytesFirstNetworkClient.standardWithRust(
+            rustAdapter: rustAdapter,
+          ),
+          throwsA(
+            isA<StateError>().having(
+              (error) => error.message,
+              'message',
+              contains('no longer initializes legacy RustAdapter instances'),
+            ),
+          ),
+        );
+        expect(rustAdapter.isReady, isFalse);
+      },
+    );
+
+    test(
+      'request path keeps V1 metadata boundary for expectLargeResponse',
+      () async {
+        final responseBytes = Uint8List.fromList(utf8.encode('{"ok":true}'));
+        final client = BytesFirstNetworkClient.standard(
+          featureFlag: const NetFeatureFlag(
+            enableRustChannel: true,
+            enableFallback: false,
+          ),
+          rustAdapter: RhttpAdapter(
+            requestHandler: (request) async => RhttpAdapterResponse(
+              statusCode: 200,
+              headers: const [('content-type', 'application/json')],
+              bodyBytes: responseBytes,
+            ),
+          ),
         );
 
-        expect(rustAdapter.isReady, isTrue);
-        expect(client.gateway.featureFlag.enableRustChannel, isTrue);
-        expect(client.rustAdapter, same(rustAdapter));
+        final response = await client.request(
+          method: NetHttpMethod.get,
+          url: 'https://example.com/large',
+          expectLargeResponse: true,
+        );
+
+        expect(response.channel, NetChannel.rust);
+        expect(response.bodyFilePath, isNull);
+        expect(response.fromCache, isFalse);
+        expect(response.bodyBytes, responseBytes);
       },
     );
 

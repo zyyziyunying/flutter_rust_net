@@ -20,32 +20,32 @@
 4. 若结论影响执行计划或准入判断，联动更新 `docs/progress/p1_status_2026-02-25.md`。
 
 ## 1) 这个库在做什么
-`flutter_rust_net` 是一个 **Flutter + Rust** 双通道网络层：  
-对 Flutter 业务暴露统一请求/传输 API，对底层执行同时接入 Dart `Dio` 与 Rust `net_engine(reqwest)`，并通过 `flutter_rust_bridge` 连接两端。
+`flutter_rust_net` 当前是一个 **`rhttp + Dio` 薄网关**：  
+对 Flutter 业务暴露统一请求/传输 API，请求主路径走 `rhttp`，fallback 与 transfer 仍走 Dart `Dio`。
 
-它当前的目标是：在保持 Flutter 侧开发效率与稳定性的前提下，以 Rust 作为测试模式主通道（非最终线上结论），并通过统一路由与回退机制降低切换风险，完成业务 App 接入前准入验证。
+它当前的目标是：在保持 Flutter 侧开发效率与稳定性的前提下，用统一路由与回退机制承接请求通道迁移，并以最小业务改动完成 App 接入前验证。
 
 ## 2) 对外核心能力
 - 统一模型：`NetRequest / NetResponse / NetTransferTaskRequest / NetTransferEvent`。
 - 双通道路由：`RoutingPolicy + NetFeatureFlag` 支持总开关与强制通道。
-- 受控 fallback：仅 Rust 通道触发，且受错误类型与幂等性保护。
-- 统一传输任务入口：下载/上传启动、事件轮询、任务取消（Dio/Rust 都可接入）。
+- 受控 fallback：仅主请求通道（兼容名仍为 Rust 通道）触发，且受错误类型与幂等性保护。
+- 统一传输任务入口：下载/上传启动、事件轮询、任务取消；V1 底层实现为 Dio-only。
 - bytes-first 边界：跨 FFI 返回 `bytes` 或 `file path`，业务解码留在 Dart。
 - 大响应生命周期：支持 Rust 侧 `clear_cache` + Dart 侧 materialize 后 best-effort 清理。
 
 ## 3) 实现架构（分层思路）
 1. **Dart API 层**：业务仅依赖 `BytesFirstNetworkClient/NetworkGateway`。
 2. **请求编排层**：`NetworkGateway` 负责路由、readiness gate、fallback、链路信息汇总。
-3. **通道实现层**：`DioAdapter` 与 `RustAdapter` 实现统一 `NetAdapter` 接口。
-4. **桥接层**：`rust_bridge_api.dart` + FRB 生成代码完成 Dart/Rust 互调。
-5. **Rust 执行层**：`net_engine`（`reqwest + scheduler + event_bus`）处理请求、传输、取消、缓存清理。
+3. **通道实现层**：`RhttpAdapter` 负责 request 主路径，`DioAdapter` 负责 fallback 与 transfer。
+4. **兼容层**：`rust_adapter.dart` / `rust_bridge_api.dart` / FRB 生成代码只保留给 legacy bridge 兼容与测试。
+5. **Legacy Rust 执行层**：`net_engine` 仍留在仓库内，但不再是 V1 request happy path 的业务前提。
 
 ## 4) 一次请求的典型流程
 1. Dart 侧构造 `NetRequest`，进入 `NetworkGateway.request`。  
-2. `RoutingPolicy` 基于强制通道与总开关决策 Dio 或 Rust。  
-3. 若命中 Rust，先做 `isReady` 检查；未就绪直接走 Dio（避免“先失败再回退”）。  
-4. 执行通道请求：Rust 返回 inline bytes 或 file path；Dio 返回 bytes。  
-5. 若 Rust 出现可回退错误且请求满足幂等条件，网关自动回退至 Dio。  
+2. `RoutingPolicy` 基于强制通道与总开关决策 Dio 或主请求通道（兼容名仍为 Rust）。  
+3. 若命中主请求通道，网关准备 `RhttpAdapter`；正常 happy path 不要求业务先手动初始化 Rust engine。  
+4. 执行通道请求：V1 request path 统一返回 bytes；`bodyFilePath` 保持为空。  
+5. 若主请求通道出现可回退错误且请求满足幂等条件，网关自动回退至 Dio。  
 6. 业务层按 bytes-first 模式完成 decode/model 映射。
 
 ## 5) 与成熟 Flutter / Rust 网络库对比（截至 2026-02-25）
@@ -69,7 +69,7 @@
 - **优势**：针对大响应与传输任务有明确 bytes/file 边界，便于压测与演进。  
 - **数据侧观察（本仓库基准）**：`small_json` 场景 Rust p95 明显优于 Dio（11~13ms vs 42~48ms）；`jitter` 场景已完成 L1/L2 调参与复验并通过聚合门槛，但实网（弱网/远端）稳定性仍需补测。  
 - **短板**：声明式 API 生成、拦截器生态、证书/代理/DNS 策略能力尚不如成熟库完整。  
-- **短板**：虽已切到 Rust 默认主通道（`enableRustChannel=true`），但尚未在业务 App 接入场景完成长期与跨网络链路稳定性验证。
+- **短板**：虽已切到 `rhttp` 主请求通道（兼容开关名仍为 `enableRustChannel=true`），但尚未在业务 App 接入场景完成长期与跨网络链路稳定性验证。
 
 ## 6) 可借鉴成熟库的升级方向（建议）
 - **API 层**：补一层 Chopper/Retrofit 风格的声明式 API 生成（可选），降低业务接入成本。
@@ -83,7 +83,8 @@
 - Rust `DiskCache` 已有首版可用能力（GET + TTL/ETag/LRU + namespace 清理），策略参数化与更细粒度一致性仍待补齐。
 - 暂无内建“业务拦截器链”与“声明式 API 客户端生成”能力。
 - 协议/网络策略控制面（HTTP/3 显式配置、代理、证书高级能力）仍待扩展。
-- Rust 引擎生命周期的受支持入口已收口到 `RustAdapter.initializeEngine()` / `shutdownEngine()`；直接调用底层 FRB 生成的 `shutdownNetEngine()` 不属于受支持路径，因为 Dart 侧共享 scope 状态无法自动同步。
+- V1 request happy path 不再要求业务侧调用 `RustAdapter.initializeEngine()` / `shutdownEngine()`。
+- `RustAdapter.initializeEngine()` / `shutdownEngine()` 仅保留给 legacy bridge 兼容与相关测试流；直接调用底层 FRB 生成的 `shutdownNetEngine()` 仍不属于受支持路径。
 
 ## 8) 打分制对比表（用于选型）
 
@@ -117,4 +118,3 @@
 - 本仓库：`flutter_rust_net/lib/network/`、`flutter_rust_net/native/rust/net_engine/src/`、`flutter_rust_net/docs/dio_rust_test/`（本地基准记录）。
 - pub.dev：Dio、http、Chopper、Retrofit、rhttp（版本与能力说明，访问日期：2026-02-25）。
 - docs.rs：reqwest、hyper（版本与项目定位，访问日期：2026-02-25）。
-

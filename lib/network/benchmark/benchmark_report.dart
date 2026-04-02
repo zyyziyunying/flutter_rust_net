@@ -8,7 +8,7 @@ class BenchmarkReport {
   final DateTime finishedAt;
   final BenchmarkConfig config;
   final String baseUrl;
-  final bool rustInitialized;
+  final bool rustChannelPreflighted;
   final RustCacheObservation? rustCacheObservation;
   final Map<String, String> skippedChannels;
   final List<ChannelBenchmarkResult> channelResults;
@@ -18,7 +18,7 @@ class BenchmarkReport {
     required this.finishedAt,
     required this.config,
     required this.baseUrl,
-    required this.rustInitialized,
+    required this.rustChannelPreflighted,
     required this.rustCacheObservation,
     required this.skippedChannels,
     required this.channelResults,
@@ -26,13 +26,19 @@ class BenchmarkReport {
 
   Duration get wallClockDuration => finishedAt.difference(startedAt);
 
+  @Deprecated(
+    'Use rustChannelPreflighted instead. Thin-gateway V1 reports optional '
+    'request-channel preflight, not general rust initialization state.',
+  )
+  bool get rustInitialized => rustChannelPreflighted;
+
   Map<String, dynamic> toJson() {
     return {
       'startedAt': startedAt.toIso8601String(),
       'finishedAt': finishedAt.toIso8601String(),
       'wallClockMs': wallClockDuration.inMilliseconds,
       'baseUrl': baseUrl,
-      'rustInitialized': rustInitialized,
+      'rustChannelPreflighted': rustChannelPreflighted,
       'rustCacheObservation': rustCacheObservation?.toJson(),
       'config': config.toJson(),
       'skippedChannels': skippedChannels,
@@ -48,7 +54,7 @@ class BenchmarkReport {
           'concurrency=${config.concurrency} '
           'warmup=${config.warmupRequests}',
       '[network-bench] baseUrl=$baseUrl '
-          'rustInitialized=$rustInitialized '
+          'rustChannelPreflighted=$rustChannelPreflighted '
           'enableFallback=${config.enableFallback}',
     ];
     final cacheObservation = rustCacheObservation;

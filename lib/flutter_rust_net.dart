@@ -4,6 +4,7 @@ export 'network/net_adapter.dart';
 export 'network/net_feature_flag.dart';
 export 'network/net_models.dart';
 export 'network/network_gateway.dart';
+export 'network/rhttp_adapter.dart';
 export 'network/routing_policy.dart';
 export 'network/rust_adapter.dart';
 export 'network/rust_bridge_api.dart';

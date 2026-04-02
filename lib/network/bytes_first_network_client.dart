@@ -3,9 +3,11 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'dio_adapter.dart';
+import 'net_adapter.dart';
 import 'net_feature_flag.dart';
 import 'net_models.dart';
 import 'network_gateway.dart';
+import 'rhttp_adapter.dart';
 import 'routing_policy.dart';
 import 'rust_adapter.dart';
 import 'url_resolution.dart';
@@ -130,16 +132,18 @@ class BytesFirstNetworkClient {
     ),
     String baseUrl = '',
     DioAdapter? dioAdapter,
-    RustAdapter? rustAdapter,
+    NetAdapter? rustAdapter,
   }) {
     final resolvedDioAdapter = dioAdapter ?? DioAdapter();
-    final resolvedRustAdapter = rustAdapter ?? RustAdapter();
-    if (featureFlag.enableRustChannel && !resolvedRustAdapter.isReady) {
+    final resolvedRustAdapter = rustAdapter ?? RhttpAdapter();
+    if (featureFlag.enableRustChannel &&
+        resolvedRustAdapter is RustAdapter &&
+        !resolvedRustAdapter.isReady) {
       throw StateError(
         'BytesFirstNetworkClient.standard() requires an initialized '
-        'RustAdapter when enableRustChannel is true. Call '
-        'await rustAdapter.initializeEngine() first or use '
-        'await BytesFirstNetworkClient.standardWithRust().',
+        'legacy RustAdapter when enableRustChannel is true. Call '
+        'await rustAdapter.initializeEngine() first, or omit rustAdapter '
+        'to use the default rhttp primary request channel.',
       );
     }
     return BytesFirstNetworkClient(
@@ -153,19 +157,33 @@ class BytesFirstNetworkClient {
     );
   }
 
-  /// Explicit Rust opt-in path that initializes the adapter before use.
+  /// Compatibility shim for the primary request channel in thin-gateway V1.
+  ///
+  /// This no longer initializes legacy Rust engines. Omit [rustAdapter] to use
+  /// the default rhttp-backed request path, or pass a ready legacy adapter
+  /// explicitly if you still need the old bridge-backed behavior.
+  @Deprecated(
+    'Thin-gateway V1 keeps standardWithRust() only as a compatibility shim; '
+    'it no longer initializes legacy Rust engines.',
+  )
   static Future<BytesFirstNetworkClient> standardWithRust({
     RoutingPolicy routingPolicy = const RoutingPolicy(),
     bool enableFallback = true,
     String baseUrl = '',
     DioAdapter? dioAdapter,
-    RustAdapter? rustAdapter,
+    NetAdapter? rustAdapter,
     RustEngineInitOptions rustInitOptions = const RustEngineInitOptions(),
   }) async {
-    final resolvedRustAdapter = rustAdapter ?? RustAdapter();
-    if (!resolvedRustAdapter.isReady) {
-      await resolvedRustAdapter.initializeEngine(options: rustInitOptions);
+    final resolvedRustAdapter = rustAdapter ?? RhttpAdapter();
+    if (resolvedRustAdapter is RustAdapter && !resolvedRustAdapter.isReady) {
+      throw StateError(
+        'BytesFirstNetworkClient.standardWithRust() no longer initializes '
+        'legacy RustAdapter instances in thin-gateway V1. Pass a ready '
+        'RustAdapter explicitly, or omit rustAdapter to use the default '
+        'rhttp primary request channel.',
+      );
     }
+    _ignoreRustInitOptions(rustInitOptions);
     return BytesFirstNetworkClient.standard(
       routingPolicy: routingPolicy,
       featureFlag: NetFeatureFlag(
@@ -178,6 +196,10 @@ class BytesFirstNetworkClient {
     );
   }
 
+  @Deprecated(
+    'Thin-gateway V1 request routing uses RhttpAdapter by default. '
+    'This getter only exposes explicitly injected legacy RustAdapter instances.',
+  )
   RustAdapter? get rustAdapter {
     final adapter = gateway.rustAdapter;
     return adapter is RustAdapter ? adapter : null;
@@ -191,8 +213,8 @@ class BytesFirstNetworkClient {
   /// Sends a regular request through the gateway.
   ///
   /// Routing currently only uses [forceChannel] and the client's feature flag.
-  /// [expectLargeResponse] is a Rust transport hint and does not affect
-  /// routing.
+  /// [expectLargeResponse] is retained as a thin-gateway V1 compatibility
+  /// no-op and does not affect routing.
   Future<NetResponse> request({
     required NetHttpMethod method,
     required String url,
@@ -360,6 +382,10 @@ class BytesFirstNetworkClient {
     }
     return request.withBaseUrl(baseUrl);
   }
+}
+
+void _ignoreRustInitOptions(RustEngineInitOptions options) {
+  final _ = options;
 }
 
 String? _extractContentType(Map<String, String> headers) {

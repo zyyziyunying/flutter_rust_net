@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
@@ -27,7 +26,6 @@ class _RequestLabPageState extends State<RequestLabPage> {
   late final TextEditingController _bodyController;
   late final Dio _dio;
   late final DioAdapter _dioAdapter;
-  late final RustAdapter _rustAdapter;
 
   NetHttpMethod _method = NetHttpMethod.get;
   RequestRouteMode _routeMode = RequestRouteMode.auto;
@@ -37,7 +35,8 @@ class _RequestLabPageState extends State<RequestLabPage> {
   bool _expectLargeResponse = false;
   bool _sending = false;
   String _eventLog =
-      'Load a preset or edit the request form, then send traffic through Dio or Rust.';
+      'Load a preset or edit the request form, then send traffic through Dio '
+      'or the primary Rust request channel (rhttp).';
   RequestResult? _lastResult;
 
   List<RequestPreset> get _presets => widget.config.presets;
@@ -69,7 +68,6 @@ class _RequestLabPageState extends State<RequestLabPage> {
       ),
     );
     _dioAdapter = DioAdapter(client: _dio);
-    _rustAdapter = RustAdapter();
   }
 
   @override
@@ -80,9 +78,6 @@ class _RequestLabPageState extends State<RequestLabPage> {
     _queryController.dispose();
     _bodyController.dispose();
     _dio.close(force: true);
-    if (_rustAdapter.isReady) {
-      unawaited(_rustAdapter.shutdownEngine());
-    }
     super.dispose();
   }
 
@@ -137,15 +132,9 @@ class _RequestLabPageState extends State<RequestLabPage> {
       final forceChannel = _routeMode.forceChannel;
       final enableRustChannel = _autoUseRust || forceChannel == NetChannel.rust;
 
-      if (enableRustChannel && !_rustAdapter.isReady) {
-        _appendLog('[request] initializing Rust engine...');
-        await _rustAdapter.initializeEngine();
-      }
-
       final client = BytesFirstNetworkClient.standard(
         baseUrl: baseUrl,
         dioAdapter: _dioAdapter,
-        rustAdapter: _rustAdapter,
         featureFlag: NetFeatureFlag(
           enableRustChannel: enableRustChannel,
           enableFallback: _enableFallback,
@@ -558,7 +547,8 @@ class _RequestLabPageState extends State<RequestLabPage> {
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Expect large response'),
                 subtitle: const Text(
-                  'Rust transport hint for file-backed large bodies.',
+                  'Compatibility no-op in thin-gateway V1. Request responses '
+                  'still stay bytes-first with no file-backed body output.',
                 ),
                 value: _expectLargeResponse,
                 onChanged: _sending

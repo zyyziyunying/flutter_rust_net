@@ -1,23 +1,29 @@
 # flutter_rust_net
 
-`flutter_rust_net` is an extracted Flutter network layer that combines:
+`flutter_rust_net` is a thin Flutter network gateway that combines:
 
 - Dart gateway/routing/fallback (`NetworkGateway`)
-- Dio adapter (`DioAdapter`)
-- Rust adapter via flutter_rust_bridge (`RustAdapter`)
-- Generated FRB bridge files for package-local `native/rust/net_engine`
+- `rhttp` primary request adapter (`RhttpAdapter`)
+- Dio fallback + transfer adapter (`DioAdapter`)
+- Legacy FRB bridge files and `native/rust/net_engine` for retained compatibility/testing surfaces
 
 ## What this package provides
 
 - Unified request and transfer task abstractions (`NetRequest`, `NetResponse`, `NetTransferTaskRequest`)
 - HTTP method/header enums for safer callsites (`NetHttpMethod`, `NetHeaderName`)
 - Route policy + feature flags (`RoutingPolicy`, `NetFeatureFlag`)
-- Dio/Rust dual-channel execution with controlled fallback
+- `rhttp + Dio` dual-channel request execution with controlled fallback
+- Dio-only transfer execution in thin-gateway V1
 - Bytes-first client utilities (`BytesFirstNetworkClient`, including `standard()` factory)
 
-## Rust integration
+## Legacy Rust bridge integration
 
-This package expects the Rust dynamic library built from:
+The checked-in Rust dynamic library and FRB bindings remain in the repository
+for legacy `RustAdapter` compatibility/testing flows. The normal V1 request path
+does not require `RustAdapter.initializeEngine()` or a locally built
+`native/rust/net_engine`.
+
+Legacy bridge-backed flows expect the Rust dynamic library built from:
 
 - `native/rust/net_engine` (relative to this repository root)
 
@@ -30,7 +36,7 @@ dart run tool/rust_codegen.dart
 dart run tool/rust_build.dart --profile=release
 ```
 
-If you hit `Detected stale net_engine native library`, the checked-in/generated Rust sources are newer than the local dynamic library. Rebuild before running Rust benchmarks or real-bridge tests:
+If you hit `Detected stale net_engine native library`, the checked-in/generated Rust sources are newer than the local dynamic library. Rebuild before running legacy bridge tests or other real-bridge flows:
 
 ```bash
 dart run tool/rust_build.dart --profile=release
@@ -59,7 +65,7 @@ flutter run
 ## Quick usage
 
 ```dart
-// Safe default: stays on Dio until you opt into Rust explicitly.
+// Safe default: stays on Dio until you opt into the primary request channel.
 final client = BytesFirstNetworkClient.standard();
 
 final response = await client.request(
@@ -72,8 +78,8 @@ final response = await client.request(
 );
 ```
 
-To enable Rust routing, initialize the adapter up front instead of relying on
-runtime readiness fallback:
+To enable the primary request channel in V1, use the compatibility-name helper.
+This uses `rhttp` under the hood and does not require manual engine lifecycle:
 
 ```dart
 final client = await BytesFirstNetworkClient.standardWithRust();
@@ -82,12 +88,8 @@ final client = await BytesFirstNetworkClient.standardWithRust();
 Equivalent manual wiring:
 
 ```dart
-final rustAdapter = RustAdapter();
-await rustAdapter.initializeEngine();
-
 final client = BytesFirstNetworkClient.standard(
   featureFlag: const NetFeatureFlag(enableRustChannel: true),
-  rustAdapter: rustAdapter,
 );
 ```
 
@@ -108,20 +110,23 @@ final response = await client.request(
 overrides. The gateway resolves relative URLs before routing/fallback so Dio and
 Rust channels see the same absolute URL.
 
-Supported lifecycle usage:
+Transfer tasks remain Dio-only in thin-gateway V1. If you force
+`NetChannel.rust` for transfer APIs, the gateway fails explicitly instead of
+silently rerouting.
+
+Legacy bridge-backed compatibility:
 
 ```dart
+final rustAdapter = RustAdapter();
+await rustAdapter.initializeEngine();
+// ... legacy bridge-backed request/transfer/test flow ...
 await rustAdapter.shutdownEngine();
 ```
 
-Use `RustAdapter.initializeEngine()` / `shutdownEngine()` as the supported
-lifecycle API. Avoid calling the generated FRB `shutdownNetEngine()` directly,
-because that bypasses Dart-side shared-scope lifecycle tracking.
-The constructor `initialized` flag and `markInitialized()` are intended only
-for `requestHandler`-backed test doubles, not bridge-backed adapters.
-`RustEngineInitOptions.baseUrl` remains available for Rust-engine-specific
-compatibility, but cross-channel code should prefer the request/client
-`baseUrl` API above.
+Use `RustAdapter.initializeEngine()` / `shutdownEngine()` only when you
+explicitly opt into the retained legacy bridge path. The constructor
+`initialized` flag and `markInitialized()` are intended only for
+`requestHandler`-backed test doubles, not bridge-backed adapters.
 
 `body` uses one shared contract on both Dio and Rust channels:
 
