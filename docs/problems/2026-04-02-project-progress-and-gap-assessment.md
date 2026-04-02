@@ -96,10 +96,13 @@ Evidence:
 
 Fresh verification completed in the current environment:
 
-- `flutter test` passed
+- `flutter test` passed with `139 passed; 13 skipped`
 - `cd native/rust/net_engine && cargo test -q` passed with `40 passed; 0 failed`
 
-This indicates the current branch is not blocked by obvious red tests.
+This indicates the current branch is not blocked by obvious red tests in the
+default test lanes. But the Flutter result is not a full native-path proof:
+the skipped cases still include real-`rhttp` and real-bridge verification that
+require local native prerequisites.
 
 ## Main Gaps And Defects
 
