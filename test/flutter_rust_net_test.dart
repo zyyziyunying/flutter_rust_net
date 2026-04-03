@@ -27,24 +27,12 @@ void main() {
     expect(NetHeaderName.idempotencyKey.wireName, 'idempotency-key');
   });
 
-  test('exports retained legacy compat symbols from root barrel', () {
-    const initOptions = RustEngineInitOptions(
-      cacheDir: '/tmp/flutter_rust_net_compat',
-    );
-    final adapter = RustAdapter(
-      initialized: true,
-      requestHandler: (request) async => NetResponse(
-        statusCode: 200,
-        headers: const <String, String>{},
-        bodyBytes: const <int>[],
-        bridgeBytes: 0,
-        channel: NetChannel.rust,
-        fromFallback: false,
-        costMs: 1,
-      ),
+  test('exports the supported client surface from root barrel', () {
+    final client = BytesFirstNetworkClient.standard(
+      featureFlag: const NetFeatureFlag(enableRustChannel: true),
     );
 
-    expect(initOptions.cacheDir, '/tmp/flutter_rust_net_compat');
-    expect(adapter.isReady, isTrue);
+    expect(client.gateway.rustAdapter, isA<RhttpAdapter>());
+    expect(client.gateway.featureFlag.enableRustChannel, isTrue);
   });
 }

@@ -10,7 +10,6 @@ import 'package:flutter_rust_net/network/net_models.dart';
 import 'package:flutter_rust_net/network/network_gateway.dart';
 import 'package:flutter_rust_net/network/rhttp_adapter.dart';
 import 'package:flutter_rust_net/network/routing_policy.dart';
-import 'package:flutter_rust_net/network/rust_adapter.dart';
 
 void main() {
   group('BytesFirstNetworkClient', () {
@@ -21,7 +20,6 @@ void main() {
 
       expect(client.dioAdapter, isNotNull);
       expect(client.gateway.rustAdapter, isA<RhttpAdapter>());
-      expect(client.rustAdapter, isNull);
       expect(client.gateway.featureFlag.enableRustChannel, isFalse);
       expect(client.baseUrl, 'https://api.example.com');
     });
@@ -35,16 +33,14 @@ void main() {
 
         expect(client.gateway.featureFlag.enableRustChannel, isTrue);
         expect(client.gateway.rustAdapter, isA<RhttpAdapter>());
-        expect(client.rustAdapter, isNull);
       },
     );
 
     test(
-      'standard factory accepts ready legacy rust adapter when explicitly enabled',
+      'standard factory accepts an explicit primary adapter when explicitly enabled',
       () {
-        final rustAdapter = RustAdapter(
-          initialized: true,
-          requestHandler: (request) async => NetResponse(
+        final primaryAdapter = _FakeAdapter(
+          (request, {fromFallback = false}) async => NetResponse(
             statusCode: 200,
             headers: const <String, String>{},
             bodyBytes: const <int>[],
@@ -57,57 +53,22 @@ void main() {
 
         final client = BytesFirstNetworkClient.standard(
           featureFlag: const NetFeatureFlag(enableRustChannel: true),
-          rustAdapter: rustAdapter,
+          rustAdapter: primaryAdapter,
         );
 
         expect(client.gateway.featureFlag.enableRustChannel, isTrue);
-        expect(client.rustAdapter, same(rustAdapter));
+        expect(client.gateway.rustAdapter, same(primaryAdapter));
       },
     );
 
-    test(
-      'standardWithRust enables the rhttp primary channel without legacy init',
-      () async {
-        final client = await BytesFirstNetworkClient.standardWithRust();
+    test('does not expose the removed legacy rustAdapter getter', () {
+      final client = BytesFirstNetworkClient.standard();
 
-        expect(client.gateway.featureFlag.enableRustChannel, isTrue);
-        expect(client.gateway.rustAdapter, isA<RhttpAdapter>());
-        expect(client.rustAdapter, isNull);
-      },
-    );
-
-    test(
-      'standardWithRust does not initialize legacy rust adapters in V1',
-      () async {
-        final rustAdapter = RustAdapter(
-          requestHandler: (request) async => NetResponse(
-            statusCode: 200,
-            headers: const <String, String>{},
-            bodyBytes: const <int>[],
-            bridgeBytes: 0,
-            channel: NetChannel.rust,
-            fromFallback: false,
-            costMs: 1,
-          ),
-        );
-
-        expect(rustAdapter.isReady, isFalse);
-
-        await expectLater(
-          () => BytesFirstNetworkClient.standardWithRust(
-            rustAdapter: rustAdapter,
-          ),
-          throwsA(
-            isA<StateError>().having(
-              (error) => error.message,
-              'message',
-              contains('no longer initializes legacy RustAdapter instances'),
-            ),
-          ),
-        );
-        expect(rustAdapter.isReady, isFalse);
-      },
-    );
+      expect(
+        () => (client as dynamic).rustAdapter,
+        throwsA(isA<NoSuchMethodError>()),
+      );
+    });
 
     test(
       'request path keeps V1 metadata boundary for expectLargeResponse',

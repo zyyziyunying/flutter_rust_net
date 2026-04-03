@@ -157,54 +157,6 @@ class BytesFirstNetworkClient {
     );
   }
 
-  /// Compatibility shim for the primary request channel in thin-gateway V1.
-  ///
-  /// This no longer initializes legacy Rust engines. Omit [rustAdapter] to use
-  /// the default rhttp-backed request path, or pass a ready legacy adapter
-  /// explicitly if you still need the old bridge-backed behavior.
-  @Deprecated(
-    'Thin-gateway V1 keeps standardWithRust() only as a compatibility shim; '
-    'it no longer initializes legacy Rust engines.',
-  )
-  static Future<BytesFirstNetworkClient> standardWithRust({
-    RoutingPolicy routingPolicy = const RoutingPolicy(),
-    bool enableFallback = true,
-    String baseUrl = '',
-    DioAdapter? dioAdapter,
-    NetAdapter? rustAdapter,
-    RustEngineInitOptions rustInitOptions = const RustEngineInitOptions(),
-  }) async {
-    final resolvedRustAdapter = rustAdapter ?? RhttpAdapter();
-    if (resolvedRustAdapter is RustAdapter && !resolvedRustAdapter.isReady) {
-      throw StateError(
-        'BytesFirstNetworkClient.standardWithRust() no longer initializes '
-        'legacy RustAdapter instances in thin-gateway V1. Pass a ready '
-        'RustAdapter explicitly, or omit rustAdapter to use the default '
-        'rhttp primary request channel.',
-      );
-    }
-    _ignoreRustInitOptions(rustInitOptions);
-    return BytesFirstNetworkClient.standard(
-      routingPolicy: routingPolicy,
-      featureFlag: NetFeatureFlag(
-        enableRustChannel: true,
-        enableFallback: enableFallback,
-      ),
-      baseUrl: baseUrl,
-      dioAdapter: dioAdapter,
-      rustAdapter: resolvedRustAdapter,
-    );
-  }
-
-  @Deprecated(
-    'Thin-gateway V1 request routing uses RhttpAdapter by default. '
-    'This getter only exposes explicitly injected legacy RustAdapter instances.',
-  )
-  RustAdapter? get rustAdapter {
-    final adapter = gateway.rustAdapter;
-    return adapter is RustAdapter ? adapter : null;
-  }
-
   DioAdapter? get dioAdapter {
     final adapter = gateway.dioAdapter;
     return adapter is DioAdapter ? adapter : null;
@@ -382,10 +334,6 @@ class BytesFirstNetworkClient {
     }
     return request.withBaseUrl(baseUrl);
   }
-}
-
-void _ignoreRustInitOptions(RustEngineInitOptions options) {
-  final _ = options;
 }
 
 String? _extractContentType(Map<String, String> headers) {
