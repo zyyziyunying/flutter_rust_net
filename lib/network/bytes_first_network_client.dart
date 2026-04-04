@@ -9,7 +9,6 @@ import 'net_models.dart';
 import 'network_gateway.dart';
 import 'rhttp_adapter.dart';
 import 'routing_policy.dart';
-import 'rust_adapter.dart';
 import 'url_resolution.dart';
 
 class NetDecodeMetrics {
@@ -132,26 +131,21 @@ class BytesFirstNetworkClient {
     ),
     String baseUrl = '',
     DioAdapter? dioAdapter,
-    NetAdapter? rustAdapter,
+    NetAdapter? primaryAdapter,
+    @Deprecated('Use primaryAdapter instead.') NetAdapter? rustAdapter,
   }) {
-    final resolvedDioAdapter = dioAdapter ?? DioAdapter();
-    final resolvedRustAdapter = rustAdapter ?? RhttpAdapter();
-    if (featureFlag.enableRustChannel &&
-        resolvedRustAdapter is RustAdapter &&
-        !resolvedRustAdapter.isReady) {
-      throw StateError(
-        'BytesFirstNetworkClient.standard() requires an initialized '
-        'legacy RustAdapter when enableRustChannel is true. Call '
-        'await rustAdapter.initializeEngine() first, or omit rustAdapter '
-        'to use the default rhttp primary request channel.',
-      );
+    if (primaryAdapter != null && rustAdapter != null) {
+      throw ArgumentError('Provide only one of primaryAdapter or rustAdapter.');
     }
+    final resolvedDioAdapter = dioAdapter ?? DioAdapter();
+    final resolvedPrimaryAdapter =
+        primaryAdapter ?? rustAdapter ?? RhttpAdapter();
     return BytesFirstNetworkClient(
       gateway: NetworkGateway(
         routingPolicy: routingPolicy,
         featureFlag: featureFlag,
         dioAdapter: resolvedDioAdapter,
-        rustAdapter: resolvedRustAdapter,
+        primaryRequestAdapter: resolvedPrimaryAdapter,
       ),
       baseUrl: baseUrl,
     );

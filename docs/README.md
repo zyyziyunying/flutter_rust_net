@@ -13,11 +13,13 @@
 
 当前索引：
 
+- `progress/frb_hard_cut_status_2026-04-04.md`：FRB hard cut 当前执行状态事实源。
 - `progress/p1_status_2026-02-25.md`：P1 当前状态（精简版状态页）。
 - `progress/rust_lifecycle_scope_status_2026-03-12.md`：Rust 生命周期与共享作用域修复状态。
 - `analyse/rust_network_business_fit_analysis_2026-03-13.md`：Rust 通道业务适用性分析与接口分流建议。
 - `problems/2026-04-02-rhttp-thin-gateway-design-review-status-check.md`：thin-gateway 设计评审当前状态核对，作为当前状态事实源。
 - `problems/rust_net_engine_blockers_2026-03-13.md`：当前 git 更改区 Rust net_engine 接入的阻塞问题追踪。
+- `plan/2026-04-04-remove-frb-hard-cut-resequenced-plan.md`：FRB hard cut 当前执行计划。
 - `plan/network_p1_execution_template_2026-02-25.md`：P1 执行模板。
 - `plan/golang_remote_benchmark_server_plan_2026-03-02.md`：远端真机压测 Go 服务方案。
 - `plan/cache_namespace_budget_governance_plan_2026-03-14.md`：namespace 缓存预算治理方案与后续扩展建议。

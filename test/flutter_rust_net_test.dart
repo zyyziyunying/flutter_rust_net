@@ -32,7 +32,7 @@ void main() {
       featureFlag: const NetFeatureFlag(enableRustChannel: true),
     );
 
-    expect(client.gateway.rustAdapter, isA<RhttpAdapter>());
+    expect(client.gateway.primaryRequestAdapter, isA<RhttpAdapter>());
     expect(client.gateway.featureFlag.enableRustChannel, isTrue);
   });
 }

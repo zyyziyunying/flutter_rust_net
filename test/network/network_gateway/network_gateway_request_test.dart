@@ -40,7 +40,7 @@ void main() {
           routingPolicy: const RoutingPolicy(),
           featureFlag: const NetFeatureFlag(enableRustChannel: true),
           dioAdapter: dio,
-          rustAdapter: rust,
+          primaryRequestAdapter: rust,
         );
 
         final response = await gateway.request(
@@ -81,7 +81,7 @@ void main() {
           enableFallback: true,
         ),
         dioAdapter: dio,
-        rustAdapter: rust,
+        primaryRequestAdapter: rust,
       );
 
       final response = await gateway.request(
@@ -122,7 +122,7 @@ void main() {
             enableFallback: true,
           ),
           dioAdapter: dio,
-          rustAdapter: rust,
+          primaryRequestAdapter: rust,
         );
 
         final response = await gateway.request(
@@ -170,7 +170,7 @@ void main() {
             enableFallback: true,
           ),
           dioAdapter: dio,
-          rustAdapter: rust,
+          primaryRequestAdapter: rust,
         );
 
         final response = await gateway.request(
@@ -212,7 +212,7 @@ void main() {
         routingPolicy: const RoutingPolicy(),
         featureFlag: const NetFeatureFlag(enableRustChannel: false),
         dioAdapter: dio,
-        rustAdapter: rust,
+        primaryRequestAdapter: rust,
       );
 
       final response = await gateway.request(
@@ -251,7 +251,7 @@ void main() {
           enableFallback: true,
         ),
         dioAdapter: dio,
-        rustAdapter: rust,
+        primaryRequestAdapter: rust,
       );
 
       final response = await gateway.request(
@@ -302,7 +302,7 @@ void main() {
             enableFallback: true,
           ),
           dioAdapter: dio,
-          rustAdapter: rust,
+          primaryRequestAdapter: rust,
         );
 
         final response = await gateway.request(
@@ -351,7 +351,7 @@ void main() {
           enableFallback: true,
         ),
         dioAdapter: dio,
-        rustAdapter: rust,
+        primaryRequestAdapter: rust,
       );
 
       final response = await gateway.request(
@@ -390,7 +390,7 @@ void main() {
           enableFallback: false,
         ),
         dioAdapter: dio,
-        rustAdapter: rust,
+        primaryRequestAdapter: rust,
       );
 
       expect(
@@ -435,7 +435,7 @@ void main() {
           enableFallback: true,
         ),
         dioAdapter: dio,
-        rustAdapter: rust,
+        primaryRequestAdapter: rust,
       );
 
       expect(
@@ -485,7 +485,7 @@ void main() {
             enableFallback: true,
           ),
           dioAdapter: dio,
-          rustAdapter: rust,
+          primaryRequestAdapter: rust,
         );
 
         expect(
@@ -534,7 +534,7 @@ void main() {
             enableFallback: true,
           ),
           dioAdapter: dio,
-          rustAdapter: rust,
+          primaryRequestAdapter: rust,
         );
 
         expect(
@@ -583,7 +583,7 @@ void main() {
             enableFallback: true,
           ),
           dioAdapter: dio,
-          rustAdapter: rust,
+          primaryRequestAdapter: rust,
         );
 
         final response = await gateway.request(

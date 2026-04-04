@@ -19,7 +19,7 @@ void main() {
       );
 
       expect(client.dioAdapter, isNotNull);
-      expect(client.gateway.rustAdapter, isA<RhttpAdapter>());
+      expect(client.gateway.primaryRequestAdapter, isA<RhttpAdapter>());
       expect(client.gateway.featureFlag.enableRustChannel, isFalse);
       expect(client.baseUrl, 'https://api.example.com');
     });
@@ -32,7 +32,7 @@ void main() {
         );
 
         expect(client.gateway.featureFlag.enableRustChannel, isTrue);
-        expect(client.gateway.rustAdapter, isA<RhttpAdapter>());
+        expect(client.gateway.primaryRequestAdapter, isA<RhttpAdapter>());
       },
     );
 
@@ -53,11 +53,11 @@ void main() {
 
         final client = BytesFirstNetworkClient.standard(
           featureFlag: const NetFeatureFlag(enableRustChannel: true),
-          rustAdapter: primaryAdapter,
+          primaryAdapter: primaryAdapter,
         );
 
         expect(client.gateway.featureFlag.enableRustChannel, isTrue);
-        expect(client.gateway.rustAdapter, same(primaryAdapter));
+        expect(client.gateway.primaryRequestAdapter, same(primaryAdapter));
       },
     );
 
@@ -79,7 +79,7 @@ void main() {
             enableRustChannel: true,
             enableFallback: false,
           ),
-          rustAdapter: RhttpAdapter(
+          primaryAdapter: RhttpAdapter(
             requestHandler: (request) async => RhttpAdapterResponse(
               statusCode: 200,
               headers: const [('content-type', 'application/json')],
@@ -119,7 +119,10 @@ void main() {
               costMs: 1,
             );
           }),
-          rustAdapter: _FakeAdapter((request, {fromFallback = false}) async {
+          primaryRequestAdapter: _FakeAdapter((
+            request, {
+            fromFallback = false,
+          }) async {
             return NetResponse(
               statusCode: 200,
               headers: const <String, String>{},
@@ -168,7 +171,10 @@ void main() {
                 costMs: 1,
               );
             }),
-            rustAdapter: _FakeAdapter((request, {fromFallback = false}) async {
+            primaryRequestAdapter: _FakeAdapter((
+              request, {
+              fromFallback = false,
+            }) async {
               return NetResponse(
                 statusCode: 200,
                 headers: const <String, String>{},
@@ -214,7 +220,10 @@ void main() {
                 return request.taskId;
               },
             ),
-            rustAdapter: _FakeAdapter((request, {fromFallback = false}) async {
+            primaryRequestAdapter: _FakeAdapter((
+              request, {
+              fromFallback = false,
+            }) async {
               return NetResponse(
                 statusCode: 200,
                 headers: const <String, String>{},
@@ -371,7 +380,7 @@ BytesFirstNetworkClient _buildClient(NetResponse response) {
         channel: NetChannel.dio,
       ),
     ),
-    rustAdapter: _FakeAdapter(
+    primaryRequestAdapter: _FakeAdapter(
       (request, {fromFallback = false}) async => response.withMeta(
         fromFallback: fromFallback,
         channel: NetChannel.rust,

@@ -53,7 +53,7 @@ void main() {
           routingPolicy: const RoutingPolicy(),
           featureFlag: const NetFeatureFlag(enableRustChannel: true),
           dioAdapter: dio,
-          rustAdapter: rust,
+          primaryRequestAdapter: rust,
         );
 
         final startResult = await gateway.startTransferTask(
@@ -112,7 +112,7 @@ void main() {
         routingPolicy: const RoutingPolicy(),
         featureFlag: const NetFeatureFlag(enableRustChannel: true),
         dioAdapter: dio,
-        rustAdapter: rust,
+        primaryRequestAdapter: rust,
       );
 
       final startResult = await gateway.startTransferTask(
@@ -166,7 +166,7 @@ void main() {
           routingPolicy: const RoutingPolicy(),
           featureFlag: const NetFeatureFlag(enableRustChannel: true),
           dioAdapter: dio,
-          rustAdapter: rust,
+          primaryRequestAdapter: rust,
         );
 
         await expectLater(
@@ -195,7 +195,9 @@ void main() {
                 .having(
                   (error) => error.message,
                   'message',
-                  contains('Transfer operations do not support NetChannel.rust'),
+                  contains(
+                    'Transfer operations do not support NetChannel.rust',
+                  ),
                 ),
           ),
         );
@@ -245,7 +247,7 @@ void main() {
           enableFallback: true,
         ),
         dioAdapter: dio,
-        rustAdapter: rust,
+        primaryRequestAdapter: rust,
       );
 
       await expectLater(
@@ -267,7 +269,11 @@ void main() {
                 NetErrorCode.infrastructure,
               )
               .having((error) => error.channel, 'channel', NetChannel.dio)
-              .having((error) => error.requestId, 'requestId', 'dio-transfer-1'),
+              .having(
+                (error) => error.requestId,
+                'requestId',
+                'dio-transfer-1',
+              ),
         ),
       );
 
@@ -308,7 +314,7 @@ void main() {
         routingPolicy: const RoutingPolicy(),
         featureFlag: const NetFeatureFlag(enableRustChannel: true),
         dioAdapter: dio,
-        rustAdapter: rust,
+        primaryRequestAdapter: rust,
       );
 
       final startResult = await gateway.startTransferTask(

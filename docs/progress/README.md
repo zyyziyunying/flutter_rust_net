@@ -15,4 +15,5 @@
 
 - `pX_status_YYYY-MM-DD.md`（阶段状态）
 - `rollout_status_YYYY-MM-DD.md`（灰度/上线状态）
+- `<topic>_status_YYYY-MM-DD.md`（专题状态）
 

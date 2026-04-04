@@ -35,7 +35,7 @@ class NetworkGateway {
   final RoutingPolicy routingPolicy;
   final NetFeatureFlag featureFlag;
   final NetAdapter dioAdapter;
-  final NetAdapter rustAdapter;
+  final NetAdapter primaryRequestAdapter;
   final LinkedHashMap<String, NetChannel> _transferTaskChannels =
       LinkedHashMap<String, NetChannel>();
 
@@ -43,8 +43,20 @@ class NetworkGateway {
     required this.routingPolicy,
     required this.featureFlag,
     required this.dioAdapter,
-    required this.rustAdapter,
-  });
+    NetAdapter? primaryRequestAdapter,
+    NetAdapter? rustAdapter,
+  }) : assert(
+         primaryRequestAdapter != null || rustAdapter != null,
+         'Provide primaryRequestAdapter or rustAdapter.',
+       ),
+       assert(
+         primaryRequestAdapter == null || rustAdapter == null,
+         'Provide only one of primaryRequestAdapter or rustAdapter.',
+       ),
+       primaryRequestAdapter = primaryRequestAdapter ?? rustAdapter!;
+
+  @Deprecated('Use primaryRequestAdapter instead.')
+  NetAdapter get rustAdapter => primaryRequestAdapter;
 
   Future<NetResponse> request(
     NetRequest request, {
@@ -60,24 +72,27 @@ class NetworkGateway {
     final decision = routingPolicy.decide(effectiveRequest, featureFlag);
 
     if (decision.channel == NetChannel.rust) {
-      if (!await _isRustRequestReady()) {
+      if (!await _isPrimaryRequestReady()) {
         final response = await dioAdapter.request(effectiveRequest);
         return response.withMeta(
           routeReason: '${decision.reason} -> $_rustNotReadyRouteSuffix',
         );
       }
-      return _requestFromRust(effectiveRequest, routeReason: decision.reason);
+      return _requestFromPrimaryAdapter(
+        effectiveRequest,
+        routeReason: decision.reason,
+      );
     }
 
     final response = await dioAdapter.request(effectiveRequest);
     return response.withMeta(routeReason: decision.reason);
   }
 
-  Future<bool> _isRustRequestReady() async {
-    if (rustAdapter.isReady) {
+  Future<bool> _isPrimaryRequestReady() async {
+    if (primaryRequestAdapter.isReady) {
       return true;
     }
-    final adapter = rustAdapter;
+    final adapter = primaryRequestAdapter;
     if (adapter is RhttpAdapter) {
       return adapter.ensureRequestReady();
     }
@@ -149,12 +164,12 @@ class NetworkGateway {
     return false;
   }
 
-  Future<NetResponse> _requestFromRust(
+  Future<NetResponse> _requestFromPrimaryAdapter(
     NetRequest request, {
     required String routeReason,
   }) async {
     try {
-      final response = await rustAdapter.request(request);
+      final response = await primaryRequestAdapter.request(request);
       return response.withMeta(routeReason: routeReason);
     } catch (error) {
       final netError = error is NetException
@@ -190,7 +205,9 @@ class NetworkGateway {
     String? fallbackReason,
     NetException? fallbackError,
   }) async {
-    final adapter = channel == NetChannel.rust ? rustAdapter : dioAdapter;
+    final adapter = channel == NetChannel.rust
+        ? primaryRequestAdapter
+        : dioAdapter;
     final taskId = await adapter.startTransferTask(request);
     _trackTransferTaskChannel(taskId, channel);
     return NetTransferTaskStartResult(

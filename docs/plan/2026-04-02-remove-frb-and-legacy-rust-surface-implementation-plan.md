@@ -1,5 +1,12 @@
 # Remove FRB And Legacy Rust Surface Implementation Plan
 
+> Superseded on 2026-04-04 by
+> `docs/plan/2026-04-04-remove-frb-hard-cut-resequenced-plan.md`.
+>
+> This file is retained for review traceability because active review records in
+> `docs/problems/2026-04-02-rhttp-dio-hard-cut-review-findings.md` reference it
+> directly. Do not use this file as the current execution plan.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Convert `flutter_rust_net` into a pure `rhttp + Dio` package by removing `flutter_rust_bridge`, package-local `net_engine`, and all public/runtime/tooling surfaces that still depend on them.
