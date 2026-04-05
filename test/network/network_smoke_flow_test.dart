@@ -4,11 +4,11 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_rust_net/network/dio_adapter.dart';
+import 'package:flutter_rust_net/network/net_adapter.dart';
 import 'package:flutter_rust_net/network/net_feature_flag.dart';
 import 'package:flutter_rust_net/network/net_models.dart';
 import 'package:flutter_rust_net/network/network_gateway.dart';
 import 'package:flutter_rust_net/network/routing_policy.dart';
-import 'package:flutter_rust_net/network/rust_adapter.dart';
 
 void main() {
   late HttpServer server;
@@ -53,7 +53,7 @@ void main() {
       routingPolicy: const RoutingPolicy(),
       featureFlag: const NetFeatureFlag(enableRustChannel: false),
       dioAdapter: DioAdapter(),
-      rustAdapter: RustAdapter(),
+      primaryRequestAdapter: _NeverReadyAdapter(),
     );
 
     _log('case:dio', 'send GET $baseUrl/todos/1');
@@ -79,7 +79,7 @@ void main() {
         enableFallback: true,
       ),
       dioAdapter: DioAdapter(),
-      rustAdapter: RustAdapter(initialized: false),
+      primaryRequestAdapter: _NeverReadyAdapter(),
     );
 
     _log(
@@ -122,4 +122,16 @@ String _describe(NetResponse response, {String? bodyPreview}) {
     'costMs=${response.costMs}',
     'bodyPreview=$preview',
   ].join(', ');
+}
+
+class _NeverReadyAdapter extends NetAdapter {
+  _NeverReadyAdapter();
+
+  @override
+  bool get isReady => false;
+
+  @override
+  Future<NetResponse> request(NetRequest request, {bool fromFallback = false}) {
+    throw StateError('request should not reach _NeverReadyAdapter');
+  }
 }
