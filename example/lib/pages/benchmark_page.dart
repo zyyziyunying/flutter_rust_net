@@ -28,7 +28,7 @@ class _BenchmarkPageState extends State<BenchmarkPage> {
   late final LogUploadClient _logUploadClient;
   bool _running = false;
   bool _uploading = false;
-  bool _requireRust = false;
+  bool _requirePrimaryChannel = false;
   bool _obscurePassword = true;
   String _logText =
       'Tap "Run local benchmark". The benchmark spins up a local loopback '
@@ -92,8 +92,10 @@ class _BenchmarkPageState extends State<BenchmarkPage> {
     });
 
     try {
-      final config = _selectedPreset.config.copyWith(requireRust: _requireRust);
-      _appendLog('[example] requireRust=$_requireRust');
+      final config = _selectedPreset.config.copyWith(
+        requirePrimaryChannel: _requirePrimaryChannel,
+      );
+      _appendLog('[example] requirePrimaryChannel=$_requirePrimaryChannel');
       final report = await runNetworkBenchmark(config, log: appendLog);
       _appendLog('');
       _appendLog(report.toPrettyText());
@@ -437,17 +439,19 @@ class _BenchmarkPageState extends State<BenchmarkPage> {
               const SizedBox(height: 8),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Require Rust request channel (fail fast)'),
+                title: const Text(
+                  'Require primary request channel (fail fast)',
+                ),
                 subtitle: const Text(
                   'When enabled, benchmark stops immediately if the primary '
-                  'Rust request channel cannot be prepared.',
+                  'request channel cannot be prepared.',
                 ),
-                value: _requireRust,
+                value: _requirePrimaryChannel,
                 onChanged: _running
                     ? null
                     : (value) {
                         setState(() {
-                          _requireRust = value;
+                          _requirePrimaryChannel = value;
                         });
                       },
               ),

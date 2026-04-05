@@ -8,8 +8,7 @@ class BenchmarkReport {
   final DateTime finishedAt;
   final BenchmarkConfig config;
   final String baseUrl;
-  final bool rustChannelPreflighted;
-  final RustCacheObservation? rustCacheObservation;
+  final bool primaryChannelPreflighted;
   final Map<String, String> skippedChannels;
   final List<ChannelBenchmarkResult> channelResults;
 
@@ -18,8 +17,7 @@ class BenchmarkReport {
     required this.finishedAt,
     required this.config,
     required this.baseUrl,
-    required this.rustChannelPreflighted,
-    required this.rustCacheObservation,
+    required this.primaryChannelPreflighted,
     required this.skippedChannels,
     required this.channelResults,
   });
@@ -27,10 +25,16 @@ class BenchmarkReport {
   Duration get wallClockDuration => finishedAt.difference(startedAt);
 
   @Deprecated(
-    'Use rustChannelPreflighted instead. Thin-gateway V1 reports optional '
-    'request-channel preflight, not general rust initialization state.',
+    'Use primaryChannelPreflighted instead. Thin-gateway V1 reports optional '
+    'request-channel preflight, not general runtime initialization state.',
   )
-  bool get rustInitialized => rustChannelPreflighted;
+  bool get rustInitialized => primaryChannelPreflighted;
+
+  @Deprecated(
+    'Use primaryChannelPreflighted instead. `rust` is now only the benchmark '
+    'compatibility label for the primary request channel.',
+  )
+  bool get rustChannelPreflighted => primaryChannelPreflighted;
 
   Map<String, dynamic> toJson() {
     return {
@@ -38,8 +42,7 @@ class BenchmarkReport {
       'finishedAt': finishedAt.toIso8601String(),
       'wallClockMs': wallClockDuration.inMilliseconds,
       'baseUrl': baseUrl,
-      'rustChannelPreflighted': rustChannelPreflighted,
-      'rustCacheObservation': rustCacheObservation?.toJson(),
+      'primaryChannelPreflighted': primaryChannelPreflighted,
       'config': config.toJson(),
       'skippedChannels': skippedChannels,
       'channelResults': channelResults.map((item) => item.toJson()).toList(),
@@ -54,19 +57,9 @@ class BenchmarkReport {
           'concurrency=${config.concurrency} '
           'warmup=${config.warmupRequests}',
       '[network-bench] baseUrl=$baseUrl '
-          'rustChannelPreflighted=$rustChannelPreflighted '
+          'primaryChannelPreflighted=$primaryChannelPreflighted '
           'enableFallback=${config.enableFallback}',
     ];
-    final cacheObservation = rustCacheObservation;
-    if (cacheObservation != null) {
-      lines.add(
-        '[network-bench][rust-cache] dir=${cacheObservation.cacheDir} '
-        'namespace=${config.rustCacheResponseNamespace} '
-        'maxNamespaceBytes=${config.rustCacheMaxNamespaceBytes} '
-        'rootMaxBytes=${config.rustCacheRootMaxBytes ?? 'n/a'} '
-        'rootBytes=${cacheObservation.rootBytes}',
-      );
-    }
     if (skippedChannels.isNotEmpty) {
       lines.add('[network-bench] skipped=${jsonEncode(skippedChannels)}');
     }
@@ -76,17 +69,6 @@ class BenchmarkReport {
       );
     }
     return lines.join('\n');
-  }
-}
-
-class RustCacheObservation {
-  final String cacheDir;
-  final int rootBytes;
-
-  const RustCacheObservation({required this.cacheDir, required this.rootBytes});
-
-  Map<String, dynamic> toJson() {
-    return {'cacheDir': cacheDir, 'rootBytes': rootBytes};
   }
 }
 

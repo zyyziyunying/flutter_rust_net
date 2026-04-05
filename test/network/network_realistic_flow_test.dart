@@ -17,14 +17,12 @@ void main() {
           warmupRequests: 8,
           concurrency: 8,
           channels: {BenchmarkChannel.dio},
-          initializeRust: false,
           verbose: false,
         ),
       );
       _logReport(report);
 
       expect(report.channelResults, hasLength(1));
-      expect(report.rustCacheObservation, isNull);
       final dio = report.channelResults.single;
       expect(dio.channel, BenchmarkChannel.dio.cliName);
       expect(dio.totalRequests, 80);
@@ -51,7 +49,6 @@ void main() {
             warmupRequests: 0,
             concurrency: 1,
             channels: {BenchmarkChannel.dio},
-            initializeRust: false,
             verbose: false,
             requestKeySpace: 3,
           ),
@@ -100,7 +97,6 @@ void main() {
             warmupRequests: 0,
             concurrency: 1,
             channels: const {BenchmarkChannel.dio},
-            initializeRust: false,
             verbose: false,
             requestKeySpace: 3,
             scenarioBaseUrl: 'http://127.0.0.1:${server.port}',
@@ -128,7 +124,6 @@ void main() {
           warmupRequests: 6,
           concurrency: 6,
           channels: {BenchmarkChannel.dio},
-          initializeRust: false,
           verbose: false,
         ),
       );
@@ -153,7 +148,6 @@ void main() {
           warmupRequests: 4,
           concurrency: 4,
           channels: {BenchmarkChannel.dio},
-          initializeRust: false,
           verbose: false,
           largePayloadBytes: 256 * 1024,
         ),
@@ -182,7 +176,6 @@ void main() {
             warmupRequests: 4,
             concurrency: 6,
             channels: {BenchmarkChannel.dio},
-            initializeRust: false,
             verbose: false,
             largePayloadBytes: 128 * 1024,
           ),
@@ -208,7 +201,6 @@ void main() {
             warmupRequests: 5,
             concurrency: 10,
             channels: {BenchmarkChannel.dio},
-            initializeRust: false,
             verbose: false,
             flakyFailureEvery: 5,
           ),
@@ -242,7 +234,7 @@ void main() {
             warmupRequests: 5,
             concurrency: 8,
             channels: {BenchmarkChannel.rust},
-            initializeRust: false,
+            preflightPrimaryChannel: false,
             enableFallback: true,
             verbose: false,
             jitterBaseDelayMs: 4,

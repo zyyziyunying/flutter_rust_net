@@ -1,19 +1,14 @@
-import '../rust_adapter.dart';
 import 'benchmark_enums.dart';
 
 class BenchmarkConfig {
-  static const int maxUint32 = 0xFFFFFFFF;
-  static const int defaultRustCacheMaxNamespaceBytes = 64 * 1024 * 1024;
-  static const Object _copyWithUnset = Object();
-
   final BenchmarkScenario scenario;
   final BenchmarkConsumeMode consumeMode;
   final int requests;
   final int warmupRequests;
   final int concurrency;
   final Set<BenchmarkChannel> channels;
-  final bool initializeRust;
-  final bool requireRust;
+  final bool preflightPrimaryChannel;
+  final bool requirePrimaryChannel;
   final bool enableFallback;
   final bool verbose;
   final int largePayloadBytes;
@@ -22,11 +17,6 @@ class BenchmarkConfig {
   final int flakyFailureEvery;
   final Duration dioConnectTimeout;
   final Duration dioReceiveTimeout;
-  final int rustMaxInFlightTasks;
-  final String? rustCacheDir;
-  final String rustCacheResponseNamespace;
-  final int rustCacheMaxNamespaceBytes;
-  final int? rustCacheRootMaxBytes;
   final int requestKeySpace;
   final String scenarioBaseUrl;
 
@@ -37,8 +27,8 @@ class BenchmarkConfig {
     this.warmupRequests = 12,
     this.concurrency = 12,
     this.channels = const {BenchmarkChannel.dio, BenchmarkChannel.rust},
-    this.initializeRust = true,
-    this.requireRust = false,
+    this.preflightPrimaryChannel = true,
+    this.requirePrimaryChannel = false,
     this.enableFallback = true,
     this.verbose = true,
     this.largePayloadBytes = 2 * 1024 * 1024,
@@ -47,11 +37,6 @@ class BenchmarkConfig {
     this.flakyFailureEvery = 5,
     this.dioConnectTimeout = const Duration(seconds: 5),
     this.dioReceiveTimeout = const Duration(seconds: 15),
-    this.rustMaxInFlightTasks = 32,
-    this.rustCacheDir,
-    this.rustCacheResponseNamespace = 'responses',
-    this.rustCacheMaxNamespaceBytes = defaultRustCacheMaxNamespaceBytes,
-    this.rustCacheRootMaxBytes,
     this.requestKeySpace = 0,
     this.scenarioBaseUrl = '',
   });
@@ -63,8 +48,8 @@ class BenchmarkConfig {
     int? warmupRequests,
     int? concurrency,
     Set<BenchmarkChannel>? channels,
-    bool? initializeRust,
-    bool? requireRust,
+    bool? preflightPrimaryChannel,
+    bool? requirePrimaryChannel,
     bool? enableFallback,
     bool? verbose,
     int? largePayloadBytes,
@@ -73,11 +58,6 @@ class BenchmarkConfig {
     int? flakyFailureEvery,
     Duration? dioConnectTimeout,
     Duration? dioReceiveTimeout,
-    int? rustMaxInFlightTasks,
-    Object? rustCacheDir = _copyWithUnset,
-    String? rustCacheResponseNamespace,
-    int? rustCacheMaxNamespaceBytes,
-    Object? rustCacheRootMaxBytes = _copyWithUnset,
     int? requestKeySpace,
     String? scenarioBaseUrl,
   }) {
@@ -88,8 +68,10 @@ class BenchmarkConfig {
       warmupRequests: warmupRequests ?? this.warmupRequests,
       concurrency: concurrency ?? this.concurrency,
       channels: channels ?? this.channels,
-      initializeRust: initializeRust ?? this.initializeRust,
-      requireRust: requireRust ?? this.requireRust,
+      preflightPrimaryChannel:
+          preflightPrimaryChannel ?? this.preflightPrimaryChannel,
+      requirePrimaryChannel:
+          requirePrimaryChannel ?? this.requirePrimaryChannel,
       enableFallback: enableFallback ?? this.enableFallback,
       verbose: verbose ?? this.verbose,
       largePayloadBytes: largePayloadBytes ?? this.largePayloadBytes,
@@ -98,65 +80,8 @@ class BenchmarkConfig {
       flakyFailureEvery: flakyFailureEvery ?? this.flakyFailureEvery,
       dioConnectTimeout: dioConnectTimeout ?? this.dioConnectTimeout,
       dioReceiveTimeout: dioReceiveTimeout ?? this.dioReceiveTimeout,
-      rustMaxInFlightTasks: rustMaxInFlightTasks ?? this.rustMaxInFlightTasks,
-      rustCacheDir: identical(rustCacheDir, _copyWithUnset)
-          ? this.rustCacheDir
-          : rustCacheDir as String?,
-      rustCacheResponseNamespace:
-          rustCacheResponseNamespace ?? this.rustCacheResponseNamespace,
-      rustCacheMaxNamespaceBytes:
-          rustCacheMaxNamespaceBytes ?? this.rustCacheMaxNamespaceBytes,
-      rustCacheRootMaxBytes: identical(rustCacheRootMaxBytes, _copyWithUnset)
-          ? this.rustCacheRootMaxBytes
-          : rustCacheRootMaxBytes as int?,
       requestKeySpace: requestKeySpace ?? this.requestKeySpace,
       scenarioBaseUrl: scenarioBaseUrl ?? this.scenarioBaseUrl,
-    );
-  }
-
-  String get resolvedRustCacheDir => resolveRustCacheDirPath(rustCacheDir);
-
-  bool get rustCacheEnabled => resolvedRustCacheDir.isNotEmpty;
-
-  RustEngineInitOptions toRustEngineInitOptions() {
-    return RustEngineInitOptions(
-      maxInFlightTasks: rustMaxInFlightTasks,
-      cacheDir: rustCacheDir,
-      cacheResponseNamespace: rustCacheResponseNamespace,
-      cacheMaxNamespaceBytes: rustCacheMaxNamespaceBytes,
-      cacheRootMaxBytes: rustCacheRootMaxBytes,
-    );
-  }
-
-  BenchmarkConfig resolveRuntimeConfig({String? defaultRustCacheDir}) {
-    final options = normalizeRustEngineInitOptions(
-      toRustEngineInitOptions(),
-      defaultCacheDir: defaultRustCacheDir,
-    );
-    return BenchmarkConfig(
-      scenario: scenario,
-      consumeMode: consumeMode,
-      requests: requests,
-      warmupRequests: warmupRequests,
-      concurrency: concurrency,
-      channels: channels,
-      initializeRust: initializeRust,
-      requireRust: requireRust,
-      enableFallback: enableFallback,
-      verbose: verbose,
-      largePayloadBytes: largePayloadBytes,
-      jitterBaseDelayMs: jitterBaseDelayMs,
-      jitterExtraDelayMs: jitterExtraDelayMs,
-      flakyFailureEvery: flakyFailureEvery,
-      dioConnectTimeout: dioConnectTimeout,
-      dioReceiveTimeout: dioReceiveTimeout,
-      rustMaxInFlightTasks: rustMaxInFlightTasks,
-      rustCacheDir: options.cacheDir,
-      rustCacheResponseNamespace: options.cacheResponseNamespace,
-      rustCacheMaxNamespaceBytes: options.cacheMaxNamespaceBytes,
-      rustCacheRootMaxBytes: options.cacheRootMaxBytes,
-      requestKeySpace: requestKeySpace,
-      scenarioBaseUrl: scenarioBaseUrl,
     );
   }
 
@@ -195,31 +120,6 @@ class BenchmarkConfig {
         'flakyFailureEvery',
         'must be >= 2',
       );
-    }
-    if (rustMaxInFlightTasks <= 0) {
-      throw ArgumentError.value(
-        rustMaxInFlightTasks,
-        'rustMaxInFlightTasks',
-        'must be > 0',
-      );
-    }
-    if (rustCacheEnabled) {
-      if (rustCacheMaxNamespaceBytes < 0 ||
-          rustCacheMaxNamespaceBytes > maxUint32) {
-        throw ArgumentError.value(
-          rustCacheMaxNamespaceBytes,
-          'rustCacheMaxNamespaceBytes',
-          'must be between 0 and $maxUint32',
-        );
-      }
-      if (rustCacheRootMaxBytes != null &&
-          (rustCacheRootMaxBytes! < 0 || rustCacheRootMaxBytes! > maxUint32)) {
-        throw ArgumentError.value(
-          rustCacheRootMaxBytes,
-          'rustCacheRootMaxBytes',
-          'must be between 0 and $maxUint32',
-        );
-      }
     }
     if (requestKeySpace < 0) {
       throw ArgumentError.value(
@@ -263,8 +163,8 @@ class BenchmarkConfig {
       'warmupRequests': warmupRequests,
       'concurrency': concurrency,
       'channels': channels.map((item) => item.cliName).toList()..sort(),
-      'initializeRust': initializeRust,
-      'requireRust': requireRust,
+      'preflightPrimaryChannel': preflightPrimaryChannel,
+      'requirePrimaryChannel': requirePrimaryChannel,
       'enableFallback': enableFallback,
       'verbose': verbose,
       'largePayloadBytes': largePayloadBytes,
@@ -273,11 +173,6 @@ class BenchmarkConfig {
       'flakyFailureEvery': flakyFailureEvery,
       'dioConnectTimeoutMs': dioConnectTimeout.inMilliseconds,
       'dioReceiveTimeoutMs': dioReceiveTimeout.inMilliseconds,
-      'rustMaxInFlightTasks': rustMaxInFlightTasks,
-      'rustCacheDir': rustCacheDir,
-      'rustCacheResponseNamespace': rustCacheResponseNamespace,
-      'rustCacheMaxNamespaceBytes': rustCacheMaxNamespaceBytes,
-      'rustCacheRootMaxBytes': rustCacheRootMaxBytes,
       'requestKeySpace': requestKeySpace,
       'scenarioBaseUrl': scenarioBaseUrl,
     };

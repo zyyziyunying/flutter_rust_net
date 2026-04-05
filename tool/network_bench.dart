@@ -58,8 +58,14 @@ BenchmarkConfig _buildConfig(Map<String, String> kvArgs) {
     warmupRequests: _parseInt(kvArgs['warmup'], fallback: 12),
     concurrency: _parseInt(kvArgs['concurrency'], fallback: 12),
     channels: channels,
-    initializeRust: _parseBool(kvArgs['initialize-rust'], fallback: true),
-    requireRust: _parseBool(kvArgs['require-rust'], fallback: false),
+    preflightPrimaryChannel: _parseBool(
+      kvArgs['preflight-primary-channel'],
+      fallback: true,
+    ),
+    requirePrimaryChannel: _parseBool(
+      kvArgs['require-primary-channel'],
+      fallback: false,
+    ),
     enableFallback: _parseBool(kvArgs['fallback'], fallback: true),
     verbose: _parseBool(kvArgs['verbose'], fallback: true),
     largePayloadBytes: _parseInt(
@@ -74,18 +80,6 @@ BenchmarkConfig _buildConfig(Map<String, String> kvArgs) {
     ),
     dioReceiveTimeout: Duration(
       milliseconds: _parseInt(kvArgs['receive-timeout-ms'], fallback: 15000),
-    ),
-    rustMaxInFlightTasks: _parseInt(kvArgs['rust-max-in-flight'], fallback: 32),
-    rustCacheDir: kvArgs.containsKey('rust-cache-dir')
-        ? kvArgs['rust-cache-dir']
-        : null,
-    rustCacheResponseNamespace: kvArgs['rust-cache-namespace'] ?? 'responses',
-    rustCacheMaxNamespaceBytes: _parseInt(
-      kvArgs['rust-cache-max-namespace-bytes'],
-      fallback: 64 * 1024 * 1024,
-    ),
-    rustCacheRootMaxBytes: _parseOptionalInt(
-      kvArgs['rust-cache-root-max-bytes'],
     ),
     requestKeySpace: _parseInt(kvArgs['request-key-space'], fallback: 0),
     scenarioBaseUrl: kvArgs['base-url'] ?? '',
@@ -128,17 +122,6 @@ int _parseInt(String? raw, {required int fallback}) {
   return value;
 }
 
-int? _parseOptionalInt(String? raw) {
-  if (raw == null || raw.isEmpty) {
-    return null;
-  }
-  final value = int.tryParse(raw);
-  if (value == null) {
-    throw ArgumentError('invalid int: $raw');
-  }
-  return value;
-}
-
 bool _parseBool(String? raw, {required bool fallback}) {
   if (raw == null || raw.isEmpty) {
     return fallback;
@@ -173,8 +156,8 @@ Options:
   --requests=120                  measured requests per channel
   --warmup=12                     warmup requests per channel
   --concurrency=12                parallel workers
-  --initialize-rust=true|false    default: true
-  --require-rust=true|false       default: false
+  --preflight-primary-channel=true|false  default: true
+  --require-primary-channel=true|false    default: false
   --fallback=true|false           gateway fallback switch, default: true
   --verbose=true|false            default: true
   --output=build/network_bench.json
@@ -189,16 +172,11 @@ Scenario knobs:
 Client knobs:
   --connect-timeout-ms=5000
   --receive-timeout-ms=15000
-  --rust-max-in-flight=32
-  --rust-cache-dir=<path>          empty value disables Rust disk cache
-  --rust-cache-namespace=responses
-  --rust-cache-max-namespace-bytes=67108864
-  --rust-cache-root-max-bytes=<int>
   --request-key-space=0            0=disable reuse; >0 reuses request ids for cache probing
 
 Examples:
   dart run tool/network_bench.dart --scenario=small_json --requests=400 --concurrency=16 --output=build/small.json
-  dart run tool/network_bench.dart --scenario=large_payload --channels=dio,rust --initialize-rust=true --output=build/large.json
+  dart run tool/network_bench.dart --scenario=large_payload --channels=dio,rust --preflight-primary-channel=true --output=build/large.json
   dart run tool/network_bench.dart --scenario=flaky_http --channels=dio --flaky-every=4
   dart run tool/network_bench.dart --base-url=http://47.110.52.208:7777 --scenario=jitter_latency --channels=dio,rust
 ''');

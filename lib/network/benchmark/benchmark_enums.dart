@@ -52,6 +52,8 @@ extension BenchmarkScenarioX on BenchmarkScenario {
   }
 }
 
+/// `rust` remains a compatibility label for the primary native-backed
+/// request channel during the FRB hard cut.
 enum BenchmarkChannel { dio, rust }
 
 extension BenchmarkChannelX on BenchmarkChannel {

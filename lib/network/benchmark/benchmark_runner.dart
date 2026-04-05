@@ -9,7 +9,6 @@ import '../net_models.dart';
 import '../network_gateway.dart';
 import '../rhttp_adapter.dart';
 import '../routing_policy.dart';
-import '../rust_bridge_api.dart';
 import 'benchmark_accumulator.dart';
 import 'benchmark_response_consumer.dart';
 import 'benchmark_scenario_server.dart';
@@ -18,25 +17,22 @@ import 'benchmark_types.dart';
 Future<BenchmarkReport> runNetworkBenchmark(
   BenchmarkConfig config, {
   BenchLogger? log,
-  RustBridgeApi? rustBridgeApi,
-  NetAdapter? rustAdapter,
+  NetAdapter? primaryRequestAdapter,
+  @Deprecated('Use primaryRequestAdapter instead.') NetAdapter? rustAdapter,
 }) async {
   config.validate();
   final logger = log ?? (_) {};
-  if (rustBridgeApi != null && rustAdapter == null) {
+  if (primaryRequestAdapter != null && rustAdapter != null) {
     throw ArgumentError.value(
-      rustBridgeApi,
-      'rustBridgeApi',
-      'Thin-gateway V1 benchmark runner no longer treats rustBridgeApi as an '
-          'implicit request adapter. Omit rustBridgeApi or inject '
-          'rustAdapter explicitly.',
+      rustAdapter,
+      'rustAdapter',
+      'Provide only one of primaryRequestAdapter or rustAdapter.',
     );
   }
   final startedAt = DateTime.now();
   ScenarioServer? scenarioServer;
   final skippedChannels = <String, String>{};
-  var rustChannelPreflighted = false;
-  var runtimeConfig = config;
+  var primaryChannelPreflighted = false;
   BenchmarkReport? report;
   Object? pendingError;
   StackTrace? pendingStackTrace;
@@ -50,16 +46,10 @@ Future<BenchmarkReport> runNetworkBenchmark(
       ),
     ),
   );
-  final primaryRequestAdapter = rustAdapter ?? RhttpAdapter();
+  final resolvedPrimaryRequestAdapter =
+      primaryRequestAdapter ?? rustAdapter ?? RhttpAdapter();
 
   try {
-    if (rustBridgeApi != null) {
-      logger(
-        '[network-bench] rustBridgeApi is retained only for legacy '
-        'compatibility; the injected rustAdapter controls the thin-gateway '
-        'V1 request benchmark path.',
-      );
-    }
     final resolvedScenarioBaseUrl = resolveScenarioBaseUrl(
       config.scenarioBaseUrl,
     );
@@ -74,27 +64,23 @@ Future<BenchmarkReport> runNetworkBenchmark(
       benchmarkBaseUrl = scenarioServer.baseUrl;
     }
 
-    if (config.rustCacheEnabled) {
-      logger(
-        '[network-bench] rust cache settings are ignored for the V1 '
-        'rhttp request path.',
-      );
-    }
-
     if (config.channels.contains(BenchmarkChannel.rust) &&
-        (config.initializeRust || config.requireRust)) {
-      logger('[network-bench] preparing rust request channel...');
+        (config.preflightPrimaryChannel || config.requirePrimaryChannel)) {
+      logger(
+        '[network-bench] preparing primary request channel '
+        '(BenchmarkChannel.rust)...',
+      );
       try {
-        rustChannelPreflighted = await _preparePrimaryRequestAdapter(
-          primaryRequestAdapter,
+        primaryChannelPreflighted = await _preparePrimaryRequestAdapter(
+          resolvedPrimaryRequestAdapter,
         );
-        if (!rustChannelPreflighted) {
-          throw StateError('rhttp request channel is not ready');
+        if (!primaryChannelPreflighted) {
+          throw StateError('primary request channel is not ready');
         }
-        logger('[network-bench] rust request channel ready');
+        logger('[network-bench] primary request channel ready');
       } catch (error) {
-        final reason = 'rust request channel setup failed: $error';
-        if (config.requireRust) {
+        final reason = 'primary request channel setup failed: $error';
+        if (config.requirePrimaryChannel) {
           rethrow;
         }
         skippedChannels[BenchmarkChannel.rust.cliName] = reason;
@@ -109,7 +95,7 @@ Future<BenchmarkReport> runNetworkBenchmark(
         enableFallback: config.enableFallback,
       ),
       dioAdapter: dioAdapter,
-      rustAdapter: primaryRequestAdapter,
+      primaryRequestAdapter: resolvedPrimaryRequestAdapter,
     );
 
     final orderedChannels = [...config.channels]
@@ -128,7 +114,7 @@ Future<BenchmarkReport> runNetworkBenchmark(
         'scenario=${config.scenario.cliName}',
       );
       final result = await _runChannelBenchmark(
-        config: runtimeConfig,
+        config: config,
         gateway: gateway,
         channel: channel,
         baseUrl: benchmarkBaseUrl,
@@ -155,10 +141,9 @@ Future<BenchmarkReport> runNetworkBenchmark(
     report = BenchmarkReport(
       startedAt: startedAt,
       finishedAt: finishedAt,
-      config: runtimeConfig,
+      config: config,
       baseUrl: benchmarkBaseUrl,
-      rustChannelPreflighted: rustChannelPreflighted,
-      rustCacheObservation: null,
+      primaryChannelPreflighted: primaryChannelPreflighted,
       skippedChannels: Map.unmodifiable(skippedChannels),
       channelResults: List.unmodifiable(results),
     );
