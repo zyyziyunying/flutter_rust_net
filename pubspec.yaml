@@ -1,5 +1,5 @@
 name: flutter_rust_net
-description: "Independent Flutter + Rust network request library powered by net_engine."
+description: "Independent Flutter network request library with an rhttp primary path and Dio fallback."
 version: 0.0.1
 publish_to: 'none'
 
@@ -13,7 +13,6 @@ dependencies:
   flutter:
     sdk: flutter
   dio: ^5.9.0
-  flutter_rust_bridge: 2.11.1
   rhttp: ^0.15.1
 
 dev_dependencies:
