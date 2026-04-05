@@ -84,35 +84,6 @@ void main() {
       },
     );
 
-    test('rejects duplicate primary request adapter injection', () {
-      final requestAdapter = _buildBenchmarkRequestAdapter();
-      expect(
-        () => runNetworkBenchmark(
-          const BenchmarkConfig(
-            scenario: BenchmarkScenario.smallJson,
-            requests: 1,
-            warmupRequests: 0,
-            concurrency: 1,
-            channels: {BenchmarkChannel.rust},
-            preflightPrimaryChannel: false,
-            requirePrimaryChannel: false,
-            enableFallback: false,
-            verbose: false,
-          ),
-          primaryRequestAdapter: requestAdapter,
-          rustAdapter: requestAdapter,
-        ),
-        throwsA(
-          isA<ArgumentError>().having(
-            (error) => error.message,
-            'message',
-            contains(
-              'Provide only one of primaryRequestAdapter or rustAdapter',
-            ),
-          ),
-        ),
-      );
-    });
   });
 }
 

@@ -6,7 +6,7 @@ title: FRB Hard Cut 当前状态（2026-04-04，更新至 2026-04-05）
 
 > 范围：`flutter_rust_net` 的 FRB / legacy Rust surface hard cut 当前执行状态。
 >
-> 当前判断：Phase 1 ~ 6 已在当前 worktree 完成。active package 已收敛为 `rhttp + Dio` thin-gateway；仓库级入口不再把已删除的 FRB/runtime/native-engine 口径描述成当前事实。
+> 当前判断：Phase 1 ~ 6 已在当前 worktree 完成。active package 已收敛为 `rhttp + Dio` thin-gateway；剩余公开 `rustAdapter` seam 已移除，仓库级入口不再把已删除的 FRB/runtime/native-engine 口径描述成当前事实。
 
 ## 快速跳转（当前有效）
 
@@ -24,7 +24,9 @@ title: FRB Hard Cut 当前状态（2026-04-04，更新至 2026-04-05）
 ## 1) 已完成（Done）
 
 1. 已完成 Phase 1：冻结 surviving contract，保留 `NetChannel.rust` / `enableRustChannel` / `BenchmarkChannel.rust` 作为兼容名。
+   - `BytesFirstNetworkClient.standard` 与 `NetworkGateway` 的活动 `rustAdapter` 公开 seam 已移除，统一收口到中性的 primary adapter 命名
 2. 已完成 Phase 2：benchmark 主线已去掉对 FRB/runtime Dart 类型的编译依赖；公开 benchmark contract 改为 primary request adapter seam。
+   - `runNetworkBenchmark(..., rustAdapter: ...)` 活动参数已移除
 3. 已完成 Phase 3：Dart-side legacy runtime、FRB generated Dart files 与直接依赖测试已物理删除。
 4. 已完成 Phase 4：benchmark/example/tooling 的 active 入口已改成 primary-channel 口径。
    - `tool/network_bench.dart` 保留 `BenchmarkChannel.rust` 兼容别名，但不再描述为 FRB/runtime
@@ -53,6 +55,7 @@ title: FRB Hard Cut 当前状态（2026-04-04，更新至 2026-04-05）
    - `docs/progress/real_device_test_commands_2026-03-02.md`
    - `docs/plan/README.md`
    - `AGENTS.md`
+   - opt-in real-`rhttp` 测试 skip/help 文案已改为中性 “native rhttp library directory” 表述，不再把 FRB 品牌词当作当前包契约说明
 7. 已完成一轮最小 docs 归档治理：
    - superseded 旧计划已移入 `docs/plan/archive/`
    - pre-hard-cut 状态评估与设计状态核对已移入 `docs/archived/`
@@ -76,6 +79,8 @@ title: FRB Hard Cut 当前状态（2026-04-04，更新至 2026-04-05）
 本轮实际执行并通过：
 
 - `flutter pub get`
+- `flutter test test/network/bytes_first_network_client_test.dart test/network/cache_channel_consistency_test.dart test/network/network_gateway_transfer_state_test.dart test/network/benchmark_runner_test.dart`
+- `flutter test`
 - `cd example && flutter pub get`
 - `dart run tool/network_bench.dart --help`
 - `dart run tool/network_bench.dart --scenario=small_json --channels=dio --requests=1 --warmup=0 --concurrency=1 --verbose=false --output=build/network_bench_smoke.json`

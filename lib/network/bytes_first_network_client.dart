@@ -132,14 +132,9 @@ class BytesFirstNetworkClient {
     String baseUrl = '',
     DioAdapter? dioAdapter,
     NetAdapter? primaryAdapter,
-    @Deprecated('Use primaryAdapter instead.') NetAdapter? rustAdapter,
   }) {
-    if (primaryAdapter != null && rustAdapter != null) {
-      throw ArgumentError('Provide only one of primaryAdapter or rustAdapter.');
-    }
     final resolvedDioAdapter = dioAdapter ?? DioAdapter();
-    final resolvedPrimaryAdapter =
-        primaryAdapter ?? rustAdapter ?? RhttpAdapter();
+    final resolvedPrimaryAdapter = primaryAdapter ?? RhttpAdapter();
     return BytesFirstNetworkClient(
       gateway: NetworkGateway(
         routingPolicy: routingPolicy,

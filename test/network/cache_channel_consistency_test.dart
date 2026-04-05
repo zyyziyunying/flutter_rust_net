@@ -53,7 +53,7 @@ void main() {
           enableFallback: false,
         ),
         dioAdapter: dioAdapter,
-        rustAdapter: rustAdapter,
+        primaryRequestAdapter: rustAdapter,
       );
     });
 

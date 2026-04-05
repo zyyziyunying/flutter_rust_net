@@ -32,7 +32,7 @@ void main() {
           routingPolicy: const RoutingPolicy(),
           featureFlag: const NetFeatureFlag(enableRustChannel: true),
           dioAdapter: dio,
-          rustAdapter: rust,
+          primaryRequestAdapter: rust,
         );
 
         await gateway.startTransferTask(
@@ -95,7 +95,7 @@ void main() {
           routingPolicy: const RoutingPolicy(),
           featureFlag: const NetFeatureFlag(enableRustChannel: true),
           dioAdapter: dio,
-          rustAdapter: rust,
+          primaryRequestAdapter: rust,
         );
 
         final events = await gateway.pollTransferEvents(limit: 8);
@@ -149,7 +149,7 @@ void main() {
           routingPolicy: const RoutingPolicy(),
           featureFlag: const NetFeatureFlag(enableRustChannel: true),
           dioAdapter: dio,
-          rustAdapter: rust,
+          primaryRequestAdapter: rust,
         );
 
         for (var i = 0; i < 256; i += 1) {
@@ -210,7 +210,7 @@ void main() {
           routingPolicy: const RoutingPolicy(),
           featureFlag: const NetFeatureFlag(enableRustChannel: true),
           dioAdapter: dio,
-          rustAdapter: rust,
+          primaryRequestAdapter: rust,
         );
 
         for (var i = 0; i < 300; i += 1) {

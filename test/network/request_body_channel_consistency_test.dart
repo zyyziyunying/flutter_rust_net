@@ -270,11 +270,11 @@ String? _realRhttpSkipReason() {
   final nativeLibDir =
       Platform.environment['FRB_DART_LOAD_EXTERNAL_LIBRARY_NATIVE_LIB_DIR'];
   if (nativeLibDir == null || nativeLibDir.isEmpty) {
-    return 'Set FRB_DART_LOAD_EXTERNAL_LIBRARY_NATIVE_LIB_DIR to a directory containing librhttp.dylib to run real-rhttp tests.';
+    return 'Set the native rhttp library directory via FRB_DART_LOAD_EXTERNAL_LIBRARY_NATIVE_LIB_DIR to run opt-in real-rhttp tests.';
   }
   final nativeLib = File('$nativeLibDir/librhttp.dylib');
   if (!nativeLib.existsSync()) {
-    return 'Missing librhttp.dylib under FRB_DART_LOAD_EXTERNAL_LIBRARY_NATIVE_LIB_DIR=$nativeLibDir';
+    return 'Missing librhttp.dylib under the configured native rhttp library directory: $nativeLibDir';
   }
   return null;
 }

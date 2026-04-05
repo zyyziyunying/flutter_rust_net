@@ -18,17 +18,9 @@ Future<BenchmarkReport> runNetworkBenchmark(
   BenchmarkConfig config, {
   BenchLogger? log,
   NetAdapter? primaryRequestAdapter,
-  @Deprecated('Use primaryRequestAdapter instead.') NetAdapter? rustAdapter,
 }) async {
   config.validate();
   final logger = log ?? (_) {};
-  if (primaryRequestAdapter != null && rustAdapter != null) {
-    throw ArgumentError.value(
-      rustAdapter,
-      'rustAdapter',
-      'Provide only one of primaryRequestAdapter or rustAdapter.',
-    );
-  }
   final startedAt = DateTime.now();
   ScenarioServer? scenarioServer;
   final skippedChannels = <String, String>{};
@@ -46,8 +38,7 @@ Future<BenchmarkReport> runNetworkBenchmark(
       ),
     ),
   );
-  final resolvedPrimaryRequestAdapter =
-      primaryRequestAdapter ?? rustAdapter ?? RhttpAdapter();
+  final resolvedPrimaryRequestAdapter = primaryRequestAdapter ?? RhttpAdapter();
 
   try {
     final resolvedScenarioBaseUrl = resolveScenarioBaseUrl(

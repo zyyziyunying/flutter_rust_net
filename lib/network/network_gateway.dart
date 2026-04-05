@@ -43,20 +43,8 @@ class NetworkGateway {
     required this.routingPolicy,
     required this.featureFlag,
     required this.dioAdapter,
-    NetAdapter? primaryRequestAdapter,
-    NetAdapter? rustAdapter,
-  }) : assert(
-         primaryRequestAdapter != null || rustAdapter != null,
-         'Provide primaryRequestAdapter or rustAdapter.',
-       ),
-       assert(
-         primaryRequestAdapter == null || rustAdapter == null,
-         'Provide only one of primaryRequestAdapter or rustAdapter.',
-       ),
-       primaryRequestAdapter = primaryRequestAdapter ?? rustAdapter!;
-
-  @Deprecated('Use primaryRequestAdapter instead.')
-  NetAdapter get rustAdapter => primaryRequestAdapter;
+    required this.primaryRequestAdapter,
+  });
 
   Future<NetResponse> request(
     NetRequest request, {
