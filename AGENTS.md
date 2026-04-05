@@ -6,8 +6,9 @@
 
 ## Project Structure & Module Organization
 - `lib/network/` holds request models, gateway/policy, adapters, and clients.
-- `lib/rust_bridge/` contains generated flutter_rust_bridge Dart bindings.
 - `tool/network_bench.dart` is the benchmark CLI entry.
+- `tool/p1_non_loopback_bench.dart` is the fixed public-remote benchmark runner.
+- `tool/p1_aggregate.dart` aggregates benchmark JSON outputs.
 - `example/` is the standalone demo app for local/manual validation.
 - `test/network/` contains core network behavior tests.
 - `docs/` stores flutter_rust_net-specific docs (`progress/`, `dio_rust_test/`, design notes).
@@ -16,22 +17,18 @@
 - `flutter pub get` - install or update package dependencies.
 - Do not run `flutter analyze` by default; if static analysis is relevant, provide the exact command for the user to run.
 - `flutter test` - run package tests.
-- `dart run tool/rust_codegen.dart` - regenerate flutter_rust_bridge bindings from `native/rust/net_engine`.
-- `dart run tool/rust_build.dart --profile=release` - build the package-local Rust native library.
 - `dart run tool/network_bench.dart --help` - inspect benchmark options.
+- `dart run tool/p1_non_loopback_bench.dart --help` - inspect the fixed public-remote benchmark runner.
 - `cd example && flutter pub get && flutter run` - run example app for manual checks.
-- `cd native/rust/net_engine && cargo test -q` - run Rust tests when bridge contracts or Rust logic change.
 
 ## Coding Style & Naming Conventions
 - Follow `analysis_options.yaml` (`flutter_lints`) with 2-space indentation.
 - Naming: `snake_case.dart` files, `PascalCase` types, `lowerCamelCase` members.
-- Do not hand-edit generated files in `lib/rust_bridge/frb_generated*.dart` unless intentionally regenerating.
 - Keep fallback/routing behavior explicit and deterministic in gateway logic.
 
 ## Testing Guidelines
 - Keep tests behavior-focused and close to affected modules (`test/network/`).
-- Add coverage for routing, fallback, and Rust-channel edge cases when logic changes.
-- When Rust bridge contracts change, validate both `flutter test` and `cargo test -q` in `native/rust/net_engine`.
+- Add coverage for routing, fallback, and primary-channel compatibility-alias edge cases when logic changes.
 
 ## Documentation Update Policy
 - Update progress/benchmark docs when they materially help the current work.

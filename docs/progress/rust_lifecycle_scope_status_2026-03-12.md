@@ -8,6 +8,8 @@ title: Rust 生命周期与共享作用域修复状态（2026-03-12）
 >
 > 当前状态（2026-03-12）：`RustAdapter` 已补齐受控 `shutdown -> reinitialize` 生命周期；`RustBridgeApi.shutdownNetEngine()` 仅保留为低层 bridge passthrough，不再被视为会同步 Dart 生命周期状态。默认生产路径下“不同 `FrbRustBridgeApi` 实例共享同一默认 scope”的正式回归也已入库。
 
+> 2026-04-05 补充说明：本文只保留 legacy Rust lifecycle 的历史修复记录。相关 runtime surface 已不再属于当前 active package。
+
 ## 快速跳转（同日文档）
 
 - 修复计划：[`flutter_rust_net/docs/archived/flutter_rust_net_lifecycle_scope_fix_plan_2026-03-12.md`](../archived/flutter_rust_net_lifecycle_scope_fix_plan_2026-03-12.md)

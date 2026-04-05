@@ -15,6 +15,8 @@ title: flutter_rust_net 真机测试命令清单（2026-03-14）
 > 5. P2 缓存收益归档统一摘录 `cacheHit/cacheMiss/repeatedMissCount`；`cacheRevalidate/cacheEvict` 仅在本地 scenario server 口径下作为权威字段。
 > 6. 自 `2026-03-17` 起，若 benchmark 在实际初始化 Rust 时省略 `--rust-cache-dir`，报告里的 `config.rustCacheDir` 会写入自动生成的“本次 run 独占”临时目录；该目录在 benchmark 结束后会由 runner best-effort 清理。若需要 cold / warm 显式复用同一 cache root，必须手工传入同一个 `--rust-cache-dir`。
 
+> 2026-04-05 补充说明：本文保留的是 pre-hard-cut 真机/benchmark runbook。文中凡是涉及 Rust runtime、FRB、本地 `net_engine` 构建或 `rustCache*` 的命令，均应按历史口径阅读，不代表当前 active package 仍支持这些入口。
+
 ## 0) 一次性预检查（建议先跑）
 
 ```powershell
