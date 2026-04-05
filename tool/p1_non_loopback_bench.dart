@@ -636,14 +636,6 @@ _Preset _parsePreset(String raw) {
   }
 }
 
-int _parseInt(String raw, {required String label}) {
-  final value = int.tryParse(raw);
-  if (value == null) {
-    throw ArgumentError('invalid int for $label: $raw');
-  }
-  return value;
-}
-
 bool _parseBool(String raw) {
   switch (raw.trim().toLowerCase()) {
     case 'true':
