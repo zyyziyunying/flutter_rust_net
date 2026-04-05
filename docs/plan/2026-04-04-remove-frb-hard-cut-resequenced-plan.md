@@ -3,7 +3,7 @@
 > Date: 2026-04-04
 > Status: Current execution plan
 > Basis:
-> - `docs/plan/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md`
+> - `docs/plan/archive/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md`
 > - `docs/plan/2026-04-01-flutter-rust-net-rhttp-thin-gateway-design.md`
 > - current worktree inspection
 > - multi-agent review on runtime/API, benchmark/tooling, and validation/docs
@@ -215,8 +215,8 @@ Scope:
 - `FLUTTER_RUST_NET_OVERVIEW_ZH.md`
 - `docs/README.md`
 - `docs/flutter_rust_network_layer_design.md`
-- `docs/problems/2026-04-02-project-progress-and-gap-assessment.md`
-- `docs/problems/2026-04-02-rhttp-thin-gateway-design-review-status-check.md`
+- `docs/archived/2026-04-02-project-progress-and-gap-assessment.md`
+- `docs/archived/2026-04-02-rhttp-thin-gateway-design-review-status-check.md`
 - `docs/progress/README.md`
 - `docs/progress/p1_status_2026-02-25.md`
 - `docs/progress/p2_status_2026-03-02.md`

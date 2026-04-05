@@ -22,8 +22,8 @@
 - `progress/p1_status_2026-02-25.md`：P1 历史阶段状态（pre-hard-cut）
 - `progress/p2_status_2026-03-02.md`：P2 历史阶段状态（pre-hard-cut）
 - `progress/rust_lifecycle_scope_status_2026-03-12.md`：legacy Rust lifecycle 历史状态
-- `problems/2026-04-02-project-progress-and-gap-assessment.md`：2026-04-02 状态评估，现仅作 hard cut 前背景
-- `problems/2026-04-02-rhttp-thin-gateway-design-review-status-check.md`：2026-04-02 设计核对，现仅作 hard cut 前背景
+- `archived/2026-04-02-project-progress-and-gap-assessment.md`：2026-04-02 状态评估，现仅作 hard cut 前背景
+- `archived/2026-04-02-rhttp-thin-gateway-design-review-status-check.md`：2026-04-02 设计核对，现仅作 hard cut 前背景
 
 维护建议：
 

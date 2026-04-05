@@ -45,15 +45,18 @@ title: FRB Hard Cut 当前状态（2026-04-04，更新至 2026-04-05）
    - `docs/README.md`
    - `docs/flutter_rust_network_layer_design.md`
    - `docs/progress/README.md`
-   - `docs/problems/2026-04-02-project-progress-and-gap-assessment.md`
-   - `docs/problems/2026-04-02-rhttp-thin-gateway-design-review-status-check.md`
+   - `docs/archived/2026-04-02-project-progress-and-gap-assessment.md`
+   - `docs/archived/2026-04-02-rhttp-thin-gateway-design-review-status-check.md`
    - `docs/progress/p1_status_2026-02-25.md`
    - `docs/progress/p2_status_2026-03-02.md`
    - `docs/progress/rust_lifecycle_scope_status_2026-03-12.md`
    - `docs/progress/real_device_test_commands_2026-03-02.md`
    - `docs/plan/README.md`
    - `AGENTS.md`
-7. 已补 benchmark CLI 启动链路修复：`tool/network_bench.dart` 现为纯 Dart wrapper，实际 benchmark 执行转由 `tool/network_bench_driver_test.dart` 通过 `flutter test` driver 运行，恢复当前 workspace 下的可执行性。
+7. 已完成一轮最小 docs 归档治理：
+   - superseded 旧计划已移入 `docs/plan/archive/`
+   - pre-hard-cut 状态评估与设计状态核对已移入 `docs/archived/`
+8. 已补 benchmark CLI 启动链路修复：`tool/network_bench.dart` 现为纯 Dart wrapper，实际 benchmark 执行转由 `tool/network_bench_driver_test.dart` 通过 `flutter test` driver 运行，恢复当前 workspace 下的可执行性。
 
 ## 2) 当前正在做（In Progress）
 

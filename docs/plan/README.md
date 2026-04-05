@@ -15,7 +15,8 @@
 - `network_p1_execution_template_2026-02-25.md`：P1 性能与容量瓶颈执行模板。
 - `golang_remote_benchmark_server_plan_2026-03-02.md`：远端真机压测 Go 服务实现方案。
 - `cache_namespace_budget_governance_plan_2026-03-14.md`：namespace 缓存预算治理方案。
-- `2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md`：已被新版替代，现仅保留历史追踪价值。
+- `archive/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md`：已被新版替代，现仅保留历史追踪价值。
+- `archive/2026-04-02-rhttp-thin-gateway-v1-implementation-plan.md`：thin-gateway V1 旧实施计划，现仅保留历史追踪价值。
 
 维护约定：
 

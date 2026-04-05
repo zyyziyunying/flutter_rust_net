@@ -3,7 +3,7 @@
 > Date: 2026-04-02
 > Scope:
 > - `docs/design/2026-04-02-rhttp-dio-hard-cut-design.md`
-> - `docs/plan/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md`
+> - `docs/plan/archive/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md`
 > Basis:
 > - current worktree static review only
 > - no code changes
@@ -51,7 +51,7 @@ Evidence:
 
 - `docs/design/2026-04-02-rhttp-dio-hard-cut-design.md:52-68`
 - `docs/design/2026-04-02-rhttp-dio-hard-cut-design.md:146-155`
-- `docs/plan/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md:46-52`
+- `docs/plan/archive/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md:46-52`
 - `lib/network/bytes_first_network_client.dart:127-197`
 - `lib/network/network_gateway.dart:35-47`
 - `lib/network/benchmark/benchmark_enums.dart:55-73`
@@ -87,8 +87,8 @@ Recommended fix:
 
 Evidence:
 
-- `docs/plan/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md:134-185`
-- `docs/plan/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md:187-248`
+- `docs/plan/archive/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md:134-185`
+- `docs/plan/archive/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md:187-248`
 - `tool/network_bench.dart:54-92`
 - `tool/network_bench.dart:162-204`
 - `tool/p1_non_loopback_bench.dart:438-474`
@@ -133,13 +133,13 @@ Recommended fix:
 
 Evidence:
 
-- `docs/plan/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md:250-309`
+- `docs/plan/archive/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md:250-309`
 - `docs/README.md:5-29`
 - `docs/dio_rust_test/network_route_strategy_2026-02-24.md:3-15`
 - `docs/dio_rust_test/network_realistic_benchmark_runbook_2026-02-24.md:7-21`
 - `docs/flutter_rust_network_layer_design.md:12-15`
 - `docs/flutter_rust_network_layer_design.md:71-83`
-- `docs/problems/2026-04-02-rhttp-thin-gateway-design-review-status-check.md:13-22`
+- `docs/archived/2026-04-02-rhttp-thin-gateway-design-review-status-check.md:13-22`
 - `docs/progress/p1_status_2026-02-25.md:30-38`
 - `docs/progress/rust_lifecycle_scope_status_2026-03-12.md:9-15`
 - `docs/progress/real_device_test_commands_2026-03-02.md:10-16`
@@ -185,8 +185,8 @@ Recommended fix:
 
 Evidence:
 
-- `docs/plan/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md:71-132`
-- `docs/plan/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md:134-185`
+- `docs/plan/archive/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md:71-132`
+- `docs/plan/archive/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md:134-185`
 - `test/network/network_smoke_flow_test.dart:11-103`
 - `test/network/network_realistic_flow_test.dart:13-260`
 
@@ -215,10 +215,10 @@ Recommended fix:
 
 Evidence:
 
-- `docs/plan/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md:23-42`
-- `docs/plan/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md:84-109`
-- `docs/plan/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md:205-240`
-- `docs/plan/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md:266-292`
+- `docs/plan/archive/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md:23-42`
+- `docs/plan/archive/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md:84-109`
+- `docs/plan/archive/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md:205-240`
+- `docs/plan/archive/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md:266-292`
 - `lib/network/network_gateway.dart:103-124`
 
 Problem:
@@ -257,7 +257,7 @@ Recommended fix:
 
 Evidence:
 
-- `docs/plan/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md`
+- `docs/plan/archive/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md`
 - the plan now states that commit strategy is intentionally omitted and managed
   by the executor
 - package repo root verified in the current worktree as
@@ -287,7 +287,7 @@ Follow-up guidance:
 
 Evidence:
 
-- `docs/plan/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md`
+- `docs/plan/archive/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md`
 - the plan now states that commit strategy is intentionally omitted and managed
   by the executor
 - package repo root verified in the current worktree as

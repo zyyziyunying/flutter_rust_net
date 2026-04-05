@@ -2,7 +2,7 @@
 
 > Date: 2026-04-01
 > Reviewed doc: `flutter_rust_net/docs/plan/2026-04-01-flutter-rust-net-rhttp-thin-gateway-design.md`
-> Current status source: `flutter_rust_net/docs/problems/2026-04-02-rhttp-thin-gateway-design-review-status-check.md`
+> Historical follow-up snapshot: `flutter_rust_net/docs/archived/2026-04-02-rhttp-thin-gateway-design-review-status-check.md`
 
 ## Critical Findings
 
