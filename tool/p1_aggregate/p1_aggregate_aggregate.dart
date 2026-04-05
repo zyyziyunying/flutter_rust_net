@@ -10,7 +10,7 @@ Map<_ChannelGroupKey, _ChannelStats> _aggregateChannelStats(
       scenario: sample.scenario,
       consumeMode: sample.consumeMode,
       concurrency: sample.concurrency,
-      rustMaxInFlightTasks: sample.rustMaxInFlightTasks,
+      variantLabel: sample.variantLabel,
       channel: sample.channel,
     );
     grouped.putIfAbsent(key, () => <_ChannelSample>[]).add(sample);
@@ -48,13 +48,13 @@ List<_PairRow> _buildPairRows(Map<_ChannelGroupKey, _ChannelStats> statsByKey) {
       scenario: stats.key.scenario,
       consumeMode: stats.key.consumeMode,
       concurrency: stats.key.concurrency,
-      rustMaxInFlightTasks: stats.key.rustMaxInFlightTasks,
+      variantLabel: stats.key.variantLabel,
     );
     final row = pairs.putIfAbsent(key, () => _PairRow(key));
     if (stats.key.channel == 'dio') {
       row.dio = stats;
     } else if (stats.key.channel == 'rust') {
-      row.rust = stats;
+      row.primary = stats;
     }
   }
 
@@ -72,9 +72,7 @@ List<_PairRow> _buildPairRows(Map<_ChannelGroupKey, _ChannelStats> statsByKey) {
     if (byConcurrency != 0) {
       return byConcurrency;
     }
-    return left.key.rustMaxInFlightTasks.compareTo(
-      right.key.rustMaxInFlightTasks,
-    );
+    return left.key.variantLabel.compareTo(right.key.variantLabel);
   });
   return rows;
 }
@@ -93,23 +91,26 @@ Map<String, Object?> _statsToJson(_ChannelStats stats) {
   };
 }
 
-_Verdict _evaluate({required _ChannelStats dio, required _ChannelStats rust}) {
+_Verdict _evaluate({
+  required _ChannelStats dio,
+  required _ChannelStats primary,
+}) {
   final reasons = <String>[];
-  if (rust.exceptionRateMax > 0) {
-    reasons.add('rust exceptionRate > 0');
+  if (primary.exceptionRateMax > 0) {
+    reasons.add('primary exceptionRate > 0');
   }
-  if (rust.fallbackCountMax > 0) {
-    reasons.add('rust fallbackCount > 0');
+  if (primary.fallbackCountMax > 0) {
+    reasons.add('primary fallbackCount > 0');
   }
   if (dio.requestP95MedianMs > 0 &&
-      rust.requestP95MedianMs > dio.requestP95MedianMs * 1.05) {
-    reasons.add('rust reqP95 > dio*1.05');
+      primary.requestP95MedianMs > dio.requestP95MedianMs * 1.05) {
+    reasons.add('primary reqP95 > dio*1.05');
   }
-  if (rust.throughputMedianRps < dio.throughputMedianRps) {
-    reasons.add('rust throughput < dio');
+  if (primary.throughputMedianRps < dio.throughputMedianRps) {
+    reasons.add('primary throughput < dio');
   }
-  if (rust.queueGapMedianMs > 10) {
-    reasons.add('rust queueGap > 10ms');
+  if (primary.queueGapMedianMs > 10) {
+    reasons.add('primary queueGap > 10ms');
   }
   return _Verdict(pass: reasons.isEmpty, reasons: reasons);
 }

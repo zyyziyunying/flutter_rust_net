@@ -3,7 +3,7 @@ import 'package:flutter_rust_net/flutter_rust_net.dart';
 enum RequestRouteMode {
   auto('Auto'),
   dio('Force Dio'),
-  rust('Force Rust');
+  rust('Force Primary (rust alias)');
 
   const RequestRouteMode(this.label);
 

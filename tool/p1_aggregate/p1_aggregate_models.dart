@@ -23,7 +23,7 @@ class _BenchReport {
   final String scenario;
   final String consumeMode;
   final int concurrency;
-  final int rustMaxInFlightTasks;
+  final String variantLabel;
   final List<_ChannelSample> samples;
 
   const _BenchReport({
@@ -31,7 +31,7 @@ class _BenchReport {
     required this.scenario,
     required this.consumeMode,
     required this.concurrency,
-    required this.rustMaxInFlightTasks,
+    required this.variantLabel,
     required this.samples,
   });
 }
@@ -41,7 +41,7 @@ class _ChannelSample {
   final String scenario;
   final String consumeMode;
   final int concurrency;
-  final int rustMaxInFlightTasks;
+  final String variantLabel;
   final String channel;
   final double requestP95Ms;
   final double requestP99Ms;
@@ -57,7 +57,7 @@ class _ChannelSample {
     required this.scenario,
     required this.consumeMode,
     required this.concurrency,
-    required this.rustMaxInFlightTasks,
+    required this.variantLabel,
     required this.channel,
     required this.requestP95Ms,
     required this.requestP99Ms,
@@ -74,14 +74,14 @@ class _ChannelGroupKey {
   final String scenario;
   final String consumeMode;
   final int concurrency;
-  final int rustMaxInFlightTasks;
+  final String variantLabel;
   final String channel;
 
   const _ChannelGroupKey({
     required this.scenario,
     required this.consumeMode,
     required this.concurrency,
-    required this.rustMaxInFlightTasks,
+    required this.variantLabel,
     required this.channel,
   });
 
@@ -91,18 +91,13 @@ class _ChannelGroupKey {
         scenario == other.scenario &&
         consumeMode == other.consumeMode &&
         concurrency == other.concurrency &&
-        rustMaxInFlightTasks == other.rustMaxInFlightTasks &&
+        variantLabel == other.variantLabel &&
         channel == other.channel;
   }
 
   @override
-  int get hashCode => Object.hash(
-    scenario,
-    consumeMode,
-    concurrency,
-    rustMaxInFlightTasks,
-    channel,
-  );
+  int get hashCode =>
+      Object.hash(scenario, consumeMode, concurrency, variantLabel, channel);
 }
 
 class _ChannelStats {
@@ -135,13 +130,13 @@ class _PairKey {
   final String scenario;
   final String consumeMode;
   final int concurrency;
-  final int rustMaxInFlightTasks;
+  final String variantLabel;
 
   const _PairKey({
     required this.scenario,
     required this.consumeMode,
     required this.concurrency,
-    required this.rustMaxInFlightTasks,
+    required this.variantLabel,
   });
 
   @override
@@ -150,18 +145,18 @@ class _PairKey {
         scenario == other.scenario &&
         consumeMode == other.consumeMode &&
         concurrency == other.concurrency &&
-        rustMaxInFlightTasks == other.rustMaxInFlightTasks;
+        variantLabel == other.variantLabel;
   }
 
   @override
   int get hashCode =>
-      Object.hash(scenario, consumeMode, concurrency, rustMaxInFlightTasks);
+      Object.hash(scenario, consumeMode, concurrency, variantLabel);
 }
 
 class _PairRow {
   final _PairKey key;
   _ChannelStats? dio;
-  _ChannelStats? rust;
+  _ChannelStats? primary;
 
   _PairRow(this.key);
 }

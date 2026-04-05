@@ -36,7 +36,7 @@ class _RequestLabPageState extends State<RequestLabPage> {
   bool _sending = false;
   String _eventLog =
       'Load a preset or edit the request form, then send traffic through Dio '
-      'or the primary Rust request channel (rhttp).';
+      'or the primary request channel (`rust` alias, backed by rhttp).';
   RequestResult? _lastResult;
 
   List<RequestPreset> get _presets => widget.config.presets;
@@ -359,7 +359,8 @@ class _RequestLabPageState extends State<RequestLabPage> {
         ExampleSectionCard(
           title: 'Request Builder',
           subtitle:
-              'Auto routing follows the Rust toggle below. Force Dio/Rust overrides the routing policy per request.',
+              'Auto routing follows the primary-channel toggle below. '
+              'Force Dio or the `rust` alias overrides routing per request.',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -515,7 +516,7 @@ class _RequestLabPageState extends State<RequestLabPage> {
               const SizedBox(height: 8),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Auto route to Rust'),
+                title: const Text('Auto route to primary (rust alias)'),
                 subtitle: const Text(
                   'Only used when route mode stays on Auto.',
                 ),
@@ -532,7 +533,7 @@ class _RequestLabPageState extends State<RequestLabPage> {
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Enable fallback'),
                 subtitle: const Text(
-                  'Allows Rust failures to fall back to Dio when eligible.',
+                  'Allows primary-channel failures to fall back to Dio when eligible.',
                 ),
                 value: _enableFallback,
                 onChanged: _sending

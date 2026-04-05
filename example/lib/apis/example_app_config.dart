@@ -88,7 +88,7 @@ const List<BenchmarkRunPreset> _kBenchmarkRunPresets = [
     ),
   ),
   BenchmarkRunPreset(
-    label: 'Dio vs Rust (small_json)',
+    label: 'Dio vs Primary (rust alias, small_json)',
     config: BenchmarkConfig(
       scenario: BenchmarkScenario.smallJson,
       requests: 120,
@@ -99,7 +99,7 @@ const List<BenchmarkRunPreset> _kBenchmarkRunPresets = [
     ),
   ),
   BenchmarkRunPreset(
-    label: 'Dio vs Rust (jitter c16 mif32)',
+    label: 'Dio vs Primary (rust alias, jitter c16)',
     config: BenchmarkConfig(
       scenario: BenchmarkScenario.jitterLatency,
       requests: 240,

@@ -16,7 +16,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Preset'), findsOneWidget);
-    expect(find.text('Require Rust request channel (fail fast)'), findsOneWidget);
+    expect(
+      find.text('Require primary request channel (fail fast)'),
+      findsOneWidget,
+    );
     expect(find.text('Run local benchmark'), findsOneWidget);
   });
 }

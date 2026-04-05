@@ -204,7 +204,6 @@ class _CliOptions {
   final String baseUrl;
   final String outputDirPath;
   final String runId;
-  final int rustMaxInFlightTasks;
   final String networkProfile;
   final String device;
   final String linkType;
@@ -219,7 +218,6 @@ class _CliOptions {
     required this.baseUrl,
     required this.outputDirPath,
     required this.runId,
-    required this.rustMaxInFlightTasks,
     required this.networkProfile,
     required this.device,
     required this.linkType,
@@ -299,7 +297,6 @@ _CliOptions _parseOptions(
   var baseUrl = _defaultBaseUrl;
   String? outputDirPath;
   String? runId;
-  var rustMaxInFlightTasks = 32;
   var networkProfile = 'ethernet';
   var device = 'host_windows';
   var linkType = 'public_remote';
@@ -335,9 +332,6 @@ _CliOptions _parseOptions(
         break;
       case 'run-id':
         runId = value;
-        break;
-      case 'rust-max-in-flight':
-        rustMaxInFlightTasks = _parseInt(value, label: 'rust-max-in-flight');
         break;
       case 'network-profile':
         networkProfile = value.trim();
@@ -385,9 +379,6 @@ _CliOptions _parseOptions(
   if (linkType.isEmpty) {
     throw ArgumentError('--link-type cannot be empty');
   }
-  if (rustMaxInFlightTasks <= 0) {
-    throw ArgumentError('--rust-max-in-flight must be > 0');
-  }
   if (!File('${packageRoot.path}/tool/network_bench.dart').existsSync()) {
     throw StateError(
       'tool/network_bench.dart not found under ${packageRoot.path}',
@@ -399,7 +390,6 @@ _CliOptions _parseOptions(
     baseUrl: baseUrl,
     outputDirPath: resolvedOutputDir,
     runId: resolvedRunId,
-    rustMaxInFlightTasks: rustMaxInFlightTasks,
     networkProfile: networkProfile,
     device: device,
     linkType: linkType,
@@ -436,41 +426,35 @@ List<_BenchSpec> _buildBenchPlan(_CliOptions options, Directory outputDir) {
       ],
     ),
     _BenchSpec(
-      label: 'remote_small_rust',
+      label: 'remote_small_primary',
       scenario: 'small_json',
-      outputFile: File('${outputDir.path}/remote_small_rust.json'),
+      outputFile: File('${outputDir.path}/remote_small_primary.json'),
       arguments: [
         '--base-url=${options.baseUrl}',
         '--scenario=small_json',
         '--channels=rust',
-        '--initialize-rust=true',
-        '--require-rust=true',
+        '--require-primary-channel=true',
         '--requests=$smallRequests',
         '--warmup=$smallWarmup',
         '--concurrency=$smallConcurrency',
-        '--rust-max-in-flight=${options.rustMaxInFlightTasks}',
-        '--output=${outputDir.path}/remote_small_rust.json',
+        '--output=${outputDir.path}/remote_small_primary.json',
       ],
     ),
     _BenchSpec(
-      label: 'remote_jitter_mif${options.rustMaxInFlightTasks}',
+      label: 'remote_jitter_primary_compare',
       scenario: 'jitter_latency',
-      outputFile: File(
-        '${outputDir.path}/remote_jitter_mif${options.rustMaxInFlightTasks}.json',
-      ),
+      outputFile: File('${outputDir.path}/remote_jitter_primary_compare.json'),
       arguments: [
         '--base-url=${options.baseUrl}',
         '--scenario=jitter_latency',
         '--channels=dio,rust',
-        '--initialize-rust=true',
-        '--require-rust=true',
+        '--require-primary-channel=true',
         '--requests=$jitterRequests',
         '--warmup=$jitterWarmup',
         '--concurrency=$jitterConcurrency',
         '--jitter-base-ms=12',
         '--jitter-extra-ms=80',
-        '--rust-max-in-flight=${options.rustMaxInFlightTasks}',
-        '--output=${outputDir.path}/remote_jitter_mif${options.rustMaxInFlightTasks}.json',
+        '--output=${outputDir.path}/remote_jitter_primary_compare.json',
       ],
     ),
   ];
@@ -760,7 +744,7 @@ String _shellEscape(String value) {
 
 void _printUsage() {
   stdout.writeln('''
-p1_non_loopback_bench.dart - fixed public-remote benchmark runner for P1 evidence
+p1_non_loopback_bench.dart - fixed public-remote benchmark runner for thin-gateway evidence
 
 Usage:
   dart run tool/p1_non_loopback_bench.dart [options]
@@ -770,7 +754,6 @@ Options:
   --base-url=http://47.110.52.208:7777
   --output-dir=build/remote_public_<runId>
   --run-id=20260313_161700
-  --rust-max-in-flight=32
   --network-profile=ethernet
   --device=host_windows
   --link-type=public_remote
@@ -783,11 +766,11 @@ Options:
 Preset behavior:
   smoke:
     - small_json dio        requests=20 warmup=2 concurrency=4
-    - small_json rust       requests=20 warmup=2 concurrency=4
+    - small_json primary    requests=20 warmup=2 concurrency=4
     - jitter_latency        requests=80 warmup=8 concurrency=8
   standard:
     - small_json dio        requests=40 warmup=4 concurrency=8
-    - small_json rust       requests=40 warmup=4 concurrency=8
+    - small_json primary    requests=40 warmup=4 concurrency=8
     - jitter_latency        requests=240 warmup=24 concurrency=16
 
 Outputs:

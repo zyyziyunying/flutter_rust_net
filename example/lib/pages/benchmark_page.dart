@@ -402,7 +402,7 @@ class _BenchmarkPageState extends State<BenchmarkPage> {
           title: 'Benchmark Runner',
           subtitle:
               'Runs local loopback benchmark scenarios and compares Dio with '
-              'the primary Rust request channel (rhttp).',
+              'the primary request channel (`rust` alias, backed by rhttp).',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

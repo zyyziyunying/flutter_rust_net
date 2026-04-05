@@ -94,7 +94,7 @@ _BenchReport? _tryParseReport(String filePath, {required _CliOptions options}) {
   }
 
   final concurrency = _toInt(config['concurrency']);
-  final rustMaxInFlightTasks = _toInt(config['rustMaxInFlightTasks']);
+  final variantLabel = _resolveVariantLabel(config);
   final samples = <_ChannelSample>[];
 
   for (final entry in channelResults) {
@@ -121,7 +121,7 @@ _BenchReport? _tryParseReport(String filePath, {required _CliOptions options}) {
         scenario: scenario,
         consumeMode: consumeMode,
         concurrency: concurrency,
-        rustMaxInFlightTasks: rustMaxInFlightTasks,
+        variantLabel: variantLabel,
         channel: channel,
         requestP95Ms: _toDouble(requestLatency?['p95Ms']),
         requestP99Ms: _toDouble(requestLatency?['p99Ms']),
@@ -144,9 +144,23 @@ _BenchReport? _tryParseReport(String filePath, {required _CliOptions options}) {
     scenario: scenario,
     consumeMode: consumeMode,
     concurrency: concurrency,
-    rustMaxInFlightTasks: rustMaxInFlightTasks,
+    variantLabel: variantLabel,
     samples: samples,
   );
+}
+
+String _resolveVariantLabel(Map<String, Object?> config) {
+  final configuredVariant = '${config['primaryChannelVariant'] ?? ''}'.trim();
+  if (configuredVariant.isNotEmpty) {
+    return configuredVariant;
+  }
+
+  final legacyMaxInFlight = _toInt(config['rustMaxInFlightTasks']);
+  if (legacyMaxInFlight > 0) {
+    return 'legacy-mif-$legacyMaxInFlight';
+  }
+
+  return 'default';
 }
 
 double _toDouble(Object? value) {

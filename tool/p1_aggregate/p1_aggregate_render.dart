@@ -16,49 +16,49 @@ String _buildMarkdown({
     '- matchedReports: ${reports.length}',
     '- samples: ${samples.length}',
     '',
-    '| concurrency | maxInFlight | consumeMode | dioRuns | rustRuns | dio reqP95 | rust reqP95 | reqP95 delta | dio tp | rust tp | tp delta | rust queueGap | rust exRate(max) | rust fallback(max) | verdict |',
-    '| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |',
+    '| concurrency | variant | consumeMode | dioRuns | primaryRuns | dio reqP95 | primary reqP95 | reqP95 delta | dio tp | primary tp | tp delta | primary queueGap | primary exRate(max) | primary fallback(max) | verdict |',
+    '| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |',
   ];
 
   final failures = <String>[];
   for (final row in pairRows) {
     final dio = row.dio;
-    final rust = row.rust;
-    if (dio == null || rust == null) {
+    final primary = row.primary;
+    if (dio == null || primary == null) {
       lines.add(
-        '| ${row.key.concurrency} | ${row.key.rustMaxInFlightTasks} | '
-        '${row.key.consumeMode} | ${dio?.runCount ?? 0} | ${rust?.runCount ?? 0} | '
+        '| ${row.key.concurrency} | ${row.key.variantLabel} | '
+        '${row.key.consumeMode} | ${dio?.runCount ?? 0} | ${primary?.runCount ?? 0} | '
         '- | - | - | - | - | - | - | - | - | MISSING_CHANNEL |',
       );
       failures.add(
-        'c${row.key.concurrency}/mif${row.key.rustMaxInFlightTasks}/'
-        '${row.key.consumeMode}: missing dio or rust data',
+        'c${row.key.concurrency}/${row.key.variantLabel}/'
+        '${row.key.consumeMode}: missing dio or primary data',
       );
       continue;
     }
 
     final reqP95Delta = _deltaPercent(
       base: dio.requestP95MedianMs,
-      value: rust.requestP95MedianMs,
+      value: primary.requestP95MedianMs,
     );
     final throughputDelta = _deltaPercent(
       base: dio.throughputMedianRps,
-      value: rust.throughputMedianRps,
+      value: primary.throughputMedianRps,
     );
-    final verdict = _evaluate(dio: dio, rust: rust);
+    final verdict = _evaluate(dio: dio, primary: primary);
 
     lines.add(
-      '| ${row.key.concurrency} | ${row.key.rustMaxInFlightTasks} | ${row.key.consumeMode} | '
-      '${dio.runCount} | ${rust.runCount} | '
-      '${_fmtMs(dio.requestP95MedianMs)} | ${_fmtMs(rust.requestP95MedianMs)} | ${_fmtPercent(reqP95Delta)} | '
-      '${_fmtRps(dio.throughputMedianRps)} | ${_fmtRps(rust.throughputMedianRps)} | ${_fmtPercent(throughputDelta)} | '
-      '${_fmtMs(rust.queueGapMedianMs)} | ${_fmtRate(rust.exceptionRateMax)} | ${rust.fallbackCountMax} | '
+      '| ${row.key.concurrency} | ${row.key.variantLabel} | ${row.key.consumeMode} | '
+      '${dio.runCount} | ${primary.runCount} | '
+      '${_fmtMs(dio.requestP95MedianMs)} | ${_fmtMs(primary.requestP95MedianMs)} | ${_fmtPercent(reqP95Delta)} | '
+      '${_fmtRps(dio.throughputMedianRps)} | ${_fmtRps(primary.throughputMedianRps)} | ${_fmtPercent(throughputDelta)} | '
+      '${_fmtMs(primary.queueGapMedianMs)} | ${_fmtRate(primary.exceptionRateMax)} | ${primary.fallbackCountMax} | '
       '${verdict.pass ? 'PASS' : 'FAIL'} |',
     );
 
     if (!verdict.pass) {
       failures.add(
-        'c${row.key.concurrency}/mif${row.key.rustMaxInFlightTasks}/'
+        'c${row.key.concurrency}/${row.key.variantLabel}/'
         '${row.key.consumeMode}: ${verdict.reasons.join('; ')}',
       );
     }
@@ -75,8 +75,8 @@ String _buildMarkdown({
   }
   lines.add('');
   lines.add(
-    '- thresholds: rust exceptionRate==0, rust fallbackCount==0, '
-    'rust reqP95<=dio*1.05, rust throughput>=dio, rust queueGap<=10ms.',
+    '- thresholds: primary exceptionRate==0, primary fallbackCount==0, '
+    'primary reqP95<=dio*1.05, primary throughput>=dio, primary queueGap<=10ms.',
   );
 
   return lines.join('\n');
@@ -91,17 +91,17 @@ Map<String, Object?> _buildJsonSummary({
   final rows = <Map<String, Object?>>[];
   for (final row in pairRows) {
     final dio = row.dio;
-    final rust = row.rust;
-    final verdict = dio == null || rust == null
-        ? const _Verdict(pass: false, reasons: ['missing_dio_or_rust'])
-        : _evaluate(dio: dio, rust: rust);
+    final primary = row.primary;
+    final verdict = dio == null || primary == null
+        ? const _Verdict(pass: false, reasons: ['missing_dio_or_primary'])
+        : _evaluate(dio: dio, primary: primary);
     rows.add({
       'scenario': row.key.scenario,
       'consumeMode': row.key.consumeMode,
       'concurrency': row.key.concurrency,
-      'rustMaxInFlightTasks': row.key.rustMaxInFlightTasks,
+      'variant': row.key.variantLabel,
       'dio': dio == null ? null : _statsToJson(dio),
-      'rust': rust == null ? null : _statsToJson(rust),
+      'primary': primary == null ? null : _statsToJson(primary),
       'verdict': {'pass': verdict.pass, 'reasons': verdict.reasons},
     });
   }
@@ -133,7 +133,7 @@ String _fmtPercent(double? value) {
 
 void _printUsage() {
   stdout.writeln('''
-p1_aggregate.dart - aggregate jitter benchmark reports for P1 decisions
+p1_aggregate.dart - aggregate benchmark reports for primary-channel decisions
 
 Usage:
   dart run tool/p1_aggregate.dart [options]

@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter_rust_net/network/benchmark/network_benchmark_harness.dart';
+const String _kBenchArgsEnv = 'FRN_NETWORK_BENCH_ARGS_JSON';
 
 Future<void> main(List<String> args) async {
   if (args.contains('--help') || args.contains('-h')) {
@@ -10,141 +10,36 @@ Future<void> main(List<String> args) async {
   }
 
   try {
-    final kvArgs = _parseArgs(args);
-    final config = _buildConfig(kvArgs);
-    final report = await runNetworkBenchmark(
-      config,
-      log: (message) {
-        if (config.verbose) {
-          stdout.writeln(message);
-        }
-      },
+    final process = await Process.start(
+      'flutter',
+      [
+        'test',
+        'tool/network_bench_driver_test.dart',
+        '--plain-name=network_bench_driver',
+      ],
+      workingDirectory: Directory.current.path,
+      runInShell: true,
+      environment: {...Platform.environment, _kBenchArgsEnv: jsonEncode(args)},
     );
 
-    stdout.writeln(report.toPrettyText());
-
-    final outputPath = kvArgs['output'];
-    if (outputPath != null && outputPath.isNotEmpty) {
-      final file = File(outputPath);
-      await file.parent.create(recursive: true);
-      await file.writeAsString(
-        const JsonEncoder.withIndent('  ').convert(report.toJson()),
-      );
-      stdout.writeln('[network-bench] report saved to ${file.path}');
-    }
-  } catch (error) {
+    final stdoutDone = stdout.addStream(process.stdout);
+    final stderrDone = stderr.addStream(process.stderr);
+    final resultExitCode = await process.exitCode;
+    await stdoutDone;
+    await stderrDone;
+    exit(resultExitCode);
+  } on ProcessException catch (error) {
     stderr.writeln('[network-bench] failed: $error');
-    stderr.writeln('use --help to view all options.');
+    stderr.writeln(
+      'Failed to start `flutter test`. Ensure Flutter is installed and on PATH.',
+    );
     exitCode = 2;
-  }
-}
-
-BenchmarkConfig _buildConfig(Map<String, String> kvArgs) {
-  final scenario = kvArgs['scenario'] == null
-      ? BenchmarkScenario.smallJson
-      : BenchmarkScenarioX.parse(kvArgs['scenario']!);
-
-  final channels = kvArgs['channels'] == null
-      ? const {BenchmarkChannel.dio, BenchmarkChannel.rust}
-      : BenchmarkChannelX.parseList(kvArgs['channels']!);
-  final consumeMode = kvArgs['consume-mode'] == null
-      ? BenchmarkConsumeMode.none
-      : BenchmarkConsumeModeX.parse(kvArgs['consume-mode']!);
-
-  return BenchmarkConfig(
-    scenario: scenario,
-    consumeMode: consumeMode,
-    requests: _parseInt(kvArgs['requests'], fallback: 120),
-    warmupRequests: _parseInt(kvArgs['warmup'], fallback: 12),
-    concurrency: _parseInt(kvArgs['concurrency'], fallback: 12),
-    channels: channels,
-    preflightPrimaryChannel: _parseBool(
-      kvArgs['preflight-primary-channel'],
-      fallback: true,
-    ),
-    requirePrimaryChannel: _parseBool(
-      kvArgs['require-primary-channel'],
-      fallback: false,
-    ),
-    enableFallback: _parseBool(kvArgs['fallback'], fallback: true),
-    verbose: _parseBool(kvArgs['verbose'], fallback: true),
-    largePayloadBytes: _parseInt(
-      kvArgs['large-bytes'],
-      fallback: 2 * 1024 * 1024,
-    ),
-    jitterBaseDelayMs: _parseInt(kvArgs['jitter-base-ms'], fallback: 12),
-    jitterExtraDelayMs: _parseInt(kvArgs['jitter-extra-ms'], fallback: 80),
-    flakyFailureEvery: _parseInt(kvArgs['flaky-every'], fallback: 5),
-    dioConnectTimeout: Duration(
-      milliseconds: _parseInt(kvArgs['connect-timeout-ms'], fallback: 5000),
-    ),
-    dioReceiveTimeout: Duration(
-      milliseconds: _parseInt(kvArgs['receive-timeout-ms'], fallback: 15000),
-    ),
-    requestKeySpace: _parseInt(kvArgs['request-key-space'], fallback: 0),
-    scenarioBaseUrl: kvArgs['base-url'] ?? '',
-  );
-}
-
-Map<String, String> _parseArgs(List<String> args) {
-  final kv = <String, String>{};
-  for (final arg in args) {
-    if (!arg.startsWith('--')) {
-      throw ArgumentError('invalid argument: $arg');
-    }
-    final payload = arg.substring(2);
-    if (payload.isEmpty) {
-      continue;
-    }
-    final splitIndex = payload.indexOf('=');
-    if (splitIndex < 0) {
-      kv[payload] = 'true';
-      continue;
-    }
-    final key = payload.substring(0, splitIndex);
-    final value = payload.substring(splitIndex + 1);
-    if (key.isEmpty) {
-      throw ArgumentError('invalid argument: $arg');
-    }
-    kv[key] = value;
-  }
-  return kv;
-}
-
-int _parseInt(String? raw, {required int fallback}) {
-  if (raw == null || raw.isEmpty) {
-    return fallback;
-  }
-  final value = int.tryParse(raw);
-  if (value == null) {
-    throw ArgumentError('invalid int: $raw');
-  }
-  return value;
-}
-
-bool _parseBool(String? raw, {required bool fallback}) {
-  if (raw == null || raw.isEmpty) {
-    return fallback;
-  }
-  switch (raw.toLowerCase()) {
-    case 'true':
-    case '1':
-    case 'yes':
-    case 'on':
-      return true;
-    case 'false':
-    case '0':
-    case 'no':
-    case 'off':
-      return false;
-    default:
-      throw ArgumentError('invalid bool: $raw');
   }
 }
 
 void _printUsage() {
   stdout.writeln('''
-network_bench.dart - realistic local benchmark for Dio vs Rust channels
+network_bench.dart - realistic local benchmark for Dio vs the primary request channel (`rust` alias)
 
 Usage:
   dart run tool/network_bench.dart [options]
@@ -152,7 +47,7 @@ Usage:
 Options:
   --scenario=small_json|large_json|large_payload|jitter_latency|flaky_http
   --consume-mode=none|json_decode|json_model
-  --channels=dio,rust             default: dio,rust
+  --channels=dio,rust             default: dio,rust (`rust` = primary-channel alias)
   --requests=120                  measured requests per channel
   --warmup=12                     warmup requests per channel
   --concurrency=12                parallel workers

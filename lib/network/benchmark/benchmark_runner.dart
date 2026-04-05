@@ -68,7 +68,7 @@ Future<BenchmarkReport> runNetworkBenchmark(
         (config.preflightPrimaryChannel || config.requirePrimaryChannel)) {
       logger(
         '[network-bench] preparing primary request channel '
-        '(BenchmarkChannel.rust)...',
+        '(BenchmarkChannel.rust compatibility label)...',
       );
       try {
         primaryChannelPreflighted = await _preparePrimaryRequestAdapter(
@@ -84,7 +84,9 @@ Future<BenchmarkReport> runNetworkBenchmark(
           rethrow;
         }
         skippedChannels[BenchmarkChannel.rust.cliName] = reason;
-        logger('[network-bench] skip rust channel, $reason');
+        logger(
+          '[network-bench] skip primary request channel (`rust` alias), $reason',
+        );
       }
     }
 
