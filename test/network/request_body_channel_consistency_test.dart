@@ -9,8 +9,10 @@ import 'package:flutter_rust_net/network/net_adapter.dart';
 import 'package:flutter_rust_net/network/net_models.dart';
 import 'package:flutter_rust_net/network/rhttp_adapter.dart';
 
+import 'test_support/real_rhttp_test_support.dart';
+
 void main() {
-  final realRhttpSkip = _realRhttpSkipReason();
+  final realRhttpSkip = realRhttpSkipReason();
 
   group('request body channel consistency', () {
     test(
@@ -264,17 +266,4 @@ class _RecordedRequest {
   final String? contentType;
 
   const _RecordedRequest({required this.bodyBytes, required this.contentType});
-}
-
-String? _realRhttpSkipReason() {
-  final nativeLibDir =
-      Platform.environment['FRB_DART_LOAD_EXTERNAL_LIBRARY_NATIVE_LIB_DIR'];
-  if (nativeLibDir == null || nativeLibDir.isEmpty) {
-    return 'Set the native rhttp library directory via FRB_DART_LOAD_EXTERNAL_LIBRARY_NATIVE_LIB_DIR to run opt-in real-rhttp tests.';
-  }
-  final nativeLib = File('$nativeLibDir/librhttp.dylib');
-  if (!nativeLib.existsSync()) {
-    return 'Missing librhttp.dylib under the configured native rhttp library directory: $nativeLibDir';
-  }
-  return null;
 }

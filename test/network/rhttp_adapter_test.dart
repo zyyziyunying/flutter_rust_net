@@ -7,8 +7,10 @@ import 'package:flutter_rust_net/network/net_models.dart';
 import 'package:flutter_rust_net/network/rhttp_adapter.dart';
 import 'package:rhttp/rhttp.dart' as rhttp;
 
+import 'test_support/real_rhttp_test_support.dart';
+
 void main() {
-  final realRhttpSkip = _realRhttpSkipReason();
+  final realRhttpSkip = realRhttpSkipReason();
 
   group('RhttpAdapter request path', () {
     test('maps success response and keeps bytes-first metadata', () async {
@@ -285,17 +287,4 @@ rhttp.HttpRequest _toRhttpRequest(RhttpAdapterRequest request) {
         : rhttp.HttpBody.bytes(request.bodyBytes!),
     expectBody: rhttp.HttpExpectBody.bytes,
   );
-}
-
-String? _realRhttpSkipReason() {
-  final nativeLibDir =
-      io.Platform.environment['FRB_DART_LOAD_EXTERNAL_LIBRARY_NATIVE_LIB_DIR'];
-  if (nativeLibDir == null || nativeLibDir.isEmpty) {
-    return 'Set the native rhttp library directory via FRB_DART_LOAD_EXTERNAL_LIBRARY_NATIVE_LIB_DIR to run opt-in real-rhttp tests.';
-  }
-  final nativeLib = io.File('$nativeLibDir/librhttp.dylib');
-  if (!nativeLib.existsSync()) {
-    return 'Missing librhttp.dylib under the configured native rhttp library directory: $nativeLibDir';
-  }
-  return null;
 }
