@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'download_benchmark_support.dart';
 import 'benchmark_types.dart';
 
 const String scenarioBenchChannelHeader = 'x-network-bench-channel';
@@ -42,12 +43,12 @@ class ScenarioServer {
     required Uint8List largePayload,
     required List<int> largeJsonPayload,
     required List<int> smallJsonPayload,
-  })  : _server = server,
-        _config = config,
-        _logger = logger,
-        _largePayload = largePayload,
-        _largeJsonPayload = largeJsonPayload,
-        _smallJsonPayload = smallJsonPayload;
+  }) : _server = server,
+       _config = config,
+       _logger = logger,
+       _largePayload = largePayload,
+       _largeJsonPayload = largeJsonPayload,
+       _smallJsonPayload = smallJsonPayload;
 
   String get baseUrl => 'http://${_server.address.address}:${_server.port}';
 
@@ -99,6 +100,9 @@ class ScenarioServer {
           case '/bench/large-payload':
             await _handleLargePayload(request);
             return;
+          case '/bench/download-file':
+            await _handleDownloadFile(request);
+            return;
           case '/bench/jitter':
             await _handleJitter(request);
             return;
@@ -142,6 +146,41 @@ class ScenarioServer {
       ..headers.contentType = ContentType.json
       ..headers.set(HttpHeaders.contentLengthHeader, _largeJsonPayload.length)
       ..add(_largeJsonPayload);
+    await request.response.close();
+  }
+
+  Future<void> _handleDownloadFile(HttpRequest request) async {
+    final totalBytes = max(
+      1,
+      _parseInt(
+        request.uri.queryParameters['bytes'],
+        fallback: _config.largePayloadBytes,
+      ),
+    );
+    final chunkBytes = max(
+      1,
+      _parseInt(request.uri.queryParameters['chunkBytes'], fallback: 64 * 1024),
+    );
+    final chunkDelayMs = max(
+      0,
+      _parseInt(request.uri.queryParameters['chunkDelayMs'], fallback: 0),
+    );
+
+    request.response
+      ..statusCode = HttpStatus.ok
+      ..headers.contentType = ContentType.binary
+      ..headers.set(HttpHeaders.contentLengthHeader, totalBytes);
+
+    await for (final chunk in streamDeterministicDownloadPayload(
+      totalBytes,
+      chunkBytes: chunkBytes,
+    )) {
+      request.response.add(chunk);
+      await request.response.flush();
+      if (chunkDelayMs > 0) {
+        await Future<void>.delayed(Duration(milliseconds: chunkDelayMs));
+      }
+    }
     await request.response.close();
   }
 
