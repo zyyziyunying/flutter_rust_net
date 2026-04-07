@@ -11,8 +11,8 @@ title: L1 传输层：Dio vs Rust 网络基准聚合结论（2026-02-24）
 
 1. 本文是 2026-02-24 当日网络 benchmark 的唯一 L1 收敛文档（传输层）。
 2. 已整合以下内容：
-   - `flutter_rust_net/docs/dio_rust_test/network_realistic_benchmark_2026-02-24.md`（基线方案 + 首轮结果）
-   - `flutter_rust_net/docs/dio_rust_test/network_benchmark_audit_2026-02-24.md`（jitter 并发梯度 + `maxInFlightTasks` 灵敏度）
+   - `flutter_rust_net/docs/dio_rust_test/archive/network_realistic_benchmark_2026-02-24.md`（基线方案 + 首轮结果）
+   - `flutter_rust_net/docs/dio_rust_test/archive/network_benchmark_audit_2026-02-24.md`（jitter 并发梯度 + `maxInFlightTasks` 灵敏度）
    - `相关文档（按需）` 中的同轮执行记录
 3. 本文结论只用于 L1：请求层时延/吞吐/错误/fallback/排队；不覆盖 L2 的 decode/model/UI/复杂对象回传成本。
 

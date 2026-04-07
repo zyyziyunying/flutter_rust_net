@@ -9,9 +9,9 @@ title: flutter_rust_net 生命周期与共享作用域修复计划（2026-03-12�
 > 目标：闭环 `RustAdapter` / `RustBridgeApi` 的 `shutdown/reset` 生命周期，并补齐默认 `FrbRustBridgeApi` 共享作用域的真实生产路径回归。  
 > 适用目录：`D:\dev\flutter_code\harrypet_flutter\flutter_rust_net`  
 > 输入问题：  
-> - `docs/questions/flutter_rust_net_staged_review_followups_2026-03-11.md` 第 36-59 行  
-> - `docs/questions/flutter_rust_net_risk_review_findings_2026-03-09.md` 第 214-246 行  
-> - `docs/questions/flutter_rust_net_staged_review_followups_2026-03-11.md` 第 61-80 行
+> - `docs/archived/flutter_rust_net_staged_review_followups_2026-03-11.md` 第 36-59 行  
+> - `docs/archived/flutter_rust_net_risk_review_findings_2026-03-09.md` 第 214-246 行  
+> - `docs/archived/flutter_rust_net_staged_review_followups_2026-03-11.md` 第 61-80 行
 
 ## 0) 本轮计划要解决的 4 个问题
 

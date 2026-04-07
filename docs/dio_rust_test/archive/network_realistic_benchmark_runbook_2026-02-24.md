@@ -8,7 +8,7 @@ title: Dio vs Rust 网络测试执行手册（2026-02-24 起，补记至 2026-03
 >
 > 2026-03-11 补记：保留历史基准执行手册主体不变；当前补充重点放在“公网 `--base-url` 可用”“归档命名 / 额外字段 / 回执口径”三件事。
 >
-> 2026-03-13 补记：已新增固定入口 `tool/p1_non_loopback_bench.dart`，可一键串联公网 benchmark、聚合摘要与 `run_manifest.json`；仓库内样例见 `docs/dio_rust_test/network_public_remote_sample_2026-03-13.md`。
+> 2026-03-13 补记：已新增固定入口 `tool/p1_non_loopback_bench.dart`，可一键串联公网 benchmark、聚合摘要与 `run_manifest.json`；仓库内样例见 `docs/dio_rust_test/archive/network_public_remote_sample_2026-03-13.md`。
 
 ## 0) 当前已知结果（基于 2026-02-24 更新轮次）
 

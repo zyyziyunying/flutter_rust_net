@@ -259,8 +259,8 @@ Priority docs to update:
 - workspace `../AGENTS.md`
 - `docs/README.md`
 - `docs/progress/README.md`
-- `docs/progress/p2_status_2026-03-02.md`
-- `docs/plan/cache_namespace_budget_governance_plan_2026-03-14.md`
+- `docs/progress/archive/p2_status_2026-03-02.md`
+- `docs/plan/archive/cache_namespace_budget_governance_plan_2026-03-14.md`
 - relevant active `docs/problems/` and `docs/progress/` records when they are
   still presented as current state
 
@@ -339,8 +339,8 @@ The hard cut is complete when all of the following are true:
 - the repository no longer contains package-local `native/rust/net_engine`
 - the example no longer builds or references package-local Rust libraries
 - active docs entry points (including `docs/README.md`,
-  `docs/progress/README.md`, `docs/progress/p2_status_2026-03-02.md`, and
-  `docs/plan/cache_namespace_budget_governance_plan_2026-03-14.md`) no longer
+  `docs/progress/README.md`, `docs/progress/archive/p2_status_2026-03-02.md`, and
+  `docs/plan/archive/cache_namespace_budget_governance_plan_2026-03-14.md`) no longer
   describe removed Rust ownership as current state
 - docs describe only `rhttp + Dio`
 - `flutter test` passes

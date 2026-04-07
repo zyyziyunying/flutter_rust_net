@@ -1,27 +1,27 @@
 ---
-title: Rust 生命周期与共享作用域修复状态（2026-03-12）
+title: Rust 生命周期与共享作用域历史修复快照（2026-03-12）
 ---
 
-# Rust 生命周期与共享作用域修复状态（2026-03-12）
+# Rust 生命周期与共享作用域历史修复快照（2026-03-12）
 
-> 范围：`flutter_rust_net` 的 Dart 侧 Rust lifecycle / shared scope 修复闭环。
+> 范围：`flutter_rust_net` 的 Dart 侧 Rust lifecycle / shared scope 修复闭环历史快照。
 >
-> 当前状态（2026-03-12）：`RustAdapter` 已补齐受控 `shutdown -> reinitialize` 生命周期；`RustBridgeApi.shutdownNetEngine()` 仅保留为低层 bridge passthrough，不再被视为会同步 Dart 生命周期状态。默认生产路径下“不同 `FrbRustBridgeApi` 实例共享同一默认 scope”的正式回归也已入库。
+> 当时状态（2026-03-12）：`RustAdapter` 已补齐受控 `shutdown -> reinitialize` 生命周期；`RustBridgeApi.shutdownNetEngine()` 仅保留为低层 bridge passthrough，不再被视为会同步 Dart 生命周期状态。默认生产路径下“不同 `FrbRustBridgeApi` 实例共享同一默认 scope”的正式回归也已入库。
 
 > 2026-04-05 补充说明：本文只保留 legacy Rust lifecycle 的历史修复记录。相关 runtime surface 已不再属于当前 active package。
 
-## 快速跳转（同日文档）
+## 快速跳转（历史关联文档）
 
-- 修复计划：[`flutter_rust_net/docs/archived/flutter_rust_net_lifecycle_scope_fix_plan_2026-03-12.md`](../archived/flutter_rust_net_lifecycle_scope_fix_plan_2026-03-12.md)
-- 跟进问题：[`flutter_rust_net/docs/archived/flutter_rust_net_staged_review_followups_2026-03-11.md`](../archived/flutter_rust_net_staged_review_followups_2026-03-11.md)
-- 风险审查：[`flutter_rust_net/docs/archived/flutter_rust_net_risk_review_findings_2026-03-09.md`](../archived/flutter_rust_net_risk_review_findings_2026-03-09.md)
-- 架构概览：[`flutter_rust_net/FLUTTER_RUST_NET_OVERVIEW_ZH.md`](../../FLUTTER_RUST_NET_OVERVIEW_ZH.md)
+- 修复计划：[`flutter_rust_net/docs/archived/flutter_rust_net_lifecycle_scope_fix_plan_2026-03-12.md`](../../archived/flutter_rust_net_lifecycle_scope_fix_plan_2026-03-12.md)
+- 跟进问题：[`flutter_rust_net/docs/archived/flutter_rust_net_staged_review_followups_2026-03-11.md`](../../archived/flutter_rust_net_staged_review_followups_2026-03-11.md)
+- 风险审查：[`flutter_rust_net/docs/archived/flutter_rust_net_risk_review_findings_2026-03-09.md`](../../archived/flutter_rust_net_risk_review_findings_2026-03-09.md)
+- 架构概览：[`flutter_rust_net/FLUTTER_RUST_NET_OVERVIEW_ZH.md`](../../../FLUTTER_RUST_NET_OVERVIEW_ZH.md)
 
-## 文档口径（事实源）
+## 文档口径（历史阅读口径）
 
-- 本文维护本专题的阶段结论与 `Done / In Progress / Next`。
-- 具体实现细节以代码与测试为准；本文只记录当前事实，不重复展开完整设计推演。
-- 若后续有更晚日期的专题文档与本文冲突，以日期更晚者为准，并应尽快回写本文或归档本文。
+- 本文保留的是 legacy Rust lifecycle 专题的历史修复快照，不再作为当前状态事实源。
+- 文中的 `Done / In Progress / Next` 仅表示当时阶段判断。
+- 具体实现细节以当时代码与测试为准；当前代码树请以 hard-cut 后入口文档为准。
 
 ## 1) 已完成（Done）
 

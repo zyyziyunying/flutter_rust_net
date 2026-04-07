@@ -242,7 +242,7 @@ git commit -m "refactor: align bytes first client with thin gateway v1"
 - Modify: `flutter_rust_net/lib/network/benchmark/benchmark_runner.dart`
 - Modify: `flutter_rust_net/README.md`
 - Modify: `flutter_rust_net/FLUTTER_RUST_NET_OVERVIEW_ZH.md`
-- Modify: `flutter_rust_net/docs/plan/2026-04-01-flutter-rust-net-rhttp-thin-gateway-design.md`
+- Modify: `flutter_rust_net/docs/archived/2026-04-01-flutter-rust-net-rhttp-thin-gateway-design.md`
 
 **Step 1: Write the failing tests or acceptance checks**
 
@@ -284,7 +284,7 @@ Expected: PASS.
 **Step 5: Commit**
 
 ```bash
-git add flutter_rust_net/example/lib/pages/request_lab_page.dart flutter_rust_net/lib/network/benchmark/benchmark_runner.dart flutter_rust_net/README.md flutter_rust_net/FLUTTER_RUST_NET_OVERVIEW_ZH.md flutter_rust_net/docs/plan/2026-04-01-flutter-rust-net-rhttp-thin-gateway-design.md
+git add flutter_rust_net/example/lib/pages/request_lab_page.dart flutter_rust_net/lib/network/benchmark/benchmark_runner.dart flutter_rust_net/README.md flutter_rust_net/FLUTTER_RUST_NET_OVERVIEW_ZH.md flutter_rust_net/docs/archived/2026-04-01-flutter-rust-net-rhttp-thin-gateway-design.md
 git commit -m "docs: align thin gateway examples and docs with v1 scope"
 ```
 

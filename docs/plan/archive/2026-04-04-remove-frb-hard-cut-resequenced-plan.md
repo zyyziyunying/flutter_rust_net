@@ -1,10 +1,10 @@
 # Remove FRB Hard-Cut Resequenced Plan
 
 > Date: 2026-04-04
-> Status: Current execution plan
+> Status: Historical completed execution plan
 > Basis:
 > - `docs/plan/archive/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md`
-> - `docs/plan/2026-04-01-flutter-rust-net-rhttp-thin-gateway-design.md`
+> - `docs/archived/2026-04-01-flutter-rust-net-rhttp-thin-gateway-design.md`
 > - current worktree inspection
 > - multi-agent review on runtime/API, benchmark/tooling, and validation/docs
 
@@ -218,10 +218,10 @@ Scope:
 - `docs/archived/2026-04-02-project-progress-and-gap-assessment.md`
 - `docs/archived/2026-04-02-rhttp-thin-gateway-design-review-status-check.md`
 - `docs/progress/README.md`
-- `docs/progress/p1_status_2026-02-25.md`
-- `docs/progress/p2_status_2026-03-02.md`
-- `docs/progress/rust_lifecycle_scope_status_2026-03-12.md`
-- `docs/progress/real_device_test_commands_2026-03-02.md`
+- `docs/progress/archive/p1_status_2026-02-25.md`
+- `docs/progress/archive/p2_status_2026-03-02.md`
+- `docs/progress/archive/rust_lifecycle_scope_status_2026-03-12.md`
+- `docs/progress/archive/real_device_test_commands_2026-03-02.md`
 - `docs/plan/README.md`
 
 Actions:

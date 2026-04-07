@@ -4,7 +4,7 @@
 > Status: Historical pre-hard-cut assessment
 > Superseded by:
 > - `docs/progress/frb_hard_cut_status_2026-04-04.md`
-> - `docs/plan/2026-04-04-remove-frb-hard-cut-resequenced-plan.md`
+> - `docs/plan/archive/2026-04-04-remove-frb-hard-cut-resequenced-plan.md`
 
 ## Historical Boundary
 

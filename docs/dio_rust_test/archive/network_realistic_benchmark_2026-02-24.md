@@ -6,7 +6,7 @@ title: Dio vs Rust 真实场景网络测试说明（2026-02-24）
 # Dio vs Rust 真实场景网络测试说明（2026-02-24）
 
 > 目标：从“页面手工冒烟”升级到“可复现、可对比、可量化”的真实场景测试，持续评估 `Dio` 与 `Rust` 双通道在不同负载下的差异，并沉淀路由策略依据。
-> 归档说明：本文件保留设计与执行细节；L1 决策请以 `flutter_rust_net/docs/dio_rust_test/network_benchmark_aggregation_2026-02-24.md` 为准，L2/large_json 补充请结合 `flutter_rust_net/docs/dio_rust_test/network_realistic_benchmark_l2_summary_2026-02-24.md` 与 `flutter_rust_net/docs/dio_rust_test/network_large_json_validation_2026-02-24.md`。
+> 归档说明：本文件保留设计与执行细节；L1 决策请以 `flutter_rust_net/docs/dio_rust_test/archive/network_benchmark_aggregation_2026-02-24.md` 为准，L2/large_json 补充请结合 `flutter_rust_net/docs/dio_rust_test/archive/network_realistic_benchmark_l2_summary_2026-02-24.md` 与 `flutter_rust_net/docs/dio_rust_test/archive/network_large_json_validation_2026-02-24.md`。
 
 ## 1) 本次改造范围
 

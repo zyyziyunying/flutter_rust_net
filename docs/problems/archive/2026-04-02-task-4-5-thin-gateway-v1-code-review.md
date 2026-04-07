@@ -15,7 +15,7 @@ status: resolved
 > - `example/lib/pages/benchmark_page.dart`
 > - `README.md`
 > - `FLUTTER_RUST_NET_OVERVIEW_ZH.md`
-> - `docs/plan/2026-04-01-flutter-rust-net-rhttp-thin-gateway-design.md`
+> - `docs/archived/2026-04-01-flutter-rust-net-rhttp-thin-gateway-design.md`
 > - `test/network/bytes_first_network_client_test.dart`
 > - `test/network/benchmark_runner_test.dart`
 > - `example/test/widget_test.dart`
@@ -90,8 +90,8 @@ Recommended fix:
 Evidence:
 
 - `example/lib/pages/request_lab_page.dart:546-560`
-- `docs/plan/2026-04-01-flutter-rust-net-rhttp-thin-gateway-design.md:158-160`
-- `docs/plan/2026-04-01-flutter-rust-net-rhttp-thin-gateway-design.md:274-277`
+- `docs/archived/2026-04-01-flutter-rust-net-rhttp-thin-gateway-design.md:158-160`
+- `docs/archived/2026-04-01-flutter-rust-net-rhttp-thin-gateway-design.md:274-277`
 
 Problem:
 

@@ -3,7 +3,7 @@
 ## 快速跳转（当前有效）
 
 - 当前执行状态：[`docs/progress/frb_hard_cut_status_2026-04-04.md`](./docs/progress/frb_hard_cut_status_2026-04-04.md)
-- 当前执行计划：[`docs/plan/2026-04-04-remove-frb-hard-cut-resequenced-plan.md`](./docs/plan/2026-04-04-remove-frb-hard-cut-resequenced-plan.md)
+- 当前网络层设计：[`docs/flutter_rust_network_layer_design.md`](./docs/flutter_rust_network_layer_design.md)
 - 文档索引：[`docs/README.md`](./docs/README.md)
 
 ## 文档口径
@@ -72,5 +72,5 @@
 
 ## 8) 历史资料说明
 
-- `docs/progress/p1_status_2026-02-25.md`、`docs/progress/p2_status_2026-03-02.md`、`docs/progress/rust_lifecycle_scope_status_2026-03-12.md` 仍保留追溯价值
+- `docs/progress/archive/p1_status_2026-02-25.md`、`docs/progress/archive/p2_status_2026-03-02.md`、`docs/progress/archive/rust_lifecycle_scope_status_2026-03-12.md` 仍保留追溯价值
 - 这些文档中的 Rust cache/runtime/FRB 描述只代表 pre-hard-cut 历史阶段，不代表当前代码树

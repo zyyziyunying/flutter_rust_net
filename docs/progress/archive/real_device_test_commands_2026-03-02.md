@@ -7,7 +7,7 @@ title: flutter_rust_net 真机测试命令清单（2026-03-14）
 > 适用范围：`flutter_rust_net` 真机回归与 Dio/Rust 对比。  
 > 执行目录默认从仓库根目录 `D:\dev\flutter_code\harrypet_flutter` 开始。
 >
-> 当前口径（2026-03-14）：
+> 当时口径（2026-03-14）：
 > 1. `example/` 里的预设主要用于真机 App 冒烟、Rust 打包链路和上传按钮回归，默认仍走本地 loopback。
 > 2. 已新增固定入口 `tool/p1_non_loopback_bench.dart`，可一键串联公网 benchmark、聚合摘要和 `run_manifest.json`。
 > 3. `tool/network_bench.dart` 仍保留为底层命令入口，适合手工拆分单场景复验。
@@ -16,8 +16,10 @@ title: flutter_rust_net 真机测试命令清单（2026-03-14）
 > 6. 自 `2026-03-17` 起，若 benchmark 在实际初始化 Rust 时省略 `--rust-cache-dir`，报告里的 `config.rustCacheDir` 会写入自动生成的“本次 run 独占”临时目录；该目录在 benchmark 结束后会由 runner best-effort 清理。若需要 cold / warm 显式复用同一 cache root，必须手工传入同一个 `--rust-cache-dir`。
 
 > 2026-04-05 补充说明：本文保留的是 pre-hard-cut 真机/benchmark runbook。文中凡是涉及 Rust runtime、FRB、本地 `net_engine` 构建或 `rustCache*` 的命令，均应按历史口径阅读，不代表当前 active package 仍支持这些入口。
+>
+> 2026-04-07 归档说明：下方命令块是历史快照，不可直接按当前代码树执行。已删除或已失效的典型入口包括 `tool/rust_build.dart`、`--initialize-rust`、`--require-rust`、`--rust-max-in-flight` 与相关 `rustCache*` 参数。
 
-## 0) 一次性预检查（建议先跑）
+## 0) 历史预检查命令快照（不可直接照搬）
 
 ```powershell
 flutter --version
@@ -46,7 +48,7 @@ cargo ndk --version
 
 ---
 
-## 1) 真机 App 冒烟（推荐先做）
+## 1) 真机 App 冒烟历史快照
 
 ```powershell
 Set-Location .\flutter_rust_net\example
@@ -69,7 +71,7 @@ App 内建议顺序：
 
 ---
 
-## 2) 严格 CLI 对比（可追溯 JSON 产物）
+## 2) 严格 CLI 对比历史快照（可追溯 JSON 产物）
 
 ### 2.1 公网 non-loopback smoke（主机 -> 公网服务，推荐固定入口）
 
@@ -96,7 +98,7 @@ dart run tool/p1_non_loopback_bench.dart --preset=smoke --network-profile=ethern
 1. 该入口默认输出到 `build/remote_public_<runId>/`，并把本轮 `git commit`、归档字段、每条实际执行命令都写进 `run_manifest.json`。
 2. 若需要上传，可追加 `--upload=true --upload-header=token:<actual-token>`；上传日志也会落到同一目录。
 3. 该入口会对 `--upload-header` 做脱敏；`run_manifest.json` 和命令摘要中只保留 `token:<redacted>`。
-4. 仓库内已留一份主机 smoke + 上传回执样例记录：`docs/dio_rust_test/network_public_remote_sample_2026-03-13.md`。
+4. 仓库内已留一份主机 smoke + 上传回执样例记录：`docs/dio_rust_test/archive/network_public_remote_sample_2026-03-13.md`。
 
 如需手工拆分命令，再使用下面这组底层 CLI：
 
@@ -196,7 +198,7 @@ dart run tool/network_bench.dart --base-url=$baseUrl --scenario=jitter_latency -
 1. `cold-start`：Rust `cacheHit=84/96`, `cacheMiss=12`, `repeatedMissCount=0`, `reqP95=92ms`, `throughput=297 req/s`, `rootBytes=7660`；Dio `cacheHit=0/96`, `repeatedMissCount=84`, `reqP95=129ms`, `throughput=186 req/s`
 2. `warm-cache`：Rust `cacheHit=96/96`, `cacheMiss=0`, `repeatedMissCount=0`, `reqP95=21ms`, `throughput=462 req/s`, `rootBytes=7660`；Dio `cacheHit=0/96`, `repeatedMissCount=84`, `reqP95=43ms`, `throughput=221 req/s`
 3. 两份 JSON 的 `config` 都已稳定记录 `rustCacheDir`、`rustCacheResponseNamespace`、`rustCacheMaxNamespaceBytes`、`rustCacheRootMaxBytes`；`rustCacheObservation.rootBytes=7660` 与实际 cache root 递归文件大小一致。
-4. 详细样例记录见 `docs/dio_rust_test/network_public_remote_root_budget_probe_2026-03-17.md`。
+4. 详细样例记录见 `docs/dio_rust_test/archive/network_public_remote_root_budget_probe_2026-03-17.md`。
 
 归档检查点：
 

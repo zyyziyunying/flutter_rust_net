@@ -65,10 +65,10 @@ title: flutter_rust_net Rust 通道业务适用性分析（2026-03-13）
 ## 2) 证据边界
 
 1. 主要证据来自以下文档：
-   - `docs/dio_rust_test/network_benchmark_aggregation_2026-02-24.md`
-   - `docs/dio_rust_test/network_large_json_validation_2026-02-24.md`
-   - `docs/dio_rust_test/network_route_strategy_2026-02-24.md`
-   - `docs/dio_rust_test/network_public_remote_sample_2026-03-13.md`
+   - `docs/dio_rust_test/archive/network_benchmark_aggregation_2026-02-24.md`
+   - `docs/dio_rust_test/archive/network_large_json_validation_2026-02-24.md`
+   - `docs/dio_rust_test/archive/network_route_strategy_2026-02-24.md`
+   - `docs/dio_rust_test/archive/network_public_remote_sample_2026-03-13.md`
 2. 这些结论大部分是 L1 传输层结论，只覆盖请求层时延、吞吐、错误、fallback、排队，不覆盖“Rust 解析对象后直接跨 FFI 回 Dart 模型”的完整对象回传成本。
 3. 2026-03-13 的公网样例只是 `host_windows + ethernet + public_remote + smoke`，不是 Android / iOS 真机长期稳态结论。
 
@@ -260,7 +260,7 @@ title: flutter_rust_net Rust 通道业务适用性分析（2026-03-13）
 
 ## 9) 参考文档
 
-1. `docs/dio_rust_test/network_benchmark_aggregation_2026-02-24.md`
-2. `docs/dio_rust_test/network_large_json_validation_2026-02-24.md`
-3. `docs/dio_rust_test/network_route_strategy_2026-02-24.md`
-4. `docs/dio_rust_test/network_public_remote_sample_2026-03-13.md`
+1. `docs/dio_rust_test/archive/network_benchmark_aggregation_2026-02-24.md`
+2. `docs/dio_rust_test/archive/network_large_json_validation_2026-02-24.md`
+3. `docs/dio_rust_test/archive/network_route_strategy_2026-02-24.md`
+4. `docs/dio_rust_test/archive/network_public_remote_sample_2026-03-13.md`

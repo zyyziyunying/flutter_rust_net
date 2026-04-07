@@ -10,15 +10,15 @@ title: FRB Hard Cut 当前状态（2026-04-04，更新至 2026-04-05）
 
 ## 快速跳转（当前有效）
 
-- 当前执行计划：[`flutter_rust_net/docs/plan/2026-04-04-remove-frb-hard-cut-resequenced-plan.md`](../plan/2026-04-04-remove-frb-hard-cut-resequenced-plan.md)
+- 已完成实施计划归档：[`flutter_rust_net/docs/plan/archive/2026-04-04-remove-frb-hard-cut-resequenced-plan.md`](../plan/archive/2026-04-04-remove-frb-hard-cut-resequenced-plan.md)
 - 当前架构概览：[`flutter_rust_net/FLUTTER_RUST_NET_OVERVIEW_ZH.md`](../../FLUTTER_RUST_NET_OVERVIEW_ZH.md)
 - 当前网络层设计：[`flutter_rust_net/docs/flutter_rust_network_layer_design.md`](../flutter_rust_network_layer_design.md)
 - 文档索引：[`flutter_rust_net/docs/README.md`](../README.md)
 
 ## 文档口径（当前事实源）
 
-- 本文只维护 FRB hard cut 的 `Done / In Progress / Next`。
-- 计划顺序、验收口径与非目标以 `docs/plan/2026-04-04-remove-frb-hard-cut-resequenced-plan.md` 为准。
+- 本文维护 FRB hard cut 已完成后的当前结论与后续清理建议。
+- 实施顺序、验收口径与非目标已归档到 `docs/plan/archive/2026-04-04-remove-frb-hard-cut-resequenced-plan.md`。
 - pre-hard-cut 的 P1/P2/Rust lifecycle 文档仍保留追溯价值，但只按历史资料解读。
 
 ## 1) 已完成（Done）
@@ -49,16 +49,18 @@ title: FRB Hard Cut 当前状态（2026-04-04，更新至 2026-04-05）
    - `docs/progress/README.md`
    - `docs/archived/2026-04-02-project-progress-and-gap-assessment.md`
    - `docs/archived/2026-04-02-rhttp-thin-gateway-design-review-status-check.md`
-   - `docs/progress/p1_status_2026-02-25.md`
-   - `docs/progress/p2_status_2026-03-02.md`
-   - `docs/progress/rust_lifecycle_scope_status_2026-03-12.md`
-   - `docs/progress/real_device_test_commands_2026-03-02.md`
+   - `docs/progress/archive/p1_status_2026-02-25.md`
+   - `docs/progress/archive/p2_status_2026-03-02.md`
+   - `docs/progress/archive/rust_lifecycle_scope_status_2026-03-12.md`
+   - `docs/progress/archive/real_device_test_commands_2026-03-02.md`
    - `docs/plan/README.md`
    - `AGENTS.md`
    - opt-in real-`rhttp` 测试 skip/help 文案已改为中性 “native rhttp library directory” 表述，不再把 FRB 品牌词当作当前包契约说明
 7. 已完成一轮最小 docs 归档治理：
    - superseded 旧计划已移入 `docs/plan/archive/`
-   - pre-hard-cut 状态评估与设计状态核对已移入 `docs/archived/`
+   - pre-hard-cut 状态、runbook、问题单与 benchmark 资料已按目录归入各自 `archive/`
+   - 其余通用历史资料继续集中在 `docs/archived/`
+   - 历史状态与 runbook 已补充“历史快照 / 不可按当前代码树直接执行”口径
 8. 已补 benchmark CLI 启动链路修复：`tool/network_bench.dart` 现为纯 Dart wrapper，实际 benchmark 执行转由 `tool/network_bench_driver_test.dart` 通过 `flutter test` driver 运行，恢复当前 workspace 下的可执行性。
 
 ## 2) 当前正在做（In Progress）

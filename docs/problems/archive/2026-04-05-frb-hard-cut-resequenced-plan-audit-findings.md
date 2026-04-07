@@ -2,7 +2,7 @@
 
 > Date: 2026-04-05
 > Scope:
-> - `docs/plan/2026-04-04-remove-frb-hard-cut-resequenced-plan.md`
+> - `docs/plan/archive/2026-04-04-remove-frb-hard-cut-resequenced-plan.md`
 > - current `flutter_rust_net` worktree
 > Basis:
 > - static repository audit
@@ -10,6 +10,12 @@
 >   dependencies, and docs
 > - fresh baseline command execution during this audit
 > - no code changes in this review note
+>
+> 2026-04-07 update:
+> - docs taxonomy was tightened after this audit
+> - historical status/runbook docs were reframed as historical snapshots
+> - the package/API `rustAdapter` seam noted in Finding 1 no longer reproduces in the current worktree
+> - this file is retained as a historical audit record, not an active problem doc
 
 ## Verdict
 
@@ -89,12 +95,12 @@ Evidence:
 
 - `docs/progress/frb_hard_cut_status_2026-04-04.md:9`
 - `docs/progress/frb_hard_cut_status_2026-04-04.md:42`
-- `docs/progress/rust_lifecycle_scope_status_2026-03-12.md:7`
-- `docs/progress/rust_lifecycle_scope_status_2026-03-12.md:38`
-- `docs/progress/rust_lifecycle_scope_status_2026-03-12.md:53`
-- `docs/progress/real_device_test_commands_2026-03-02.md:10`
-- `docs/progress/real_device_test_commands_2026-03-02.md:34`
-- `docs/progress/real_device_test_commands_2026-03-02.md:115`
+- `docs/progress/archive/rust_lifecycle_scope_status_2026-03-12.md:7`
+- `docs/progress/archive/rust_lifecycle_scope_status_2026-03-12.md:38`
+- `docs/progress/archive/rust_lifecycle_scope_status_2026-03-12.md:53`
+- `docs/progress/archive/real_device_test_commands_2026-03-02.md:10`
+- `docs/progress/archive/real_device_test_commands_2026-03-02.md:34`
+- `docs/progress/archive/real_device_test_commands_2026-03-02.md:115`
 
 Problem:
 

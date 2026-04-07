@@ -50,9 +50,9 @@ status: resolved
   - 现状：root prune 仍会删除 cache root 顶层非目录文件，并递归清理 namespace 下不符合当前 cache 布局的内容。
   - 结果：文档已明确声明启用 root budget 时，`cacheDir` 必须是当前组件独占的专用目录，不能指向共享目录。
   - 证据：
-    - `docs/plan/cache_namespace_budget_governance_plan_2026-03-14.md`
+    - `docs/plan/archive/cache_namespace_budget_governance_plan_2026-03-14.md`
       - 已把“独占专用目录”补进正式契约与验收标准
-    - `docs/progress/p2_status_2026-03-02.md`
+    - `docs/progress/archive/p2_status_2026-03-02.md`
       - 已同步会话补记与验证结论
 
 ## 现有回归覆盖

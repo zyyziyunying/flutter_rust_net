@@ -6,7 +6,7 @@ title: Dio vs Rust 网络基准审计报告（2026-02-24，jitter 并发梯度�
 
 > 目的：对 `jitter_latency` 做 5 轮 x 4 档并发复验，给出可落地的路由阈值。  
 > 本次仅基于 20 个 JSON：`bench_jitter_c{4,8,16,32}_r{1..5}.json`。
-> 归档说明：本报告关键结论已并入 `flutter_rust_net/docs/dio_rust_test/network_benchmark_aggregation_2026-02-24.md` 作为 L1 统一口径。
+> 归档说明：本报告关键结论已并入 `flutter_rust_net/docs/dio_rust_test/archive/network_benchmark_aggregation_2026-02-24.md` 作为 L1 统一口径。
 
 ## 1) 输入数据（原始文件）
 

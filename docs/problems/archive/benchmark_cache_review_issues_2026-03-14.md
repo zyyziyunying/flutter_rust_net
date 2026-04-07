@@ -151,16 +151,16 @@ status: resolved
 
 ### 代码/文档位置
 
-- `docs/dio_rust_test/network_public_remote_cache_probe_2026-03-13.md:8`
-- `docs/progress/p2_status_2026-03-02.md:47`
-- `docs/progress/real_device_test_commands_2026-03-02.md:154`
+- `docs/dio_rust_test/archive/network_public_remote_cache_probe_2026-03-13.md:8`
+- `docs/progress/archive/p2_status_2026-03-02.md:47`
+- `docs/progress/archive/real_device_test_commands_2026-03-02.md:154`
 - `.gitignore:30`
 
 ### 修复建议
 
 至少满足以下之一：
 
-1. 将需要长期留档的 benchmark 样例迁移到可提交目录，例如 `docs/fixtures/` 或 `docs/dio_rust_test/samples/`。
+1. 将需要长期留档的 benchmark 样例迁移到可提交目录，例如 `docs/fixtures/` 或 `docs/dio_rust_test/archive/samples/`。
 2. 若仍保留在 `build/`，则文档应改成“本地执行产物样例”，不要再表述为仓库内事实样例。
 3. 最少在文档中附上关键字段摘录和生成日期，避免原始 JSON 丢失后结论完全不可追溯。
 
@@ -189,7 +189,7 @@ cargo test -q clear_cache_keeps_materialized_response_files_outside_cache_root -
 建议按以下顺序继续补强：
 
 1. 若需要 external 链路的权威 repeated-origin / revalidate 统计，补独立 telemetry 方案，避免重新把观测字段混进 cache key。
-2. 若需要长期留档原始 benchmark JSON，再将关键样例迁移到可提交目录，例如 `docs/dio_rust_test/samples/`。
+2. 若需要长期留档原始 benchmark JSON，再将关键样例迁移到可提交目录，例如 `docs/dio_rust_test/archive/samples/`。
 3. 补一组包含 validator 的本地 benchmark 回归，继续守住 `revalidate/evict/repeatedMiss` 三者边界。
 
 ## 本次记录

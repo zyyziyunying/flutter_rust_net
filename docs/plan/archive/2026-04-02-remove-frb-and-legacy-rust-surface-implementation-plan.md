@@ -1,10 +1,10 @@
 # Remove FRB And Legacy Rust Surface Implementation Plan
 
 > Superseded on 2026-04-04 by
-> `docs/plan/2026-04-04-remove-frb-hard-cut-resequenced-plan.md`.
+> `docs/plan/archive/2026-04-04-remove-frb-hard-cut-resequenced-plan.md`.
 >
 > This file is retained for review traceability because active review records in
-> `docs/problems/2026-04-02-rhttp-dio-hard-cut-review-findings.md` reference it
+> `docs/problems/archive/2026-04-02-rhttp-dio-hard-cut-review-findings.md` reference it
 > directly. Do not use this file as the current execution plan.
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
@@ -275,23 +275,23 @@ Expected:
 - Modify: `flutter_rust_net/docs/archived/2026-04-02-project-progress-and-gap-assessment.md`
 - Modify: `flutter_rust_net/docs/archived/2026-04-02-rhttp-thin-gateway-design-review-status-check.md`
 - Modify: `flutter_rust_net/docs/progress/README.md`
-- Modify: `flutter_rust_net/docs/progress/p1_status_2026-02-25.md`
-- Modify: `flutter_rust_net/docs/progress/p2_status_2026-03-02.md`
-- Modify: `flutter_rust_net/docs/progress/rust_lifecycle_scope_status_2026-03-12.md`
-- Modify: `flutter_rust_net/docs/progress/real_device_test_commands_2026-03-02.md`
-- Modify: `flutter_rust_net/docs/plan/2026-04-01-flutter-rust-net-rhttp-thin-gateway-design.md`
+- Modify: `flutter_rust_net/docs/progress/archive/p1_status_2026-02-25.md`
+- Modify: `flutter_rust_net/docs/progress/archive/p2_status_2026-03-02.md`
+- Modify: `flutter_rust_net/docs/progress/archive/rust_lifecycle_scope_status_2026-03-12.md`
+- Modify: `flutter_rust_net/docs/progress/archive/real_device_test_commands_2026-03-02.md`
+- Modify: `flutter_rust_net/docs/archived/2026-04-01-flutter-rust-net-rhttp-thin-gateway-design.md`
 - Modify or archive:
-  `flutter_rust_net/docs/plan/cache_namespace_budget_governance_plan_2026-03-14.md`
+  `flutter_rust_net/docs/plan/archive/cache_namespace_budget_governance_plan_2026-03-14.md`
 - Modify: `flutter_rust_net/docs/plan/README.md`
 - Relabel/archive if still linked as current guidance:
-  `flutter_rust_net/docs/dio_rust_test/*`
+  `flutter_rust_net/docs/dio_rust_test/archive/*`
 
 **Step 1: Run baseline verification**
 
 Run:
 
 ```bash
-cd /Users/zyyziyunying/harrypet_flutter && rg -n "flutter_rust_bridge|RustAdapter|standardWithRust|rust_build.dart|rust_codegen.dart|native/rust/net_engine|cargo test -q|initializeRust|requireRust|rustMaxInFlightTasks|rustCache" flutter_rust_net/README.md flutter_rust_net/FLUTTER_RUST_NET_OVERVIEW_ZH.md flutter_rust_net/AGENTS.md AGENTS.md flutter_rust_net/docs/README.md flutter_rust_net/docs/flutter_rust_network_layer_design.md flutter_rust_net/docs/archived/2026-04-02-project-progress-and-gap-assessment.md flutter_rust_net/docs/archived/2026-04-02-rhttp-thin-gateway-design-review-status-check.md flutter_rust_net/docs/progress/README.md flutter_rust_net/docs/progress/p1_status_2026-02-25.md flutter_rust_net/docs/progress/p2_status_2026-03-02.md flutter_rust_net/docs/progress/rust_lifecycle_scope_status_2026-03-12.md flutter_rust_net/docs/progress/real_device_test_commands_2026-03-02.md flutter_rust_net/docs/plan/2026-04-01-flutter-rust-net-rhttp-thin-gateway-design.md flutter_rust_net/docs/plan/cache_namespace_budget_governance_plan_2026-03-14.md flutter_rust_net/docs/plan/README.md
+cd /Users/zyyziyunying/harrypet_flutter && rg -n "flutter_rust_bridge|RustAdapter|standardWithRust|rust_build.dart|rust_codegen.dart|native/rust/net_engine|cargo test -q|initializeRust|requireRust|rustMaxInFlightTasks|rustCache" flutter_rust_net/README.md flutter_rust_net/FLUTTER_RUST_NET_OVERVIEW_ZH.md flutter_rust_net/AGENTS.md AGENTS.md flutter_rust_net/docs/README.md flutter_rust_net/docs/flutter_rust_network_layer_design.md flutter_rust_net/docs/archived/2026-04-02-project-progress-and-gap-assessment.md flutter_rust_net/docs/archived/2026-04-02-rhttp-thin-gateway-design-review-status-check.md flutter_rust_net/docs/progress/README.md flutter_rust_net/docs/progress/archive/p1_status_2026-02-25.md flutter_rust_net/docs/progress/archive/p2_status_2026-03-02.md flutter_rust_net/docs/progress/archive/rust_lifecycle_scope_status_2026-03-12.md flutter_rust_net/docs/progress/archive/real_device_test_commands_2026-03-02.md flutter_rust_net/docs/archived/2026-04-01-flutter-rust-net-rhttp-thin-gateway-design.md flutter_rust_net/docs/plan/archive/cache_namespace_budget_governance_plan_2026-03-14.md flutter_rust_net/docs/plan/README.md
 ```
 
 Expected: matches show the docs still describe the removed architecture.
@@ -314,12 +314,12 @@ entry points.
 Run:
 
 ```bash
-cd /Users/zyyziyunying/harrypet_flutter && ! rg -n "flutter_rust_bridge|RustAdapter|standardWithRust|rust_build.dart|rust_codegen.dart|native/rust/net_engine|cargo test -q|initializeRust|requireRust|rustMaxInFlightTasks|rustCache" flutter_rust_net/README.md flutter_rust_net/FLUTTER_RUST_NET_OVERVIEW_ZH.md flutter_rust_net/AGENTS.md AGENTS.md flutter_rust_net/docs/README.md flutter_rust_net/docs/archived/2026-04-02-project-progress-and-gap-assessment.md flutter_rust_net/docs/archived/2026-04-02-rhttp-thin-gateway-design-review-status-check.md flutter_rust_net/docs/progress/README.md flutter_rust_net/docs/progress/p1_status_2026-02-25.md flutter_rust_net/docs/progress/p2_status_2026-03-02.md flutter_rust_net/docs/progress/rust_lifecycle_scope_status_2026-03-12.md flutter_rust_net/docs/progress/real_device_test_commands_2026-03-02.md flutter_rust_net/docs/plan/2026-04-01-flutter-rust-net-rhttp-thin-gateway-design.md flutter_rust_net/docs/plan/cache_namespace_budget_governance_plan_2026-03-14.md flutter_rust_net/docs/plan/README.md
-cd /Users/zyyziyunying/harrypet_flutter && ! rg -n "docs/flutter_rust_network_layer_design.md|docs/dio_rust_test/" flutter_rust_net/docs/README.md flutter_rust_net/docs/plan/README.md flutter_rust_net/docs/progress/README.md
+cd /Users/zyyziyunying/harrypet_flutter && ! rg -n "flutter_rust_bridge|RustAdapter|standardWithRust|rust_build.dart|rust_codegen.dart|native/rust/net_engine|cargo test -q|initializeRust|requireRust|rustMaxInFlightTasks|rustCache" flutter_rust_net/README.md flutter_rust_net/FLUTTER_RUST_NET_OVERVIEW_ZH.md flutter_rust_net/AGENTS.md AGENTS.md flutter_rust_net/docs/README.md flutter_rust_net/docs/archived/2026-04-02-project-progress-and-gap-assessment.md flutter_rust_net/docs/archived/2026-04-02-rhttp-thin-gateway-design-review-status-check.md flutter_rust_net/docs/progress/README.md flutter_rust_net/docs/progress/archive/p1_status_2026-02-25.md flutter_rust_net/docs/progress/archive/p2_status_2026-03-02.md flutter_rust_net/docs/progress/archive/rust_lifecycle_scope_status_2026-03-12.md flutter_rust_net/docs/progress/archive/real_device_test_commands_2026-03-02.md flutter_rust_net/docs/archived/2026-04-01-flutter-rust-net-rhttp-thin-gateway-design.md flutter_rust_net/docs/plan/archive/cache_namespace_budget_governance_plan_2026-03-14.md flutter_rust_net/docs/plan/README.md
+cd /Users/zyyziyunying/harrypet_flutter && ! rg -n "docs/flutter_rust_network_layer_design.md|docs/dio_rust_test/archive/" flutter_rust_net/docs/README.md flutter_rust_net/docs/plan/README.md flutter_rust_net/docs/progress/README.md
 ```
 
 Expected: active entry-point docs contain no stale legacy current-state wording.
-If `docs/flutter_rust_network_layer_design.md` or `docs/dio_rust_test/*` are
+If `docs/flutter_rust_network_layer_design.md` or `docs/dio_rust_test/archive/*` are
 retained only as historical records, active entry-point docs must stop linking
 to them as current guidance.
 

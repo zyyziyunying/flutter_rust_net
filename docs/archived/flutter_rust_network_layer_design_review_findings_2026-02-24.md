@@ -92,7 +92,7 @@ title: Flutter + Rust 网络层架构评审问题记录（2026-02-24）
 - 修复内容：先补齐了请求侧抖动标签表达；随后按当前测试阶段目标将路由策略收敛为“总开关 + 强制通道”，不再依赖细粒度接口分流配置。
 - 证据：
   - 文档：`flutter_rust_net/docs/flutter_rust_network_layer_design.md:93`
-  - 文档：`flutter_rust_net/docs/dio_rust_test/network_route_strategy_2026-02-24.md:6`
+  - 文档：`flutter_rust_net/docs/dio_rust_test/archive/network_route_strategy_2026-02-24.md:6`
   - 代码：`flutter_rust_net/lib/network/net_models.dart:23`
   - 代码：`flutter_rust_net/lib/network/net_feature_flag.dart:1`
   - 代码：`flutter_rust_net/lib/network/routing_policy.dart:14`
@@ -117,7 +117,7 @@ title: Flutter + Rust 网络层架构评审问题记录（2026-02-24）
 - 修复内容：设计文档路由策略引用改为存在的实际路径。
 - 证据：
   - 文档：`flutter_rust_net/docs/flutter_rust_network_layer_design.md:96`
-  - 实际文件：`flutter_rust_net/docs/dio_rust_test/network_route_strategy_2026-02-24.md:1`
+  - 实际文件：`flutter_rust_net/docs/dio_rust_test/archive/network_route_strategy_2026-02-24.md:1`
 
 ### F-09（Resolved）“Rust 承担主力”文案与默认开关已对齐
 

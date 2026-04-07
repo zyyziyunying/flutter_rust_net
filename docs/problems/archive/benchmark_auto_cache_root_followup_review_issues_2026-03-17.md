@@ -65,7 +65,7 @@ second_error:[rust] infrastructure: Rust engine already initialized with a diffe
 - `lib/network/rust_adapter.dart`
 - `lib/network/rust_adapter/rust_adapter_init.dart`
 - `example/lib/pages/benchmark_page.dart`
-- `docs/progress/real_device_test_commands_2026-03-02.md`
+- `docs/progress/archive/real_device_test_commands_2026-03-02.md`
 - `docs/problems/archive/benchmark_root_budget_observation_review_issues_2026-03-16.md`
 
 ### 建议修复
@@ -106,8 +106,8 @@ second_error:[rust] infrastructure: Rust engine already initialized with a diffe
 
 - `lib/network/benchmark/benchmark_runner.dart`
 - `lib/network/rust_adapter/rust_adapter_init.dart`
-- `docs/progress/p2_status_2026-03-02.md`
-- `docs/progress/real_device_test_commands_2026-03-02.md`
+- `docs/progress/archive/p2_status_2026-03-02.md`
+- `docs/progress/archive/real_device_test_commands_2026-03-02.md`
 - `docs/problems/archive/benchmark_root_budget_observation_review_issues_2026-03-16.md`
 
 ### 建议修复

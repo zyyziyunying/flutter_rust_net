@@ -4,14 +4,14 @@ title: P1 详细历史记录（归档于 2026-03-12）
 
 # P1 详细历史记录（归档于 2026-03-12）
 
-> 说明：本文件迁自旧版 `docs/progress/p1_status_2026-02-25.md` 中的详细 `Done` 清单与会话补记。
+> 说明：本文件迁自旧版 `docs/progress/archive/p1_status_2026-02-25.md` 中的详细 `Done` 清单与会话补记。
 >
-> 自 2026-03-12 起，当前状态请以 [`flutter_rust_net/docs/progress/p1_status_2026-02-25.md`](../progress/p1_status_2026-02-25.md) 为准；本文件仅保留追溯价值，不再作为当前事实源。
+> 自 2026-03-12 起，如需查看该阶段的收尾状态快照，请参考 [`flutter_rust_net/docs/progress/archive/p1_status_2026-02-25.md`](../progress/archive/p1_status_2026-02-25.md)；两者都仅保留追溯价值，不再作为当前事实源。
 
 ## 详细 Done 清单（迁自旧版进度文档）
 
 1. 已确认 P1 目标与执行口径（并发分档、`maxInFlightTasks`、路由阈值）。
-2. 已新增 P1 执行模板文档：`flutter_rust_net/docs/plan/network_p1_execution_template_2026-02-25.md`。
+2. 已新增 P1 执行模板文档：`flutter_rust_net/docs/plan/archive/network_p1_execution_template_2026-02-25.md`。
 3. 已新增聚合脚本：`flutter_rust_net/tool/p1_aggregate.dart`，可自动汇总 `jitter` 报告并输出 PASS/FAIL。
 4. 已完成一次 smoke 验证（单组 `jitter`）并产出示例汇总：
    - `flutter_rust_net/build/p1_jitter/p1_summary_none.md`
@@ -27,11 +27,11 @@ title: P1 详细历史记录（归档于 2026-03-12）
    - `flutter_rust_net/build/p1_jitter/20260225_1448/p1_summary_model.md`
    - `flutter_rust_net/build/p1_jitter/20260225_1448/p1_summary_model.json`
 9. 已同步更新路由策略文档（新增 P1 复验更新段）：
-   - `flutter_rust_net/docs/dio_rust_test/network_route_strategy_2026-02-24.md`
+   - `flutter_rust_net/docs/dio_rust_test/archive/network_route_strategy_2026-02-24.md`
 10. 已追加测试运行记录两条（L1/L2）：
     - `相关文档（按需）`
 11. 已产出 P1 聚合结论文档：
-    - `flutter_rust_net/docs/dio_rust_test/network_benchmark_p1_aggregation_2026-02-25.md`
+    - `flutter_rust_net/docs/dio_rust_test/archive/network_benchmark_p1_aggregation_2026-02-25.md`
 12. 已新增独立示例承载壳（不依赖 `media_kit_poc`）：
     - `flutter_rust_net/example/`
 13. 已将 Android Rust `.so` 构建/打包脚本迁移到示例工程：
@@ -48,7 +48,7 @@ title: P1 详细历史记录（归档于 2026-03-12）
     - `相关文档（按需）`（`TR-20260225-14` / `TR-20260225-15`）
 17. 已同步架构/策略相关文档到测试模式：
     - `flutter_rust_net/docs/flutter_rust_network_layer_design.md`
-    - `flutter_rust_net/docs/dio_rust_test/network_route_strategy_2026-02-24.md`
+    - `flutter_rust_net/docs/dio_rust_test/archive/network_route_strategy_2026-02-24.md`
     - `flutter_rust_net/docs/archived/flutter_rust_network_layer_design_review_findings_2026-02-24.md`
     - `flutter_rust_net/FLUTTER_RUST_NET_OVERVIEW_ZH.md`
 
@@ -78,7 +78,7 @@ title: P1 详细历史记录（归档于 2026-03-12）
 
 1. 真机测试已完成首轮验证，P1 当前从“准入证据收集”转入“收尾与同步更新”阶段。
 2. 后续开发已开始并行启动 P2：先落地 Rust `DiskCache` 的可用基础能力（GET + TTL/ETag/LRU）。
-3. P2 启动进度已单独记录到：`flutter_rust_net/docs/progress/p2_status_2026-03-02.md`。
+3. P2 启动进度已单独记录到：`flutter_rust_net/docs/progress/archive/p2_status_2026-03-02.md`。
 4. 真机首轮 smoke 结果已同步更新 `TR-20260302-36`：3 份 JSON 全部 `exceptions/http5xx/fallback=0`；`jitter(c16,mif32)` 下 Rust `p95` 优于 Dio，但 `p99` 仍偏高。
 
 ### 2026-03-03（upload 语义补齐计划前后）
@@ -110,7 +110,7 @@ title: P1 详细历史记录（归档于 2026-03-12）
 2. 结论 A：`write_timeout_ms` 当前未生效；`NetEngine::new` 仅设置了 `connect_timeout` 与 `read_timeout`，没有写超时映射。
 3. 结论 B：`max_connections` 当前未生效；字段进入 Rust 配置结构体后未被 HTTP client 构建流程消费。
 4. 结论 C：`max_connections_per_host` 当前仅映射到 `pool_max_idle_per_host`，可控制“空闲连接池上限”，但不等价于“每 host 最大活跃连接数”。
-5. 已沉淀校验记录：`flutter_rust_net/docs/dio_rust_test/network_rust_config_effectiveness_2026-03-04.md`。
+5. 已沉淀校验记录：`flutter_rust_net/docs/dio_rust_test/archive/network_rust_config_effectiveness_2026-03-04.md`。
 6. P1 阻塞项状态更新：配置项“是否生效”已完成判定，下一步转为“补齐实现 + 回归验证”。
 7. 已补齐 `write_timeout_ms` 生效路径：请求/上传发送阶段接入超时控制（超时统一映射为 `timeout`）。
 8. 已补齐 `max_connections`、`max_connections_per_host` 生效路径：新增连接并发限制器，分别约束“全局活跃连接数”与“单 host 活跃连接数”。

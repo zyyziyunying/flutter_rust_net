@@ -1,26 +1,27 @@
 # flutter_rust_net 优化路线（草案）
 
 > 日期：2026-02-25（2026-02-28 复评补记）  
+> 2026-04-07 说明：本文是 pre-hard-cut 历史路线图，当前代码树不再按本文推进。  
 > 当前状态：已进入测试模式（Rust 主通道 + Dio 兜底回切）。  
 > 目标：先完成 Rust 主通道准入验证，再扩大 Rust 通道收益，最后提升接入体验与工程化能力。
 
 ## 快速跳转（同日文档）
 
-- P1 执行状态（进度主文档）：[`docs/progress/p1_status_2026-02-25.md`](./docs/progress/p1_status_2026-02-25.md)
-- P2 执行状态（缓存阶段）：[`docs/progress/p2_status_2026-03-02.md`](./docs/progress/p2_status_2026-03-02.md)
+- P1 执行状态（历史归档）：[`docs/progress/archive/p1_status_2026-02-25.md`](./docs/progress/archive/p1_status_2026-02-25.md)
+- P2 执行状态（历史归档）：[`docs/progress/archive/p2_status_2026-03-02.md`](./docs/progress/archive/p2_status_2026-03-02.md)
 - 架构与能力概览：[`flutter_rust_net/FLUTTER_RUST_NET_OVERVIEW_ZH.md`](./FLUTTER_RUST_NET_OVERVIEW_ZH.md)
 - 测试运行记录：`相关文档（按需）`
 
-## 文档口径（单一事实源）
+## 文档口径（历史阅读口径）
 
-- 本文是 **阶段优先级与里程碑** 的唯一事实源（P0-P4 定义、顺序、阶段目标）。
-- 执行进度（Done / In Progress / Next）不在本文维护，统一以 `docs/progress/p1_status_2026-02-25.md` 为准。
+- 本文保留的是 pre-hard-cut 路线图历史快照，记录当时的阶段优先级与里程碑定义。
+- 执行进度（Done / In Progress / Next）不在本文维护；历史阶段请看 `docs/progress/archive/p1_status_2026-02-25.md`，当前阶段请看 `docs/progress/frb_hard_cut_status_2026-04-04.md`。
 - 测试数据明细以 `相关文档（按需）` 与对应 benchmark 文档为准。
 
 ## 更新流程（建议）
 
 1. 当“阶段顺序、目标、验收门槛”变化时，仅在本文更新 P0-P4 与阶段目标。
-2. 进度项不在本文增删，统一同步更新到 `docs/progress/p1_status_2026-02-25.md`。
+2. 本文已转为历史资料，不再增删进度项。
 3. 若需要补充测试证据，再按需同步 `相关文档（按需）`。
 4. 更新后检查与 `flutter_rust_net/FLUTTER_RUST_NET_OVERVIEW_ZH.md` 的术语是否一致（如“测试模式/准入结论”）。
 

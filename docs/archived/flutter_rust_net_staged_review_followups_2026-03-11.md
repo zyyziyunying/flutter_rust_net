@@ -6,7 +6,7 @@
 - 重点文件：
   - `lib/network/rust_adapter.dart`
   - `test/network/rust_adapter_test.dart`
-  - `docs/questions/flutter_rust_net_risk_review_findings_2026-03-09.md`
+  - `docs/archived/flutter_rust_net_risk_review_findings_2026-03-09.md`
 - 审查方式：静态阅读 + 本地验证 `flutter analyze lib/network/rust_adapter.dart test/network/rust_adapter_test.dart` + `flutter test test/network/rust_adapter_test.dart`
 
 ## 结论
@@ -20,7 +20,7 @@
 - 修复证据：
   - `lib/network/rust_adapter.dart`
   - `test/network/rust_adapter_test.dart`
-  - `docs/questions/flutter_rust_net_risk_review_findings_2026-03-09.md`
+  - `docs/archived/flutter_rust_net_risk_review_findings_2026-03-09.md`
 - 修复后实现：
   - 当 bridge 返回 `already initialized` 但 Dart 侧还拿不到真实首配时，`RustAdapter` 现在会记录“第一份被接受的请求配置”作为兼容基线。
   - 同一个 adapter 后续再次 `initializeEngine(...)` 时，只有相同配置才会继续通过；冲突配置会直接抛 `NetException.infrastructure`。
@@ -74,4 +74,4 @@
 ## 备注
 
 - 这份文档是对“当前暂存区改动”的补充问题记录，不替代总审查结论。
-- 2026-03-12 已按本次复核结果同步回写 `docs/questions/flutter_rust_net_risk_review_findings_2026-03-09.md`。
+- 2026-03-12 已按本次复核结果同步回写 `docs/archived/flutter_rust_net_risk_review_findings_2026-03-09.md`。

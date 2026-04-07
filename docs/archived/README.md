@@ -16,6 +16,7 @@
 当前文档：
 
 - `p1_status_history_2026-03-12.md`：从旧版 P1 进度文档迁出的详细历史记录，不再作为当前事实源。
+- `2026-04-01-flutter-rust-net-rhttp-thin-gateway-design.md`：thin-gateway 设计文档，现仅保留实现背景与决策追溯价值。
 - `2026-04-01-rhttp-thin-gateway-design-review.md`：thin-gateway 设计评审原始问题记录；后续状态核对见 `2026-04-02-rhttp-thin-gateway-design-review-status-check.md`。
 - `2026-04-02-project-progress-and-gap-assessment.md`：2026-04-02 的 pre-hard-cut 项目状态评估，现仅作历史背景。
 - `2026-04-02-rhttp-thin-gateway-design-review-status-check.md`：2026-04-02 的 pre-hard-cut 设计状态核对，现仅作历史背景。
@@ -27,4 +28,5 @@
 
 1. 归档文档默认不再作为“当前状态”或“当前方案”的事实源。
 2. 若引用归档文档，应同时给出当前生效文档路径。
-3. 新增归档时，优先更新 `../README.md` 中的索引与说明。
+3. 分类型历史资料优先放在原目录下的 `archive/`；无法归属某一子目录时，再放入本目录。
+4. 新增归档时，优先更新 `../README.md` 中的索引与说明。

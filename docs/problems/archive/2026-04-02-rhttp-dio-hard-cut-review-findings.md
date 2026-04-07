@@ -34,8 +34,8 @@ Current status for document consistency:
   `runNetworkBenchmark(..., rustAdapter)`-related surfaces.
 - Finding 3 absorbed by expanded active-doc cleanup scope in plan Task 5,
   including `docs/README.md`, `docs/progress/README.md`,
-  `docs/progress/p2_status_2026-03-02.md`, and
-  `docs/plan/cache_namespace_budget_governance_plan_2026-03-14.md`.
+  `docs/progress/archive/p2_status_2026-03-02.md`, and
+  `docs/plan/archive/cache_namespace_budget_governance_plan_2026-03-14.md`.
 - Finding 4 absorbed by explicit Task 2/3 test-scope updates.
 - Finding 5 absorbed by deterministic baseline/verification wording updates,
   including API-signature grep coverage in Task 3 and example build-path
@@ -135,14 +135,14 @@ Evidence:
 
 - `docs/plan/archive/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md:250-309`
 - `docs/README.md:5-29`
-- `docs/dio_rust_test/network_route_strategy_2026-02-24.md:3-15`
-- `docs/dio_rust_test/network_realistic_benchmark_runbook_2026-02-24.md:7-21`
+- `docs/dio_rust_test/archive/network_route_strategy_2026-02-24.md:3-15`
+- `docs/dio_rust_test/archive/network_realistic_benchmark_runbook_2026-02-24.md:7-21`
 - `docs/flutter_rust_network_layer_design.md:12-15`
 - `docs/flutter_rust_network_layer_design.md:71-83`
 - `docs/archived/2026-04-02-rhttp-thin-gateway-design-review-status-check.md:13-22`
-- `docs/progress/p1_status_2026-02-25.md:30-38`
-- `docs/progress/rust_lifecycle_scope_status_2026-03-12.md:9-15`
-- `docs/progress/real_device_test_commands_2026-03-02.md:10-16`
+- `docs/progress/archive/p1_status_2026-02-25.md:30-38`
+- `docs/progress/archive/rust_lifecycle_scope_status_2026-03-12.md:9-15`
+- `docs/progress/archive/real_device_test_commands_2026-03-02.md:10-16`
 
 Problem:
 
@@ -152,7 +152,7 @@ Problem:
 - The gap is not limited to `docs/flutter_rust_network_layer_design.md` and a
   few `docs/progress/*` records.
 - `docs/README.md` and active progress docs still direct readers to
-  `docs/dio_rust_test/*`, where several documents remain written as current
+  `docs/dio_rust_test/archive/*`, where several documents remain written as current
   routing/runbook guidance for the retained Rust path.
 - `docs/README.md` still points readers to
   `docs/flutter_rust_network_layer_design.md` as the current effective design
@@ -178,7 +178,7 @@ Recommended fix:
     Rust ownership
   - update active `docs/problems/*` docs that currently treat retained Rust
     surface as current-state fact
-  - decide whether `docs/dio_rust_test/*` should be archived, relabeled as
+  - decide whether `docs/dio_rust_test/archive/*` should be archived, relabeled as
     pre-hard-cut history, or removed from active entry-point navigation
 
 ### 4. The test cleanup list is incomplete
