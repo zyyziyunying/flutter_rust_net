@@ -93,8 +93,8 @@ Plan conflict:
 
 Evidence:
 
-- `docs/progress/frb_hard_cut_status_2026-04-04.md:9`
-- `docs/progress/frb_hard_cut_status_2026-04-04.md:42`
+- `docs/progress/archive/frb_hard_cut_status_2026-04-04.md:9`
+- `docs/progress/archive/frb_hard_cut_status_2026-04-04.md:42`
 - `docs/progress/archive/rust_lifecycle_scope_status_2026-03-12.md:7`
 - `docs/progress/archive/rust_lifecycle_scope_status_2026-03-12.md:38`
 - `docs/progress/archive/rust_lifecycle_scope_status_2026-03-12.md:53`
@@ -175,8 +175,8 @@ Plan conflict:
 
 Evidence:
 
-- `docs/progress/frb_hard_cut_status_2026-04-04.md:61`
-- `docs/progress/frb_hard_cut_status_2026-04-04.md:65`
+- `docs/progress/archive/frb_hard_cut_status_2026-04-04.md:61`
+- `docs/progress/archive/frb_hard_cut_status_2026-04-04.md:65`
 - `docs/plan/README.md:14`
 - `docs/plan/README.md:25`
 
@@ -192,7 +192,7 @@ Problem:
 Impact:
 
 - The real issue is the status wording in
-  `docs/progress/frb_hard_cut_status_2026-04-04.md`, not the mere existence of
+  `docs/progress/archive/frb_hard_cut_status_2026-04-04.md`, not the mere existence of
   the plan in active plan space.
 
 Recommended fix:

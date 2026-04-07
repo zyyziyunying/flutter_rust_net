@@ -2,7 +2,7 @@
 
 ## 快速跳转（当前有效）
 
-- 当前执行状态：[`docs/progress/frb_hard_cut_status_2026-04-04.md`](./docs/progress/frb_hard_cut_status_2026-04-04.md)
+- hard cut 收尾状态快照（归档）：[`docs/progress/archive/frb_hard_cut_status_2026-04-04.md`](./docs/progress/archive/frb_hard_cut_status_2026-04-04.md)
 - 当前网络层设计：[`docs/flutter_rust_network_layer_design.md`](./docs/flutter_rust_network_layer_design.md)
 - 文档索引：[`docs/README.md`](./docs/README.md)
 
@@ -10,7 +10,7 @@
 
 - 本文描述 hard cut 后的当前架构与能力边界。
 - 历史 P1/P2/Rust lifecycle 资料仍保留，但只作为 legacy/pre-hard-cut 证据。
-- 当前阶段状态以 `docs/progress/frb_hard_cut_status_2026-04-04.md` 为准。
+- hard cut 收尾状态已归档；当前事实优先以本文、`docs/README.md` 与 `docs/flutter_rust_network_layer_design.md` 为准。
 
 ## 1) 这个库现在是什么
 

@@ -15,7 +15,7 @@
 ## 文档口径（历史阅读口径）
 
 - 本文保留的是 pre-hard-cut 路线图历史快照，记录当时的阶段优先级与里程碑定义。
-- 执行进度（Done / In Progress / Next）不在本文维护；历史阶段请看 `docs/progress/archive/p1_status_2026-02-25.md`，当前阶段请看 `docs/progress/frb_hard_cut_status_2026-04-04.md`。
+- 执行进度（Done / In Progress / Next）不在本文维护；历史阶段请看 `docs/progress/archive/p1_status_2026-02-25.md`，hard cut 收尾快照请看 `docs/progress/archive/frb_hard_cut_status_2026-04-04.md`。
 - 测试数据明细以 `相关文档（按需）` 与对应 benchmark 文档为准。
 
 ## 更新流程（建议）

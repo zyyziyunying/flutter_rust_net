@@ -2,12 +2,15 @@
 
 该目录用于存放当前阶段的状态事实源；历史阶段状态统一移入 `archive/`。
 
-当前优先事实源：
+当前状态：
 
-- `frb_hard_cut_status_2026-04-04.md`：hard cut 当前状态
+- 当前无 active 阶段状态文档。
+- FRB hard cut 收尾状态已归档到 `archive/frb_hard_cut_status_2026-04-04.md`。
+- 若后续开启新阶段，再在本目录新增当前事实源。
 
 历史阶段文档入口：
 
+- `archive/frb_hard_cut_status_2026-04-04.md`：hard cut 收尾状态快照
 - `archive/p1_status_2026-02-25.md`
 - `archive/p2_status_2026-03-02.md`
 - `archive/rust_lifecycle_scope_status_2026-03-12.md`

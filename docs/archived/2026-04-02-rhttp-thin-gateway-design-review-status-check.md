@@ -3,7 +3,7 @@
 > Date: 2026-04-02
 > Status: Historical pre-hard-cut status check
 > Superseded by:
-> - `docs/progress/frb_hard_cut_status_2026-04-04.md`
+> - `docs/progress/archive/frb_hard_cut_status_2026-04-04.md`
 > - `docs/flutter_rust_network_layer_design.md`
 
 ## Historical Boundary

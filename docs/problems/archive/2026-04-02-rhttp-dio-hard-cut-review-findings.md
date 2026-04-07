@@ -2,7 +2,7 @@
 
 > Date: 2026-04-02
 > Scope:
-> - `docs/design/2026-04-02-rhttp-dio-hard-cut-design.md`
+> - `docs/design/archive/2026-04-02-rhttp-dio-hard-cut-design.md`
 > - `docs/plan/archive/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md`
 > Basis:
 > - current worktree static review only
@@ -49,8 +49,8 @@ Current status for document consistency:
 
 Evidence:
 
-- `docs/design/2026-04-02-rhttp-dio-hard-cut-design.md:52-68`
-- `docs/design/2026-04-02-rhttp-dio-hard-cut-design.md:146-155`
+- `docs/design/archive/2026-04-02-rhttp-dio-hard-cut-design.md:52-68`
+- `docs/design/archive/2026-04-02-rhttp-dio-hard-cut-design.md:146-155`
 - `docs/plan/archive/2026-04-02-remove-frb-and-legacy-rust-surface-implementation-plan.md:46-52`
 - `lib/network/bytes_first_network_client.dart:127-197`
 - `lib/network/network_gateway.dart:35-47`

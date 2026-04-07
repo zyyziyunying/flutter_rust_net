@@ -6,4 +6,4 @@
 
 - 这些资料主要对应 pre-hard-cut 阶段的 Dio/Rust 双通道验证。
 - 若引用其中内容，应明确标注为历史口径，不应作为当前 active package 的默认运行说明。
-- 当前阶段入口请回到 `../README.md`、`../progress/frb_hard_cut_status_2026-04-04.md` 与 `../flutter_rust_network_layer_design.md`。
+- 当前阶段入口请回到 `../README.md`、`../../FLUTTER_RUST_NET_OVERVIEW_ZH.md` 与 `../flutter_rust_network_layer_design.md`；hard cut 收尾快照见 `../progress/archive/frb_hard_cut_status_2026-04-04.md`。

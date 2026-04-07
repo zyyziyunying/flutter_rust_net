@@ -1,23 +1,23 @@
 ---
-title: FRB Hard Cut 当前状态（2026-04-04，更新至 2026-04-05）
+title: FRB Hard Cut 历史状态快照（2026-04-04，更新至 2026-04-05）
 ---
 
-# FRB Hard Cut 当前状态（2026-04-04，更新至 2026-04-05）
+# FRB Hard Cut 历史状态快照（2026-04-04，更新至 2026-04-05）
 
-> 范围：`flutter_rust_net` 的 FRB / legacy Rust surface hard cut 当前执行状态。
+> 范围：`flutter_rust_net` 的 FRB / legacy Rust surface hard cut 收尾状态快照。
 >
 > 当前判断：Phase 1 ~ 6 已在当前 worktree 完成。active package 已收敛为 `rhttp + Dio` thin-gateway；剩余公开 `rustAdapter` seam 已移除，仓库级入口不再把已删除的 FRB/runtime/native-engine 口径描述成当前事实。
 
-## 快速跳转（当前有效）
+## 快速跳转（历史关联文档）
 
-- 已完成实施计划归档：[`flutter_rust_net/docs/plan/archive/2026-04-04-remove-frb-hard-cut-resequenced-plan.md`](../plan/archive/2026-04-04-remove-frb-hard-cut-resequenced-plan.md)
+- 已完成实施计划归档：[`flutter_rust_net/docs/plan/archive/2026-04-04-remove-frb-hard-cut-resequenced-plan.md`](../../plan/archive/2026-04-04-remove-frb-hard-cut-resequenced-plan.md)
 - 当前架构概览：[`flutter_rust_net/FLUTTER_RUST_NET_OVERVIEW_ZH.md`](../../FLUTTER_RUST_NET_OVERVIEW_ZH.md)
-- 当前网络层设计：[`flutter_rust_net/docs/flutter_rust_network_layer_design.md`](../flutter_rust_network_layer_design.md)
-- 文档索引：[`flutter_rust_net/docs/README.md`](../README.md)
+- 当前网络层设计：[`flutter_rust_net/docs/flutter_rust_network_layer_design.md`](../../flutter_rust_network_layer_design.md)
+- 文档索引：[`flutter_rust_net/docs/README.md`](../../README.md)
 
-## 文档口径（当前事实源）
+## 文档口径（历史阅读口径）
 
-- 本文维护 FRB hard cut 已完成后的当前结论与后续清理建议。
+- 本文保留的是 FRB hard cut 收尾完成后的历史状态快照，不再作为当前阶段事实源。
 - 实施顺序、验收口径与非目标已归档到 `docs/plan/archive/2026-04-04-remove-frb-hard-cut-resequenced-plan.md`。
 - pre-hard-cut 的 P1/P2/Rust lifecycle 文档仍保留追溯价值，但只按历史资料解读。
 

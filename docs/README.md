@@ -3,8 +3,8 @@
 本目录用于存放 `flutter_rust_net` 的项目内文档，按职责拆分：
 
 - `flutter_rust_network_layer_design.md`：hard cut 后当前有效的网络层设计主文档
-- `progress/`：当前阶段状态事实源
-- `design/`：仍有参考价值的设计文档与 hard-cut 设计决策
+- `progress/`：阶段状态目录说明与历史状态归档入口
+- `design/`：设计文档归档入口
 - `plan/`：当前无 active plan；保留目录说明与 `archive/` 历史计划
 - `dio_rust_test/`：历史测试方案、runbook、策略建议、基准结果、验证结论归档入口
 - `analyse/`：分析文档与业务适用性建议
@@ -13,13 +13,14 @@
 
 当前优先入口：
 
-- `progress/frb_hard_cut_status_2026-04-04.md`：FRB hard cut 当前执行状态事实源
 - `../FLUTTER_RUST_NET_OVERVIEW_ZH.md`：hard cut 后当前能力概览
 - `flutter_rust_network_layer_design.md`：hard cut 后当前架构
-- `design/2026-04-02-rhttp-dio-hard-cut-design.md`：hard cut 设计决策记录
+- `progress/README.md`：状态目录说明；当前无 active 阶段状态文档
+- `design/archive/2026-04-02-rhttp-dio-hard-cut-design.md`：hard cut 设计决策归档
 
 历史/legacy 资料入口：
 
+- `progress/archive/frb_hard_cut_status_2026-04-04.md`：FRB hard cut 收尾状态快照（已归档）
 - `progress/archive/p1_status_2026-02-25.md`：P1 历史阶段状态（pre-hard-cut）
 - `progress/archive/p2_status_2026-03-02.md`：P2 历史阶段状态（pre-hard-cut）
 - `progress/archive/rust_lifecycle_scope_status_2026-03-12.md`：legacy Rust lifecycle 历史状态
@@ -33,5 +34,5 @@
 维护建议：
 
 1. `Done / In Progress / Next` 只在 `docs/progress/` 维护。
-2. 当前架构事实优先回写 `FLUTTER_RUST_NET_OVERVIEW_ZH.md`、`docs/flutter_rust_network_layer_design.md` 与 `docs/progress/frb_hard_cut_status_2026-04-04.md`。
-3. hard cut 之前的 Rust/FRB/runtime 资料统一优先进入各目录下的 `archive/`，避免与当前入口混放。
+2. 当前架构事实优先回写 `FLUTTER_RUST_NET_OVERVIEW_ZH.md` 与 `docs/flutter_rust_network_layer_design.md`；若后续开启新阶段，再在 `docs/progress/` 新增当前事实源。
+3. hard cut 相关状态、设计、计划与审计资料已进入各自归档目录；后续继续避免与当前入口混放。

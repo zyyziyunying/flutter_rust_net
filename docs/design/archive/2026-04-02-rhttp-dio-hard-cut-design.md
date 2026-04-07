@@ -1,7 +1,7 @@
 # flutter_rust_net `rhttp + Dio` Hard-Cut Design
 
 > Date: 2026-04-02
-> Status: Approved for implementation (revised on 2026-04-03 after review-findings alignment)
+> Status: Historical design record (approved for implementation; revised on 2026-04-03 after review-findings alignment)
 > Scope: remove `flutter_rust_bridge`, package-local `net_engine`, and all legacy Rust compatibility surfaces from `flutter_rust_net`
 
 ## 1. Background
