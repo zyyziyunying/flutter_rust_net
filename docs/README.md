@@ -15,7 +15,9 @@
 
 - `../FLUTTER_RUST_NET_OVERVIEW_ZH.md`：hard cut 后当前能力概览
 - `flutter_rust_network_layer_design.md`：hard cut 后当前架构
-- `progress/README.md`：状态目录说明；当前无 active 阶段状态文档
+- `design/2026-04-08-remote-download-benchmark-endpoint-contract.md`：远端下载 benchmark 端点契约说明
+- `progress/current_status_2026-04-08.md`：当前状态快照；包含 hard cut 收尾后现状与下载 benchmark 首轮落地结论
+- `progress/README.md`：状态目录说明与当前事实源入口
 - `design/archive/2026-04-02-rhttp-dio-hard-cut-design.md`：hard cut 设计决策归档
 
 历史/legacy 资料入口：

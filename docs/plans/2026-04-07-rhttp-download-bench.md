@@ -449,24 +449,35 @@ flutter test test/network/benchmark/benchmark_scenario_server_test.dart -r compa
 flutter test test/network/benchmark/download_benchmark_channels_test.dart -r compact
 flutter test test/network/benchmark/download_benchmark_harness_test.dart -r compact
 flutter test tool/rhttp_download_bench_driver_test.dart --plain-name=rhttp_download_bench_driver
-FRB_DART_LOAD_EXTERNAL_LIBRARY_NATIVE_LIB_DIR="$HOME/.pub-cache/hosted/pub.flutter-io.cn/rhttp-0.16.0/rust/target/release" dart run tool/rhttp_download_bench.dart --file-bytes=1048576 --requests=2 --warmup=1 --concurrency=1 --output=build/rhttp_download_local_smoke.json
+FRB_DART_LOAD_EXTERNAL_LIBRARY_NATIVE_LIB_DIR="/absolute/path/to/rhttp/rust/target/release" dart run tool/rhttp_download_bench.dart --file-bytes=1048576 --requests=2 --warmup=1 --concurrency=1 --output=build/rhttp_download_local_smoke.json
 ```
+
+`FRB_DART_LOAD_EXTERNAL_LIBRARY_NATIVE_LIB_DIR` must point at the local
+directory that contains `librhttp.dylib`; the exact path depends on the
+machine's pub cache host, dependency version, or local build layout.
 
 Expected:
 
 - all tests PASS
 - local smoke writes `build/rhttp_download_local_smoke.json`
-- report contains both `dio` and `rhttp`
+- when `FRB_DART_LOAD_EXTERNAL_LIBRARY_NATIVE_LIB_DIR` points to a directory
+  containing `librhttp.dylib`, report contains both `dio` and `rhttp`
+- when the local `rhttp` native library is unavailable or the env var is
+  unset/misconfigured, expect `rhttp` under `skippedChannels`
 
 **Step 2: Run optional remote verification**
 
 Only if a compatible remote endpoint exists:
 
 ```bash
-FRB_DART_LOAD_EXTERNAL_LIBRARY_NATIVE_LIB_DIR="$HOME/.pub-cache/hosted/pub.flutter-io.cn/rhttp-0.16.0/rust/target/release" dart run tool/rhttp_download_bench.dart --base-url=http://<compatible-host>:<port> --file-bytes=1048576 --requests=2 --warmup=1 --concurrency=1 --output=build/rhttp_download_remote_smoke.json
+FRB_DART_LOAD_EXTERNAL_LIBRARY_NATIVE_LIB_DIR="/absolute/path/to/rhttp/rust/target/release" dart run tool/rhttp_download_bench.dart --base-url=http://<compatible-host>:<port> --file-bytes=1048576 --requests=2 --warmup=1 --concurrency=1 --output=build/rhttp_download_remote_smoke.json
 ```
 
-Expected: JSON report writes successfully. If the endpoint is missing, record that remote verification is blocked instead of changing scope.
+Expected: JSON report writes successfully. Dual-channel output requires both a
+compatible endpoint and a valid local
+`FRB_DART_LOAD_EXTERNAL_LIBRARY_NATIVE_LIB_DIR`; otherwise expect `rhttp` to
+be skipped locally even if the endpoint itself is correct. If the endpoint is
+missing, record that remote verification is blocked instead of changing scope.
 
 **Step 3: Update the plan documents with actual verification notes**
 
