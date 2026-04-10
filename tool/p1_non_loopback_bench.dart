@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-//TODO 拆分
 const String _defaultBaseUrl = 'http://47.110.52.208:7777';
 const String _defaultUploadEndpoint = '/upload';
 
