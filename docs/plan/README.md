@@ -4,6 +4,11 @@
 
 本目录保留 `README` 作为入口说明；所有已完成、失效或被替代的计划文档统一放在 `archive/`。
 
+补充说明：
+
+- 仓库中仍保留 legacy flat `../plans/` 路径下的 2026-04-07 下载 benchmark 设计/计划记录；这些文件仅用于追溯，不代表当前存在 active `docs/plan/`。
+- 最新执行状态统一回写到 `../progress/`。
+
 当前历史计划入口：
 
 - `archive/2026-04-04-remove-frb-hard-cut-resequenced-plan.md`：FRB hard cut 已完成实施计划

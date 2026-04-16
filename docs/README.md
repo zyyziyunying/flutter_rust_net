@@ -4,7 +4,7 @@
 
 - `flutter_rust_network_layer_design.md`：hard cut 后当前有效的网络层设计主文档
 - `progress/`：阶段状态目录说明与历史状态归档入口
-- `design/`：设计文档归档入口
+- `design/`：设计文档与归档入口
 - `plan/`：当前无 active plan；保留目录说明与 `archive/` 历史计划
 - `dio_rust_test/`：历史测试方案、runbook、策略建议、基准结果、验证结论归档入口
 - `analyse/`：分析文档与业务适用性建议
@@ -16,7 +16,8 @@
 - `../FLUTTER_RUST_NET_OVERVIEW_ZH.md`：hard cut 后当前能力概览
 - `flutter_rust_network_layer_design.md`：hard cut 后当前架构
 - `design/2026-04-08-remote-download-benchmark-endpoint-contract.md`：远端下载 benchmark 端点契约说明
-- `progress/current_status_2026-04-08.md`：当前状态快照；包含 hard cut 收尾后现状与下载 benchmark 首轮落地结论
+- `design/2026-04-16-remote-download-benchmark-server-handoff.md`：交给服务端 agent 的远端 benchmark 端点实现说明
+- `progress/current_status_2026-04-16.md`：当前状态快照；包含 2026-04-16 阶段判断、风险缺口与下一步
 - `progress/README.md`：状态目录说明与当前事实源入口
 - `design/archive/2026-04-02-rhttp-dio-hard-cut-design.md`：hard cut 设计决策归档
 
@@ -27,6 +28,7 @@
 - `progress/archive/p2_status_2026-03-02.md`：P2 历史阶段状态（pre-hard-cut）
 - `progress/archive/rust_lifecycle_scope_status_2026-03-12.md`：legacy Rust lifecycle 历史状态
 - `progress/archive/real_device_test_commands_2026-03-02.md`：pre-hard-cut 真机 / benchmark runbook 历史快照；包含失效命令，仅供追溯
+- `plans/2026-04-07-rhttp-download-bench*.md`：legacy flat `docs/plans/` 路径下保留的下载 benchmark 设计/计划记录；仅供追溯，不代表当前 active `docs/plan/`
 - `plan/archive/2026-04-04-remove-frb-hard-cut-resequenced-plan.md`：FRB hard cut 已完成实施计划归档
 - `problems/archive/2026-04-05-frb-hard-cut-resequenced-plan-audit-findings.md`：2026-04-05 hard cut 审计记录；现仅保留历史审计价值
 - `dio_rust_test/archive/`：pre-hard-cut benchmark 与验证资料归档

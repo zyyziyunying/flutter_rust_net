@@ -10,17 +10,17 @@ title: 当前状态快照（2026-04-08）
 
 ## 快速跳转（当前关联文档）
 
-- 项目概览：[`flutter_rust_net/FLUTTER_RUST_NET_OVERVIEW_ZH.md`](../../FLUTTER_RUST_NET_OVERVIEW_ZH.md)
-- 当前网络层设计：[`flutter_rust_net/docs/flutter_rust_network_layer_design.md`](../flutter_rust_network_layer_design.md)
-- 历史 hard cut 状态快照：[`flutter_rust_net/docs/progress/archive/frb_hard_cut_status_2026-04-04.md`](./archive/frb_hard_cut_status_2026-04-04.md)
-- 下载 benchmark 设计：[`flutter_rust_net/docs/plans/2026-04-07-rhttp-download-bench-design.md`](../plans/2026-04-07-rhttp-download-bench-design.md)
-- 下载 benchmark 实施计划：[`flutter_rust_net/docs/plans/2026-04-07-rhttp-download-bench.md`](../plans/2026-04-07-rhttp-download-bench.md)
+- 项目概览：[`flutter_rust_net/FLUTTER_RUST_NET_OVERVIEW_ZH.md`](../../../FLUTTER_RUST_NET_OVERVIEW_ZH.md)
+- 当前网络层设计：[`flutter_rust_net/docs/flutter_rust_network_layer_design.md`](../../flutter_rust_network_layer_design.md)
+- 历史 hard cut 状态快照：[`flutter_rust_net/docs/progress/archive/frb_hard_cut_status_2026-04-04.md`](./frb_hard_cut_status_2026-04-04.md)
+- 下载 benchmark 设计记录（legacy `docs/plans/` 路径）：[`flutter_rust_net/docs/plans/2026-04-07-rhttp-download-bench-design.md`](../../plans/2026-04-07-rhttp-download-bench-design.md)
+- 下载 benchmark 实施记录（legacy `docs/plans/` 路径）：[`flutter_rust_net/docs/plans/2026-04-07-rhttp-download-bench.md`](../../plans/2026-04-07-rhttp-download-bench.md)
 
 ## 文档口径（当前阅读口径）
 
 - 本文是当前阶段的状态事实源，用于覆盖“`docs/progress/` 暂无 active 状态文档”的空档。
 - `archive/frb_hard_cut_status_2026-04-04.md` 仍保留 hard cut 收尾快照价值，但按历史资料解读。
-- `docs/plans/2026-04-07-rhttp-download-bench*.md` 描述的是下载 benchmark 的设计与执行计划，不自动代表最新执行状态。
+- `docs/plans/2026-04-07-rhttp-download-bench*.md` 保留在 legacy flat `docs/plans/` 路径中，作为当次阶段的设计与执行记录，不代表当前存在 active `docs/plan/`。
 
 ## 1) 已完成（Done）
 
