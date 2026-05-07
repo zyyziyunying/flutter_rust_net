@@ -2,7 +2,15 @@
 
 ## Scope
 - This file covers `flutter_rust_net/` only.
+- Read this file first when working in this package subtree.
 - Workspace-level coordination rules live in `../AGENTS.md`.
+- Read `../AGENTS.md` as needed when workspace-level coordination, ownership, or validation policy matters.
+- This package is a member of the repo-root Dart workspace; keep `resolution: workspace` aligned with the root `pubspec.yaml`.
+
+## Reverse Discovery
+- If you start in `example/`, read `example/AGENTS.md` first, then come back here.
+- Use this file for package-local rules.
+- Use `../AGENTS.md` for workspace-wide coordination, ownership, and validation policy when relevant to the task.
 
 ## Project Structure & Module Organization
 - `lib/network/` holds request models, gateway/policy, adapters, and clients.
