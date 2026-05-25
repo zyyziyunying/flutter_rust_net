@@ -51,12 +51,10 @@ class RhttpAdapter extends NetAdapter {
 
   RhttpAdapter({
     rhttp.ClientSettings? clientSettings,
-    RhttpClientFactory? clientFactory,
-    RhttpAdapterRequestHandler? requestHandler,
+    this._clientFactory,
+    this._requestHandler,
   }) : _clientSettings = (clientSettings ?? const rhttp.ClientSettings())
-           .copyWith(throwOnStatusCode: false),
-       _clientFactory = clientFactory,
-       _requestHandler = requestHandler;
+           .copyWith(throwOnStatusCode: false);
 
   @override
   bool get isReady => _requestHandler != null || _clientReady;

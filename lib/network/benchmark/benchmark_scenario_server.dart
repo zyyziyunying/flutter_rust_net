@@ -37,18 +37,13 @@ class ScenarioServer {
       {};
 
   ScenarioServer._({
-    required HttpServer server,
-    required BenchmarkConfig config,
-    required BenchLogger logger,
-    required Uint8List largePayload,
-    required List<int> largeJsonPayload,
-    required List<int> smallJsonPayload,
-  }) : _server = server,
-       _config = config,
-       _logger = logger,
-       _largePayload = largePayload,
-       _largeJsonPayload = largeJsonPayload,
-       _smallJsonPayload = smallJsonPayload;
+    required this._server,
+    required this._config,
+    required this._logger,
+    required this._largePayload,
+    required this._largeJsonPayload,
+    required this._smallJsonPayload,
+  });
 
   String get baseUrl => 'http://${_server.address.address}:${_server.port}';
 

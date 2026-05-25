@@ -396,11 +396,7 @@ class _FakeAdapter implements NetAdapter {
   final Future<String> Function(NetTransferTaskRequest request)?
   _startTransferDelegate;
 
-  _FakeAdapter(
-    this._delegate, {
-    Future<String> Function(NetTransferTaskRequest request)?
-    startTransferDelegate,
-  }) : _startTransferDelegate = startTransferDelegate;
+  _FakeAdapter(this._delegate, {this._startTransferDelegate});
 
   @override
   bool get isReady => true;

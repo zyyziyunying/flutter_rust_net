@@ -209,8 +209,7 @@ class _RustCacheHarnessAdapter implements NetAdapter {
   final DioAdapter _networkAdapter;
   final Map<String, NetResponse> _cache = <String, NetResponse>{};
 
-  _RustCacheHarnessAdapter({required DioAdapter networkAdapter})
-    : _networkAdapter = networkAdapter;
+  _RustCacheHarnessAdapter({required this._networkAdapter});
 
   @override
   bool get isReady => true;

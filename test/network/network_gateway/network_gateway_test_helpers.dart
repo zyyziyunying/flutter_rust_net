@@ -13,13 +13,12 @@ class FakeNetAdapter implements NetAdapter {
 
   FakeNetAdapter(
     this._delegate, {
-    bool isReady = true,
+    this._isReady = true,
     Future<String> Function(NetTransferTaskRequest request)?
     startTransferDelegate,
     Future<List<NetTransferEvent>> Function({int limit})? pollTransferDelegate,
     Future<bool> Function(String taskId)? cancelTransferDelegate,
-  }) : _isReady = isReady,
-       _startTransferDelegate = startTransferDelegate ?? _defaultStartTransfer,
+  }) : _startTransferDelegate = startTransferDelegate ?? _defaultStartTransfer,
        _pollTransferDelegate = pollTransferDelegate ?? _defaultPollTransfer,
        _cancelTransferDelegate = cancelTransferDelegate ?? _defaultCancel;
 
