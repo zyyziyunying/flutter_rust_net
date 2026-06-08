@@ -5,7 +5,8 @@
 - Read this file first when working in this package subtree.
 - Workspace-level coordination rules live in `../AGENTS.md`.
 - Read `../AGENTS.md` as needed when workspace-level coordination, ownership, or validation policy matters.
-- This package is a member of the repo-root Dart workspace; keep `resolution: workspace` aligned with the root `pubspec.yaml`.
+- This package is intentionally independent from the repo-root Dart workspace.
+  Do not add `resolution: workspace` unless it is rejoined to the root workspace.
 
 ## Reverse Discovery
 - If you start in `example/`, read `example/AGENTS.md` first, then come back here.

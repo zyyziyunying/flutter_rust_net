@@ -30,6 +30,8 @@ They now mean "use the primary request channel", not "use a package-local FRB/ru
 - Example app: `flutter_rust_net/example/`
 - Tabs:
   - `Request Lab`: manual API testing with Dio/primary-channel routing controls
+  - `Auth App`: app-style login, refresh, and secure-storage bootstrap through `common` auth
+  - `Auth Refresh`: external token refresher backed by `BytesFirstNetworkClient`
   - `Benchmark`: local loopback benchmark + report upload
 - Default request/upload/login settings live in `example/lib/apis/example_app_config.dart`
 

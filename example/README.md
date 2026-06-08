@@ -1,10 +1,15 @@
 # flutter_rust_net example
 
-This app is a lightweight local benchmark launcher for `flutter_rust_net`.
+This app is a lightweight local request lab and benchmark launcher for
+`flutter_rust_net`.
 
 It runs a built-in benchmark harness that automatically starts a local loopback
 HTTP server, then compares Dio and the primary request channel (`rust`
 compatibility alias, backed by `rhttp`) under preset scenarios.
+
+It also owns the network-backed auth integration demos that exercise `common`
+auth flows through `BytesFirstNetworkClient`, keeping `packages/common/example`
+free from a direct `flutter_rust_net` dependency.
 
 ## Run locally
 
@@ -23,6 +28,18 @@ flutter run
 If the primary request channel is unavailable on your device, keep
 `Require primary request channel` off first. The app will still run Dio-only
 checks and print skip reasons in the log view.
+
+## Auth integration tabs
+
+- `Auth App`: calls the HTTPS demo login endpoint, stores the session through
+  `CommonAuth.secureStorage`, forces refresh, and recreates auth to verify
+  storage bootstrap. Override `FRN_EXAMPLE_AUTH_LOGIN_URL`,
+  `FRN_EXAMPLE_AUTH_LOGIN_USERNAME`, and `FRN_EXAMPLE_AUTH_LOGIN_PASSWORD` when
+  pointing it at a real service. Prefer HTTPS; HTTP endpoints need matching
+  Android cleartext or iOS ATS exceptions in the example app.
+- `Auth Refresh`: uses an external `AuthTokenRefresher` backed by
+  `BytesFirstNetworkClient` and calls `https://httpbin.org/uuid` to mint a demo
+  access token.
 
 ## Real-device report upload
 

@@ -27,12 +27,34 @@ const String _kBenchmarkLoginPassword = String.fromEnvironment(
   'FRN_EXAMPLE_LOGIN_PASSWORD',
   defaultValue: '123456',
 );
+const String _kAuthAppLoginUrl = String.fromEnvironment(
+  'FRN_EXAMPLE_AUTH_LOGIN_URL',
+  defaultValue: 'https://httpbin.org/anything/user/login',
+);
+const String _kAuthAppRefreshUrl = String.fromEnvironment(
+  'FRN_EXAMPLE_AUTH_REFRESH_URL',
+  defaultValue: 'https://httpbin.org/uuid',
+);
+const String _kAuthAppLoginUsername = String.fromEnvironment(
+  'FRN_EXAMPLE_AUTH_LOGIN_USERNAME',
+  defaultValue: 'demo-user',
+);
+const String _kAuthAppLoginPassword = String.fromEnvironment(
+  'FRN_EXAMPLE_AUTH_LOGIN_PASSWORD',
+  defaultValue: 'demo-password',
+);
 
 // Centralized example defaults. Override with --dart-define at launch time.
 const ExampleAppConfig kExampleAppConfig = ExampleAppConfig(
   requestLab: RequestLabPageConfig(
     defaultBaseUrl: _kRequestBaseUrl,
     presets: _kRequestPresets,
+  ),
+  authApp: AuthAppDemoConfig(
+    loginUrl: _kAuthAppLoginUrl,
+    refreshUrl: _kAuthAppRefreshUrl,
+    username: _kAuthAppLoginUsername,
+    password: _kAuthAppLoginPassword,
   ),
   benchmark: BenchmarkPageConfig(
     runPresets: _kBenchmarkRunPresets,
@@ -113,9 +135,14 @@ const List<BenchmarkRunPreset> _kBenchmarkRunPresets = [
 
 class ExampleAppConfig {
   final RequestLabPageConfig requestLab;
+  final AuthAppDemoConfig authApp;
   final BenchmarkPageConfig benchmark;
 
-  const ExampleAppConfig({required this.requestLab, required this.benchmark});
+  const ExampleAppConfig({
+    required this.requestLab,
+    required this.authApp,
+    required this.benchmark,
+  });
 }
 
 class RequestLabPageConfig {
@@ -137,6 +164,20 @@ class BenchmarkPageConfig {
   const BenchmarkPageConfig({required this.runPresets, required this.upload});
 
   BenchmarkRunPreset get initialPreset => runPresets.first;
+}
+
+class AuthAppDemoConfig {
+  final String loginUrl;
+  final String refreshUrl;
+  final String username;
+  final String password;
+
+  const AuthAppDemoConfig({
+    required this.loginUrl,
+    required this.refreshUrl,
+    required this.username,
+    required this.password,
+  });
 }
 
 class BenchmarkUploadConfig {

@@ -21,8 +21,6 @@ version: 1.0.0+1
 environment:
   sdk: ^3.12.0
 
-resolution: workspace
-
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
 # consider running `flutter pub upgrade --major-versions`. Alternatively,
@@ -32,8 +30,10 @@ resolution: workspace
 dependencies:
   flutter:
     sdk: flutter
-  flutter_rust_net: ^0.0.1
-  common: ^0.1.0
+  flutter_rust_net:
+    path: ..
+  common:
+    path: ../../packages/common
   dio: ^5.9.0
 
   # The following adds the Cupertino Icons font to your application.
